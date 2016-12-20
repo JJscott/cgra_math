@@ -244,6 +244,7 @@ namespace cgra {
 
 	template <typename T>
 	class basic_quat {
+	public:
 		using value_t = T;
 		static constexpr size_t size = 4;
 
