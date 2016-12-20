@@ -264,6 +264,145 @@ namespace cgra {
 	};
 
 
+#ifdef CGRA_INITIAL3D_NAMES // Intial3D naming convention
+	using vec0f = basic_vec<float,    0>;
+	using vec0d = basic_vec<double,   0>;
+	using vec0i = basic_vec<int,      0>;
+	using vec0u = basic_vec<unsigned, 0>;
+	using vec0b = basic_vec<bool,     0>;
+
+	using vec1f = basic_vec<float,    1>;
+	using vec1d = basic_vec<double,   1>;
+	using vec1i = basic_vec<int,      1>;
+	using vec1u = basic_vec<unsigned, 1>;
+	using vec1b = basic_vec<bool,     1>;
+
+	using vec2f = basic_vec<float,    2>;
+	using vec2d = basic_vec<double,   2>;
+	using vec2i = basic_vec<int,      2>;
+	using vec2u = basic_vec<unsigned, 2>;
+	using vec2b = basic_vec<bool,     2>;
+
+	using vec3f = basic_vec<float,    3>;
+	using vec3d = basic_vec<double,   3>;
+	using vec3i = basic_vec<int,      3>;
+	using vec3u = basic_vec<unsigned, 3>;
+	using vec3b = basic_vec<bool,     3>;
+
+	using vec4f = basic_vec<float,    4>;
+	using vec4d = basic_vec<double,   4>;
+	using vec4i = basic_vec<int,      4>;
+	using vec4u = basic_vec<unsigned, 4>;
+	using vec4b = basic_vec<bool,     4>;
+
+	using mat2f = basic_mat<float,  2, 2>;
+	using mat2d = basic_mat<double, 2, 2>;
+	using mat2i = basic_mat<int,    2, 2>;
+	using mat3f = basic_mat<float,  3, 3>;
+	using mat3d = basic_mat<double, 3, 3>;
+	using mat3i = basic_mat<int,    3, 3>;
+	using mat4f = basic_mat<float,  4, 4>;
+	using mat4d = basic_mat<double, 4, 4>;
+	using mat4i = basic_mat<int,    4, 4>;
+
+	using mat2x3f = basic_mat<float,  2, 3>;
+	using mat2x3d = basic_mat<double, 2, 3>;
+	using mat2x3i = basic_mat<int,    2, 3>;
+	using mat2x4f = basic_mat<float,  2, 4>;
+	using mat2x4d = basic_mat<double, 2, 4>;
+	using mat2x4i = basic_mat<int,    2, 4>;
+
+	using mat3x2f = basic_mat<float,  3, 2>;
+	using mat3x2d = basic_mat<double, 3, 2>;
+	using mat3x2i = basic_mat<int,    3, 2>;
+	using mat3x4f = basic_mat<float,  3, 4>;
+	using mat3x4d = basic_mat<double, 3, 4>;
+	using mat3x4i = basic_mat<int,    3, 4>;
+
+	using mat4x2f = basic_mat<float,  4, 2>;
+	using mat4x2d = basic_mat<double, 4, 2>;
+	using mat4x2i = basic_mat<int,    4, 2>;
+	using mat4x3f = basic_mat<float,  4, 3>;
+	using mat4x3d = basic_mat<double, 4, 3>;
+	using mat4x3i = basic_mat<int,    4, 3>;
+
+	using quatf = basic_quat<float>;
+	using quatd = basic_quat<double>;
+
+#else // GLSL naming convention
+	using vec0  = basic_vec<float,    0>;
+	using dvec0 = basic_vec<double,   0>;
+	using ivec0 = basic_vec<int,      0>;
+	using uvec0 = basic_vec<unsigned, 0>;
+	using bvec0 = basic_vec<bool,     0>;
+
+	using vec1  = basic_vec<float,    1>;
+	using dvec1 = basic_vec<double,   1>;
+	using ivec1 = basic_vec<int,      1>;
+	using uvec1 = basic_vec<unsigned, 1>;
+	using bvec1 = basic_vec<bool,     1>;
+
+	using vec2  = basic_vec<float,    2>;
+	using dvec2 = basic_vec<double,   2>;
+	using ivec2 = basic_vec<int,      2>;
+	using uvec2 = basic_vec<unsigned, 2>;
+	using bvec2 = basic_vec<bool,     2>;
+
+	using vec3  = basic_vec<float,    3>;
+	using dvec3 = basic_vec<double,   3>;
+	using ivec3 = basic_vec<int,      3>;
+	using uvec3 = basic_vec<unsigned, 3>;
+	using bvec3 = basic_vec<bool,     3>;
+
+	using vec4  = basic_vec<float,    4>;
+	using dvec4 = basic_vec<double,   4>;
+	using ivec4 = basic_vec<int,      4>;
+	using uvec4 = basic_vec<unsigned, 4>;
+	using bvec4 = basic_vec<bool,     4>;
+
+	using mat2  = basic_mat<float,  2, 2>;
+	using dmat2 = basic_mat<double, 2, 2>;
+	using imat2 = basic_mat<int,    2, 2>;
+	using mat3  = basic_mat<float,  3, 3>;
+	using dmat3 = basic_mat<double, 3, 3>;
+	using imat3 = basic_mat<int,    3, 3>;
+	using mat4  = basic_mat<float,  4, 4>;
+	using dmat4 = basic_mat<double, 4, 4>;
+	using imat4 = basic_mat<int,    4, 4>;
+
+	using mat2x3  = basic_mat<float,  2, 3>;
+	using dmat2x3 = basic_mat<double, 2, 3>;
+	using imat2x3 = basic_mat<int,    2, 3>;
+	using mat2x4  = basic_mat<float,  2, 4>;
+	using dmat2x4 = basic_mat<double, 2, 4>;
+	using imat2x4 = basic_mat<int,    2, 4>;
+
+	using mat3x2  = basic_mat<float,  3, 2>;
+	using dmat3x2 = basic_mat<double, 3, 2>;
+	using imat3x2 = basic_mat<int,    3, 2>;
+	using mat3x4  = basic_mat<float,  3, 4>;
+	using dmat3x4 = basic_mat<double, 3, 4>;
+	using imat3x4 = basic_mat<int,    3, 4>;
+
+	using mat4x2  = basic_mat<float,  4, 2>;
+	using dmat4x2 = basic_mat<double, 4, 2>;
+	using imat4x2 = basic_mat<int,    4, 2>;
+	using mat4x3  = basic_mat<float,  4, 3>;
+	using dmat4x3 = basic_mat<double, 4, 3>;
+	using imat4x3 = basic_mat<int,    4, 3>;
+
+	using quat = basic_quat<float>;
+	using dquat = basic_quat<double>;
+
+#endif
+
+
+
+
+
+
+
+
 
 }
 
