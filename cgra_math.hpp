@@ -16,7 +16,7 @@
 - zip_with
 - vector/matrix/quaternion functions
 - transform functions
-
+- clean up common function definitions and remove duplicates
 */
 
 #pragma once
@@ -52,17 +52,7 @@
 
 namespace cgra {
 
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	////     _____  _____          _               _____                                                                   ////
-	////    / ____|/ ____|   /\   | |        /\   |  __ \                                                                ////
-	////   | (___ | |       /  \  | |       /  \  | |__) |                                                             ////
-	////    \___ \| |      / /\ \ | |      / /\ \ |  _  /                                                            ////
-	////    ____) | |____ / ____ \| |____ / ____ \| | \ \                                                              ////
-	////   |_____/ \_____/_/    \_\______/_/    \_\_|  \_\                                                               ////
-	////                                                                                                                   ////
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 	// pi
 	constexpr double pi = 3.1415926535897932384626433832795;
@@ -72,104 +62,6 @@ namespace cgra {
 
 	// golden ratio
 	constexpr double phi = 1.61803398874989484820458683436563811;
-
-
-	// Angle and Trigonometry Functions
-	// 
-
-	using std::sin;
-
-	using std::cos;
-
-	using std::tan;
-
-	using std::asin;
-
-	using std::acos;
-
-	using std::atan;
-
-	template <typename T>
-	inline auto atan(const T &y, const T &x) -> std::enable_if_t<std::is_arithmetic<T>::value, T> {
-		return std::atan2(y, x);
-	}
-
-	using std::sinh;
-
-	using std::cosh;
-
-	using std::tanh;
-
-	using std::asinh;
-
-	using std::acosh;
-
-	using std::atanh;
-	
-
-	// Exponential Functions
-	//
-
-	using std::pow;
-
-	using std::exp;
-
-	using std::log;
-
-	using std::sqrt;
-	
-	
-	// Common Functions
-	//
-
-	using std::abs;
-
-	template <typename T>
-	inline auto sign(T a) -> std::enable_if_t<std::is_arithmetic<T>::value, int> {
-		return (T(0) < a) - (a < T(0));
-	}
-
-	using std::floor;
-
-	using std::ceil;
-
-	template <typename T>
-	inline auto mod(const T &a, const T &b) -> std::enable_if_t<std::is_arithmetic<T>::value, T> {
-		return a - b * std::floor(a/b);
-	}
-
-	using std::min;
-
-	using std::max;
-
-	// clamp scalars between b and c
-	template <typename T>
-	inline auto clamp(const T &a, const T &b, const T &c) -> std::enable_if_t<std::is_arithmetic<T>::value, T>  {
-		return std::min(std::max(a, b), c);
-	}
-
-	// linear blend of scalars : x*(1-a) + y*a
-	template <typename T>
-	inline auto mix(const T &a, const T &b, const T &c) -> std::enable_if_t<std::is_arithmetic<T>::value, T> {
-		return (T(1)-a) * b + a * c;
-	}
-
-	// 0.0 if edge < v, else 1.0
-	template <typename T>
-	inline auto step(const T &a, const T &b) -> std::enable_if_t<std::is_arithmetic<T>::value, T> {
-		return (a<b) ? T(0) : T(1);
-	}
-
-	// smooth hermit interpolation
-	template <typename T>
-	inline auto smoothstep(const T &a, const T &b, const T &c) -> std::enable_if_t<std::is_arithmetic<T>::value, T> {
-		auto t = clamp((c-a)/(b-a), T(0), T(1));
-		return t * t * (T(3)-T(2)*t);
-	}
-
-	using std::isinf;
-
-	using std::isnan;
 
 	// eg: inf<float>()
 	// only for floating point types
@@ -220,19 +112,16 @@ namespace cgra {
 
 
 
+//   _______       ___   .___________.    ___              _______.___________..______       __    __    ______ .___________. __    __  .______       _______     _______.  //
+//  |       \     /   \  |           |   /   \            /       |           ||   _  \     |  |  |  |  /      ||           ||  |  |  | |   _  \     |   ____|   /       |  //
+//  |  .--.  |   /  ^  \ `---|  |----`  /  ^  \          |   (----`---|  |----`|  |_)  |    |  |  |  | |  ,----'`---|  |----`|  |  |  | |  |_)  |    |  |__     |   (----`  //
+//  |  |  |  |  /  /_\  \    |  |      /  /_\  \          \   \       |  |     |      /     |  |  |  | |  |         |  |     |  |  |  | |      /     |   __|     \   \      //
+//  |  '--'  | /  _____  \   |  |     /  _____  \     .----)   |      |  |     |  |\  \----.|  `--'  | |  `----.    |  |     |  `--'  | |  |\  \----.|  |____.----)   |     //
+//  |_______/ /__/     \__\  |__|    /__/     \__\    |_______/       |__|     | _| `._____| \______/   \______|    |__|      \______/  | _| `._____||_______|_______/      //
+//                                                                                                                                                                          //
+//==========================================================================================================================================================================//
 
-
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	////  __      __       _                                                                                               ////
-	////  \ \    / /      | |                                                                                            ////
-	////   \ \  / /__  ___| |_ ___  _ __                                                                               ////
-	////    \ \/ / _ \/ __| __/ _ \| '__|                                                                            ////
-	////     \  /  __/ (__| || (_) | |                                                                                 ////
-	////      \/ \___|\___|\__\___/|_|                                                                                   ////
-	////                                                                                                                   ////
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	// Forward declarations
 
 	template <typename, size_t> class basic_vec;
 	template <typename, size_t, size_t> class basic_mat;
@@ -746,100 +635,59 @@ namespace cgra {
 
 
 
-	// ZipWith functions
-	//
+	//       ___      .__   __.   _______  __       _______     ___.___________..______       __    _______     _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
+	//      /   \     |  \ |  |  /  _____||  |     |   ____|   /  /|           ||   _  \     |  |  /  _____|   |   ____||  |  |  | |  \ |  |  /      ||           ||  |  /  __  \  |  \ |  |     /       |  //
+	//     /  ^  \    |   \|  | |  |  __  |  |     |  |__     /  / `---|  |----`|  |_)  |    |  | |  |  __     |  |__   |  |  |  | |   \|  | |  ,----'`---|  |----`|  | |  |  |  | |   \|  |    |   (----`  //
+	//    /  /_\  \   |  . `  | |  | |_ | |  |     |   __|   /  /      |  |     |      /     |  | |  | |_ |    |   __|  |  |  |  | |  . `  | |  |         |  |     |  | |  |  |  | |  . `  |     \   \      //
+	//   /  _____  \  |  |\   | |  |__| | |  `----.|  |____ /  /       |  |     |  |\  \----.|  | |  |__| |    |  |     |  `--'  | |  |\   | |  `----.    |  |     |  | |  `--'  | |  |\   | .----)   |     //
+	//  /__/     \__\ |__| \__|  \______| |_______||_______/__/        |__|     | _| `._____||__|  \______|    |__|      \______/  |__| \__|  \______|    |__|     |__|  \______/  |__| \__| |_______/      //
+	//                                                                                                                                                                                                      //
+	//======================================================================================================================================================================================================//
 
-	template <typename ...VecTs>
-	struct vec_min_size { };
-
-	template <typename VecT>
-	struct vec_min_size<VecT> : std::integral_constant<size_t, VecT::size> { };
-
-	template <typename VecT1, typename VecT2, typename ...VecTs>
-	struct vec_min_size<VecT1, VecT2, VecTs...> :
-		std::integral_constant<
-			size_t,
-			(vec_min_size<VecT1>::value < vec_min_size<VecT2>::value) ?
-			vec_min_size<VecT1, VecTs...>::value : vec_min_size<VecT2, VecTs...>::value
-		>
-	{ };
-
-	template <size_t I, typename F, typename ...ArgTs>
-	constexpr auto zip_with_impl_impl(F f, ArgTs &&...args) {
-		return f(std::forward<ArgTs>(args)[I]...);
+	// Converts degrees to radians, i.e., degrees * pi/180
+	template <typename T> inline T radians(T x) {
+		return x * T(pi / 180.0);
 	}
 
-	template <typename ResT, typename F, size_t ...Is, typename ...ArgTs>
-	constexpr ResT zip_with_impl(F f, std::index_sequence<Is...>, ArgTs &&...args) {
-		return ResT(zip_with_impl_impl<Is>(f, std::forward<ArgTs>(args)...)...);
+	// Converts radians to degrees, i.e., radians * 180/pi
+	template <typename T> inline T degrees(T x) {
+		return x * T(180.0 / pi);
 	}
 
-	template <typename F, typename ...ArgTs>
-	constexpr auto zip_with(F f, ArgTs &&...args) {
-		using value_t = decltype(f(std::forward<ArgTs>(args)[0]...));
-		using size = vec_min_size<std::decay_t<ArgTs>...>;
-		using vec_t = basic_vec<value_t, size::value>;
-		using iseq = std::make_index_sequence<size::value>;
-		return zip_with_impl<vec_t>(f, iseq(), std::forward<ArgTs>(args)...);
+	// Returns the angle between 2 vectors in radians
+	template <typename T1, typename T2, size_t N>
+	inline auto angle(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+		return acos(dot(v1, v2) / (length(v1) * length(v2)));
 	}
 
-	// struct op_add {
-	// 	template <typename T1, typename T2>
-	// 	constexpr auto operator()(T1 &&t1, T2 &&t2) const {
-	// 		return std::forward<T1>(t1) + std::forward<T2>(t2);
-	// 	}
-	// };
-
-	// constexpr vec3i c = zip_with(op_add(), a, b);
-	// auto d = zip_with([](auto g, auto h) { return std::max(g, h); }, a, b);
-
-
-
-
-
-
-	// Fold function
-	//
-	// Produce a scalar by applying f(T,T) -> T to adjacent pairs of elements
-	// from vector a in left-to-right order starting with f(z, v[0])
-	template<typename F, typename T, size_t N>
-	T fold(F f, T z, const basic_vec<T, N> &v) {
-		T r = f(z, v[0]);
-		for (size_t i = 1; i < N; ++i)
-			r = f(r, v[i]);
-		return r;
-	}
-
-
-
-
-
-	// Functions
-	// 
-
-	// Angle and Trigonometry Functions
-	// 
+	using std::sin;
 
 	// Element-wise function for x in v
 	// The standard trigonometric sine function
 	template <typename T, size_t N>
 	inline basic_vec<T, N> sin(const basic_vec<T, N> &v) {
-		return zip_with(sin, v);
+		return zip_with([](auto x) { return sin(x); }, v);
 	}
+
+	using std::cos;
 
 	// Element-wise function for x in v
 	// The standard trigonometric cosine function
 	template <typename T, size_t N>
 	inline basic_vec<T, N> cos(const basic_vec<T, N> &v) {
-		return zip_with(sin, v);
+		return zip_with([](auto x) { return cos(x); }, v);
 	}
+
+	using std::tan;
 
 	// Element-wise function for x in v
 	// The standard trigonometric tangent
 	template <typename T, size_t N>
 	inline basic_vec<T, N> tan(const basic_vec<T, N> &v) {
-		return zip_with(sin, v);
+		return zip_with([](auto x) { return tan(x); }, v);
 	}
+
+	using std::asin;
 
 	// Element-wise function for x in v
 	// Arc sine. Returns an angle whose sine is x
@@ -847,8 +695,10 @@ namespace cgra {
 	// Results are undefined if ∣x∣>1
 	template <typename T, size_t N>
 	inline basic_vec<T, N> asin(const basic_vec<T, N> &v) {
-		return zip_with(asin, v);
+		return zip_with([](auto x) { return asin(x); }, v);
 	}
+
+	using std::acos;
 
 	// Element-wise function for x in v
 	// Arc cosine. Returns an angle whose cosine is x
@@ -856,7 +706,12 @@ namespace cgra {
 	// Results are undefined if ∣x∣>1
 	template <typename T, size_t N>
 	inline basic_vec<T, N> acos(const basic_vec<T, N> &v) {
-		return zip_with(acos, v);
+		return zip_with([](auto x) { return acos(x); }, v);
+	}
+
+	template <typename T>
+	inline auto atan(const T &y, const T &x) -> std::enable_if_t<std::is_arithmetic<T>::value, T> {
+		return std::atan2(y, x);
 	}
 
 	// Element-wise function for y in v1 and x in v2
@@ -866,64 +721,171 @@ namespace cgra {
 	// Results are undefined if x and y are both 0
 	template <typename T1, typename T2, size_t N>
 	inline auto atan(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-		return zip_with(atan2, v2, v1);
+		return zip_with([](auto x) { return atan2(x); }, v2, v1);
 	}
+
+	using std::atan;
 
 	// Element-wise function for x in v
 	// Arc tangent. Returns an angle whose tangent is y_over_x.
 	// The range of values returned by this function is [-pi/2, pi/2] 
 	template <typename T, size_t N>
 	inline basic_vec<T, N> atan(const basic_vec<T, N> &v) {
-		return zip_with(atan, v);
+		return zip_with([](auto x) { return atan(x); }, v);
 	}
+
+	using std::sinh;
 
 	// Element-wise function for x in v
 	// Returns the hyperbolic sine function (e^x - e^-x)/2
 	template <typename T, size_t N>
 	inline basic_vec<T, N> sinh(const basic_vec<T, N> &v) {
-		return zip_with(sinh, v);
+		return zip_with([](auto x) { return sinh(x); }, v);
 	}
+
+	using std::cosh;
 
 	// Element-wise function for x in v
 	// Returns the hyperbolic cosine function (e^x + e^-x)/2
 	template <typename T, size_t N>
 	inline basic_vec<T, N> cosh(const basic_vec<T, N> &v) {
-		return zip_with(cosh, v);
+		return zip_with([](auto x) { return cosh(x); }, v);
 	}
+
+	using std::tanh;
 
 	// Element-wise function for x in v
 	// Returns the hyperbolic tangent function sinh(x)/cosh(x)
 	template <typename T, size_t N>
 	inline basic_vec<T, N> tanh(const basic_vec<T, N> &v) {
-		return zip_with(tanh, v);
+		return zip_with([](auto x) { return tanh(x); }, v);
 	}
+
+	using std::asinh;
 
 	// Element-wise function for x in v
 	// Arc hyperbolic sine; returns the inverse of sinh(x)
 	template <typename T, size_t N>
 	inline basic_vec<T, N> asinh(const basic_vec<T, N> &v) {
-		return zip_with(asinh, v);
+		return zip_with([](auto x) { return asinh(x); }, v);
 	}
+
+	using std::acosh;
 
 	// Element-wise function for x in v
 	// Arc hyperbolic cosine; returns the non-negative inverse of cosh(x)
 	// Results are undefined if x < 1
 	template <typename T, size_t N>
 	inline basic_vec<T, N> acosh(const basic_vec<T, N> &v) {
-		return zip_with(acosh, v);
+		return zip_with([](auto x) { return acosh(x); }, v);
 	}
+
+	using std::atanh;
 
 	// Element-wise function for x in v
 	// Arc hyperbolic tangent; returns the inverse of tanh(x)
 	// Results are undefined if ∣x∣>=1
 	template <typename T, size_t N>
 	inline basic_vec<T, N> atanh(const basic_vec<T, N> &v) {
-		return zip_with(atanh, v);
+		return zip_with([](auto x) { return atanh(x); }, v);
+	}
+
+	//TODO
+	// description
+	// csc for both scalar x or elements in vector x
+	template <typename T> inline T csc(const T &x) {
+		return T(1) / sin(x);
+	}
+
+	//TODO
+	// description
+	// sec for both scalar x or elements in vector x
+	template <typename T> inline T sec(const T &x) {
+		return T(1) / cos(x);
+	}
+
+	//TODO
+	// description
+	// cot for both scalar x or elements in vector x
+	template <typename T> inline T cot(const T &x) {
+		return T(1) / tan(x);
+	}
+
+	//TODO
+	// description
+	// acsc for both scalar x or elements in vector x
+	template <typename T> inline T acsc(const T &x) {
+		return asin(T(1) / x);
+	}
+
+	//TODO
+	// description
+	// asec for both scalar x or elements in vector x
+	template <typename T> inline T asec(const T &x) {
+		return acos(T(1) / x);
+	}
+
+	//TODO
+	// description
+	// acot for both scalar x or elements in vector x
+	template <typename T> inline T acot(const T &x) {
+		return atan(T(1) / x);
+	}
+
+	//TODO
+	// description
+	// csch for both scalar x or elements in vector x
+	template <typename T> inline T csch(const T &x) {
+		return T(1) / sinh(x);
+	}
+	
+	//TODO
+	// description
+	// sech for both scalar x or elements in vector x
+	template <typename T> inline T sech(const T &x) {
+		return T(1) / cosh(x);
+	}
+	
+	//TODO
+	// description
+	// coth for both scalar x or elements in vector x
+	template <typename T> inline T coth(const T &x) {
+		return cosh(x) / sinh(x);
+	}
+
+	//TODO
+	// description
+	// acsch for both scalar x or elements in vector x
+	template <typename T> inline T acsch(const T &x) {
+		return log(T(1) / x + sqrt((x*x) + T(1)) / abs(x));
+	}
+	
+	//TODO
+	// description
+	// asech for both scalar x or elements in vector x
+	template <typename T> inline T asech(const T &x) {
+		return log(T(1) / x + sqrt(T(1) - (x*x)) / x);
+	}
+	
+	//TODO
+	// description
+	// acoth for both scalar x or elements in vector x
+	template <typename T> inline T acoth(const T &x) {
+		return T(0.5) * log((x + T(1)) / (x - T(1)));
 	}
 
 
-	// Exponential Functions
-	// 
+
+	//   __________   ___ .______     ______   .__   __.  _______ .__   __. .___________. __       ___       __          _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
+	//  |   ____\  \ /  / |   _  \   /  __  \  |  \ |  | |   ____||  \ |  | |           ||  |     /   \     |  |        |   ____||  |  |  | |  \ |  |  /      ||           ||  |  /  __  \  |  \ |  |     /       |  //
+	//  |  |__   \  V  /  |  |_)  | |  |  |  | |   \|  | |  |__   |   \|  | `---|  |----`|  |    /  ^  \    |  |        |  |__   |  |  |  | |   \|  | |  ,----'`---|  |----`|  | |  |  |  | |   \|  |    |   (----`  //
+	//  |   __|   >   <   |   ___/  |  |  |  | |  . `  | |   __|  |  . `  |     |  |     |  |   /  /_\  \   |  |        |   __|  |  |  |  | |  . `  | |  |         |  |     |  | |  |  |  | |  . `  |     \   \      //
+	//  |  |____ /  .  \  |  |      |  `--'  | |  |\   | |  |____ |  |\   |     |  |     |  |  /  _____  \  |  `----.   |  |     |  `--'  | |  |\   | |  `----.    |  |     |  | |  `--'  | |  |\   | .----)   |     //
+	//  |_______/__/ \__\ | _|       \______/  |__| \__| |_______||__| \__|     |__|     |__| /__/     \__\ |_______|   |__|      \______/  |__| \__|  \______|    |__|     |__|  \______/  |__| \__| |_______/      //
+	//                                                                                                                                                                                                               //
+	//===============================================================================================================================================================================================================//
+
+	using std::pow;
 
 	// Element-wise function for x in v1 and y in v2
 	// Returns x raised to the y power, i.e., x^y
@@ -934,12 +896,16 @@ namespace cgra {
 		return zip_with(pow, v1, v2);
 	}
 
+	using std::exp;
+
 	// Element-wise function for x in v
 	// Returns the natural exponentiation of x, i.e., e^x
 	template <typename T, size_t N>
 	inline basic_vec<T, N> exp(const basic_vec<T, N> &v) {
 		return zip_with(exp, v);
 	}
+
+	using std::log;
 
 	// Element-wise function for x in v
 	// Returns the natural logarithm of x, i.e., the value y which satisfies the equation x = e^y
@@ -949,20 +915,23 @@ namespace cgra {
 		return zip_with(log, v);
 	}
 
-	// Element-wise function for x in v
+	// exp2 for both scalar x or elements in vector x
 	// Returns 2 raised to the x power, i.e., 2^x
-	template <typename T, size_t N>
-	inline basic_vec<T, N> exp2(const basic_vec<T, N> &v) {
-		return zip_with(exp2, v);
+	template <typename T>
+	inline T exp2(const T &x) {
+		return pow(T(2), x);
 	}
 
-	// Element-wise function for x in v
-	// Returns the base 2 logarithm of x, i.e., the value y which satisfies the equation x = 2^y
+	// log2 for both scalar x or elements in vector x
+	// Returns the base 2 logarithm of x, i.e., returns the value
+	// y which satisfies the equation x=2^y
 	// Results are undefined if x <= 0
-	template <typename T, size_t N>
-	inline basic_vec<T, N> log2(const basic_vec<T, N> &v) {
-		return zip_with(log2, v);
+	template <typename T>
+	inline T log2(const T &x) {
+		return log(x) * T(1.4426950408889634073599246810019);
 	}
+
+	using std::sqrt;
 
 	// Element-wise function for x in v
 	// Returns sqrt(x)
@@ -972,17 +941,26 @@ namespace cgra {
 		return zip_with(sqrt, v);
 	}
 
-	// Element-wise function for x in v
+	// inversesqrt for both scalar x or elements in vector x
 	// Returns 1/sqrt(x)
-	// Results are undefined if x <= 0
-	template <typename T, size_t N>
-	inline basic_vec<T, N> inversesqrt(const basic_vec<T, N> &v) {
-		return checknan(T(1) / zip_with(sqrt, v));
+	// Results are undefined if x < 0
+	template <typename T>
+	inline T inversesqrt(const T &x) {
+		return checknan(T(1)/sqrt(x));
 	}
 
 
-	// Common Functions
-	// 
+
+	//    ______   ______   .___  ___. .___  ___.   ______   .__   __.     _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
+	//   /      | /  __  \  |   \/   | |   \/   |  /  __  \  |  \ |  |    |   ____||  |  |  | |  \ |  |  /      ||           ||  |  /  __  \  |  \ |  |     /       |  //
+	//  |  ,----'|  |  |  | |  \  /  | |  \  /  | |  |  |  | |   \|  |    |  |__   |  |  |  | |   \|  | |  ,----'`---|  |----`|  | |  |  |  | |   \|  |    |   (----`  //
+	//  |  |     |  |  |  | |  |\/|  | |  |\/|  | |  |  |  | |  . `  |    |   __|  |  |  |  | |  . `  | |  |         |  |     |  | |  |  |  | |  . `  |     \   \      //
+	//  |  `----.|  `--'  | |  |  |  | |  |  |  | |  `--'  | |  |\   |    |  |     |  `--'  | |  |\   | |  `----.    |  |     |  | |  `--'  | |  |\   | .----)   |     //
+	//   \______| \______/  |__|  |__| |__|  |__|  \______/  |__| \__|    |__|      \______/  |__| \__|  \______|    |__|     |__|  \______/  |__| \__| |_______/      //
+	//                                                                                                                                                                 //
+	//=================================================================================================================================================================//
+
+	using std::abs;
 
 	// Element-wise function for x in v
 	// Returns x if x >= 0; otherwise it returns –x
@@ -991,12 +969,20 @@ namespace cgra {
 		return zip_with(abs, v);
 	}
 
+	// Returns 1 if x > 0, 0 if x = 0, or –1 if x < 0
+	template <typename T>
+	inline auto sign(T x) -> std::enable_if_t<std::is_arithmetic<T>::value, int> {
+		return (T(0) < x) - (x < T(0));
+	}
+
 	// Element-wise function for x in v
 	// Returns 1 if x > 0, 0 if x = 0, or –1 if x < 0
 	template <typename T, size_t N>
 	inline basic_vec<T, N> sign(const basic_vec<T, N> &v) {
 		return zip_with(sign, v);
 	}
+
+	using std::floor;
 
 	// Element-wise function for x in v
 	// Returns a value equal to the nearest integer that is less than or equal to x
@@ -1024,6 +1010,8 @@ namespace cgra {
 	// A fractional part of 0.5 will round toward the nearest even integer
 	// (Both 3.5 and 4.5 for x will return 4.0)
 
+	using std::ceil;
+
 	// Element-wise function for x in v
 	// Returns a value equal to the nearest integer to x whose
 	// absolute value is not larger than the absolute value of x
@@ -1032,25 +1020,18 @@ namespace cgra {
 		return zip_with(ceil, v);
 	}
 
-	// Element-wise function for x in v
+	// fract for both scalar x or elements in vector x
 	// Returns x – floor (x)
-	template <typename T, size_t N>
-	inline basic_vec<T, N> fract(const basic_vec<T, N> &v) {
-		return v-floor(v);
+	template <typename T>
+	inline T fract(const T &x) {
+		return x-floor(x);
 	}
 
-	// Element-wise function for x in v
-	// Modulus. Returns v-m*floor(v/m)
-	template <typename T1, typename T2, size_t N>
-	inline auto mod(const basic_vec<T1, N> &v, T2 m) {
-		return v-m*floor(v/m);
-	}
-
-	// Element-wise function for x in v and m in mv
-	// Modulus. Returns v-m*floor(v/m)
-	template <typename T1, typename T2, size_t N>
-	inline auto mod(const basic_vec<T1, N> &v, const basic_vec<T2, N> &mv) {
-		return v-mv*floor(v/mv);
+	// mod for both scalar x or elements in vector x
+	// Modulus. Returns x-m*floor(x/m)
+	template <typename T1, typename T2>
+	inline auto mod(const T1 &x, const T2 &m) {
+		return x-m * floor(x/m);
 	}
 
 	//TODO modf
@@ -1063,6 +1044,8 @@ namespace cgra {
 	// inline auto mod(const basic_vec<T1> &v, basic_vec<T2> &mv) {
 	// 	return ;
 	// }
+
+	using std::min;
 
 	// Element-wise function for x in lhs
 	// Returns rhs if rhs < x; otherwise it returns x
@@ -1089,6 +1072,8 @@ namespace cgra {
 		return zip_with([](auto x, auto y) { return min(x, y); }, lhs, rhs);
 	}
 
+	using std::max;
+
 	// Element-wise function for x in lhs
 	// Returns rhs if rhs > x; otherwise it returns x
 	template <typename T1, size_t N, typename T2, typename=std::enable_if_t<std::is_arithmetic<T2>::value>>
@@ -1114,20 +1099,18 @@ namespace cgra {
 		return zip_with([](auto x, auto y) { return max(x, y); }, lhs, rhs);
 	}
 
-	// Element-wise function for x in v
+	// mod for both scalar a,b,c or elements in vector a,b,c
 	// Returns min(max(x, minVal), maxVal)
 	// Results are undefined if minVal > maxVal
-	template <typename T1, size_t N, typename T2, typename T3>
-	inline auto clamp(const basic_vec<T1, N> &v, T2 minVal, T3 maxVal) {
-		return min(max(v, minVal), maxVal);
+	template <typename T>
+	inline auto clamp(const T &a, const T &minVal, const T &maxVal) {
+		return min(max(a, minVal), maxVal);
 	}
 
-	// Element-wise function for x in v, minVal in vminVal and maxVal in vmaxVal
-	// Returns min(max(x, minVal), maxVal)
-	// Results are undefined if minVal > maxVal
-	template <typename T1, typename T2, typename T3, size_t N>
-	inline auto clamp(const basic_vec<T1, N> &v, const basic_vec<T2, N> &vminVal, const basic_vec<T3, N> &vmaxVal) {
-		return min(max(v, vminVal), vmaxVal);
+	// Returns the linear blend of x and y, i.e., x*(1−a) + y*a
+	template <typename T>
+	inline auto mix(const T &x, const T &y, const T &a) -> std::enable_if_t<std::is_arithmetic<T>::value, T> {
+		return (T(1)-a) * x + a * y;
 	}
 
 	// Element-wise function for x in v1 and y in v2
@@ -1160,6 +1143,12 @@ namespace cgra {
 		return zip_with([](auto x, auto y, auto a) { return (!a) ? x : y; }, v1, v2, va);
 	}
 
+	// Returns 0.0 if x < edge; otherwise it returns 1.0
+	template <typename T>
+	inline auto step(const T &edge, const T &x) -> std::enable_if_t<std::is_arithmetic<T>::value, T> {
+		return (x<edge) ? T(0) : T(1);
+	}
+
 	// Element-wise function for x in v
 	// Returns 0.0 if x < edge; otherwise it returns 1.0
 	template <typename T1, typename T2, size_t N>
@@ -1174,6 +1163,20 @@ namespace cgra {
 	inline auto step(const basic_vec<T1, N> &vedge, const basic_vec<T2, N> &v) {
 		using common_t = std::common_type_t<T1, T2>;
 		return zip_with([](auto edge, auto x) { return (x < edge) ? common_t(0) : common_t(1); }, vedge, v);
+	}
+
+	// Returns 0.0 if x <= edge0 and 1.0 if x >= edge1 and performs smooth
+	// Hermite interpolation between 0 and 1 when edge0 < x < edge1
+	// This is useful in cases where you would want a threshold
+	// function with a smooth transition and is equivalent to:
+	//     T t;
+	//     t = clamp ((x – edge0) / (edge1 – edge0), 0, 1);
+	//     return t * t * (3 – 2 * t);
+	// Results are undefined if edge0 >= edge1.
+	template <typename T>
+	inline auto smoothstep(const T &edge0, const T &edge1, const T &x) -> std::enable_if_t<std::is_arithmetic<T>::value, T> {
+		auto t = clamp((x-edge0)/(edge1-edge0), T(0), T(1));
+		return t * t * (T(3)-T(2)*t);
 	}
 
 	// Element-wise function for edge0 in vedge0, edge1 in vedge1
@@ -1208,6 +1211,8 @@ namespace cgra {
 		return t * t * (common_t(3)-common_t(2)*t);
 	}
 
+	using std::isnan;
+
 	// Element-wise function for x in v
 	// Returns true if x holds a NaN. Returns false otherwise
 	// Always returns false if NaNs are not implemented
@@ -1215,6 +1220,8 @@ namespace cgra {
 	inline auto isnan(const basic_vec<T, N> &v) {
 		return zip_with([](auto x) { return isnan(x); }, v);
 	}
+
+	using std::isinf;
 
 	// Element-wise function for x in v
 	// Returns true if x holds a positive infinity or negative infinity
@@ -1293,11 +1300,29 @@ namespace cgra {
 		return fold( [](auto a, auto b) { return a + b; }, T(0), v);
 	}
 
-	//TODO
-	// Floating-Point Pack and Unpack Functions (all)
+	
 
-	// Geometric Functions
-	// 
+	//  .______      ___       ______  __  ___  __  .__   __.   _______     _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
+	//  |   _  \    /   \     /      ||  |/  / |  | |  \ |  |  /  _____|   |   ____||  |  |  | |  \ |  |  /      ||           ||  |  /  __  \  |  \ |  |     /       |  //
+	//  |  |_)  |  /  ^  \   |  ,----'|  '  /  |  | |   \|  | |  |  __     |  |__   |  |  |  | |   \|  | |  ,----'`---|  |----`|  | |  |  |  | |   \|  |    |   (----`  //
+	//  |   ___/  /  /_\  \  |  |     |    <   |  | |  . `  | |  | |_ |    |   __|  |  |  |  | |  . `  | |  |         |  |     |  | |  |  |  | |  . `  |     \   \      //
+	//  |  |     /  _____  \ |  `----.|  .  \  |  | |  |\   | |  |__| |    |  |     |  `--'  | |  |\   | |  `----.    |  |     |  | |  `--'  | |  |\   | .----)   |     //
+	//  | _|    /__/     \__\ \______||__|\__\ |__| |__| \__|  \______|    |__|      \______/  |__| \__|  \______|    |__|     |__|  \______/  |__| \__| |_______/      //
+	//                                                                                                                                                                  //
+	//==================================================================================================================================================================//
+
+	//TODO
+
+
+
+	//    _______  _______   ______   .___  ___.  _______ .___________..______       __    ______     _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
+	//   /  _____||   ____| /  __  \  |   \/   | |   ____||           ||   _  \     |  |  /      |   |   ____||  |  |  | |  \ |  |  /      ||           ||  |  /  __  \  |  \ |  |     /       |  //
+	//  |  |  __  |  |__   |  |  |  | |  \  /  | |  |__   `---|  |----`|  |_)  |    |  | |  ,----'   |  |__   |  |  |  | |   \|  | |  ,----'`---|  |----`|  | |  |  |  | |   \|  |    |   (----`  //
+	//  |  | |_ | |   __|  |  |  |  | |  |\/|  | |   __|      |  |     |      /     |  | |  |        |   __|  |  |  |  | |  . `  | |  |         |  |     |  | |  |  |  | |  . `  |     \   \      //
+	//  |  |__| | |  |____ |  `--'  | |  |  |  | |  |____     |  |     |  |\  \----.|  | |  `----.   |  |     |  `--'  | |  |\   | |  `----.    |  |     |  | |  `--'  | |  |\   | .----)   |     //
+	//   \______| |_______| \______/  |__|  |__| |_______|    |__|     | _| `._____||__|  \______|   |__|      \______/  |__| \__|  \______|    |__|     |__|  \______/  |__| \__| |_______/      //
+	//                                                                                                                                                                                            //
+	//============================================================================================================================================================================================//
 
 	// Returns the length of vector v, i.e.,sqrt(v[0]^2 + v[1]^2  + ...)
 	template <typename T, size_t N>
@@ -1360,9 +1385,30 @@ namespace cgra {
 		return eta * i - (eta * dot(n, i) + std::sqrt(k)) * n;
 	}
 
+	// TODO more complete description
+	// project lhs onto rhs
+	template <typename T1, typename T2, size_t N>
+	inline auto project(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+		return v2 * (dot(v1, v2) / dot(v2, v2));
+	}
 
-	// Vector Relational Functions
-	//
+	// TODO more complete description
+	// project lhs onto the plane defined by the normal rhs
+	template <typename T1, typename T2, size_t N>
+	inline auto reject(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+		return v1 - project(v1, v2);
+	}
+
+
+
+	//  .______       _______  __          ___   .___________. __    ______   .__   __.      ___       __          _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
+	//  |   _  \     |   ____||  |        /   \  |           ||  |  /  __  \  |  \ |  |     /   \     |  |        |   ____||  |  |  | |  \ |  |  /      ||           ||  |  /  __  \  |  \ |  |     /       |  //
+	//  |  |_)  |    |  |__   |  |       /  ^  \ `---|  |----`|  | |  |  |  | |   \|  |    /  ^  \    |  |        |  |__   |  |  |  | |   \|  | |  ,----'`---|  |----`|  | |  |  |  | |   \|  |    |   (----`  //
+	//  |      /     |   __|  |  |      /  /_\  \    |  |     |  | |  |  |  | |  . `  |   /  /_\  \   |  |        |   __|  |  |  |  | |  . `  | |  |         |  |     |  | |  |  |  | |  . `  |     \   \      //
+	//  |  |\  \----.|  |____ |  `----./  _____  \   |  |     |  | |  `--'  | |  |\   |  /  _____  \  |  `----.   |  |     |  `--'  | |  |\   | |  `----.    |  |     |  | |  `--'  | |  |\   | .----)   |     //
+	//  | _| `._____||_______||_______/__/     \__\  |__|     |__|  \______/  |__| \__| /__/     \__\ |_______|   |__|      \______/  |__| \__|  \______|    |__|     |__|  \______/  |__| \__| |_______/      //
+	//                                                                                                                                                                                                         //
+	//=========================================================================================================================================================================================================//
 
 	// Element-wise function for x in v1 and y in v2
 	// Returns the comparison of x < y
@@ -1420,144 +1466,88 @@ namespace cgra {
 
 	// Note : C++ does not support "not" as a function name, hence it has been omitted
 
+
+
+	
+	//   __  .__   __. .___________. _______   _______  _______ .______          _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
+	//  |  | |  \ |  | |           ||   ____| /  _____||   ____||   _  \        |   ____||  |  |  | |  \ |  |  /      ||           ||  |  /  __  \  |  \ |  |     /       |  //
+	//  |  | |   \|  | `---|  |----`|  |__   |  |  __  |  |__   |  |_)  |       |  |__   |  |  |  | |   \|  | |  ,----'`---|  |----`|  | |  |  |  | |   \|  |    |   (----`  //
+	//  |  | |  . `  |     |  |     |   __|  |  | |_ | |   __|  |      /        |   __|  |  |  |  | |  . `  | |  |         |  |     |  | |  |  |  | |  . `  |     \   \      //
+	//  |  | |  |\   |     |  |     |  |____ |  |__| | |  |____ |  |\  \----.   |  |     |  `--'  | |  |\   | |  `----.    |  |     |  | |  `--'  | |  |\   | .----)   |     //
+	//  |__| |__| \__|     |__|     |_______| \______| |_______|| _| `._____|   |__|      \______/  |__| \__|  \______|    |__|     |__|  \______/  |__| \__| |_______/      //
+	//                                                                                                                                                                       //
+	//=======================================================================================================================================================================//
+
 	//TODO
-	// 8 Integer Functions
 
 
 
+	//   __    __   __    _______  __    __       ______   .______       _______   _______ .______          _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
+	//  |  |  |  | |  |  /  _____||  |  |  |     /  __  \  |   _  \     |       \ |   ____||   _  \        |   ____||  |  |  | |  \ |  |  /      ||           ||  |  /  __  \  |  \ |  |     /       |  //
+	//  |  |__|  | |  | |  |  __  |  |__|  |    |  |  |  | |  |_)  |    |  .--.  ||  |__   |  |_)  |       |  |__   |  |  |  | |   \|  | |  ,----'`---|  |----`|  | |  |  |  | |   \|  |    |   (----`  //
+	//  |   __   | |  | |  | |_ | |   __   |    |  |  |  | |      /     |  |  |  ||   __|  |      /        |   __|  |  |  |  | |  . `  | |  |         |  |     |  | |  |  |  | |  . `  |     \   \      //
+	//  |  |  |  | |  | |  |__| | |  |  |  |    |  `--'  | |  |\  \----.|  '--'  ||  |____ |  |\  \----.   |  |     |  `--'  | |  |\   | |  `----.    |  |     |  | |  `--'  | |  |\   | .----)   |     //
+	//  |__|  |__| |__|  \______| |__|  |__|     \______/  | _| `._____||_______/ |_______|| _| `._____|   |__|      \______/  |__| \__|  \______|    |__|     |__|  \______/  |__| \__| |_______/      //
+	//                                                                                                                                                                                                  //
+	//==================================================================================================================================================================================================//
 
+	// zip_with functions
+	//
+	template <typename ...VecTs>
+	struct vec_min_size { };
 
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	////     _____           _                  __ __      __       _                                                      ////
-	////    / ____|         | |                / / \ \    / /      | |                                                   ////
-	////   | (___   ___ __ _| | __ _ _ __     / /   \ \  / /__  ___| |_ ___  _ __                                      ////
-	////    \___ \ / __/ _` | |/ _` | '__|   / /     \ \/ / _ \/ __| __/ _ \| '__|                                   ////
-	////    ____) | (_| (_| | | (_| | |     / /       \  /  __/ (__| || (_) | |                                        ////
-	////   |_____/ \___\__,_|_|\__,_|_|    /_/         \/ \___|\___|\__\___/|_|                                          ////
-	////                                                                                                                   ////
-	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	template <typename VecT>
+	struct vec_min_size<VecT> : std::integral_constant<size_t, VecT::size> { };
 
-	// Angle and Trigonometry Functions
-	// 
+	template <typename VecT1, typename VecT2, typename ...VecTs>
+	struct vec_min_size<VecT1, VecT2, VecTs...> :
+		std::integral_constant<
+			size_t,
+			(vec_min_size<VecT1>::value < vec_min_size<VecT2>::value) ?
+			vec_min_size<VecT1, VecTs...>::value : vec_min_size<VecT2, VecTs...>::value
+		>
+	{ };
 
-	// Converts degrees to radians, i.e., degrees * pi/180
-	template <typename T> inline T radians(T x) {
-		return x * pi / T(180.0);
+	template <size_t I, typename F, typename ...ArgTs>
+	constexpr auto zip_with_impl_impl(F f, ArgTs &&...args) {
+		return f(std::forward<ArgTs>(args)[I]...);
 	}
 
-	// Converts radians to degrees, i.e., radians * 180/pi
-	template <typename T> inline T degrees(T x) {
-		return x / pi * T(180.0);
+	template <typename ResT, typename F, size_t ...Is, typename ...ArgTs>
+	constexpr ResT zip_with_impl(F f, std::index_sequence<Is...>, ArgTs &&...args) {
+		return ResT(zip_with_impl_impl<Is>(f, std::forward<ArgTs>(args)...)...);
 	}
 
-	template <typename T> inline T csc(const T &x) {
-		using namespace std;
-		return T(1) / sin(x);
+	template <typename F, typename ...ArgTs>
+	constexpr auto zip_with(F f, ArgTs &&...args) {
+		using value_t = decltype(f(std::forward<ArgTs>(args)[0]...));
+		using size = vec_min_size<std::decay_t<ArgTs>...>;
+		using vec_t = basic_vec<value_t, size::value>;
+		using iseq = std::make_index_sequence<size::value>;
+		return zip_with_impl<vec_t>(f, iseq(), std::forward<ArgTs>(args)...);
 	}
 
-	template <typename T> inline T sec(const T &x) {
-		using namespace std;
-		return T(1) / cos(x);
+	// struct op_add {
+	// 	template <typename T1, typename T2>
+	// 	constexpr auto operator()(T1 &&t1, T2 &&t2) const {
+	// 		return std::forward<T1>(t1) + std::forward<T2>(t2);
+	// 	}
+	// };
+
+	// constexpr vec3i c = zip_with(op_add(), a, b);
+	// auto d = zip_with([](auto g, auto h) { return std::max(g, h); }, a, b);
+
+
+	// Fold function
+	//
+	// Produce a scalar by applying f(T,T) -> T to adjacent pairs of elements
+	// from vector a in left-to-right order starting with f(z, v[0])
+	template<typename F, typename T, size_t N>
+	T fold(F f, T z, const basic_vec<T, N> &v) {
+		T r = f(z, v[0]);
+		for (size_t i = 1; i < N; ++i)
+			r = f(r, v[i]);
+		return r;
 	}
-
-	template <typename T> inline T cot(const T &x) {
-		using namespace std;
-		return T(1) / tan(x);
-	}
-
-	template <typename T> inline T acsc(const T &x) {
-		using namespace std;
-		return asin(T(1) / x);
-	}
-
-	template <typename T> inline T asec(const T &x) {
-		using namespace std;
-		return acos(T(1) / x);
-	}
-
-	template <typename T> inline T acot(const T &x) {
-		using namespace std;
-		return atan(T(1) / x);
-	}
-
-	template <typename T> inline T csch(const T &x) {
-		using namespace std;
-		return T(1) / sinh(x);
-	}
-	
-	template <typename T> inline T sech(const T &x) {
-		using namespace std;
-		return T(1) / cosh(x);
-	}
-	
-	template <typename T> inline T coth(const T &x) {
-		using namespace std;
-		return cosh(x) / sinh(x);
-	}
-
-	template <typename T> inline T acsch(const T &x) {
-		using namespace std;
-		return log(T(1) / x + sqrt((x*x) + T(1)) / abs(x));
-	}
-	
-	template <typename T> inline T asech(const T &x) {
-		using namespace std;
-		return log(T(1) / x + sqrt(T(1) - (x*x)) / x);
-	}
-	
-	template <typename T> inline T acoth(const T &x) {
-		using namespace std;
-		return T(0.5) * log((x + T(1)) / (x - T(1)));
-	}
-
-
-	// Exponential Functions
-	// 
-
-	// Returns 2 raised to the x power, i.e., 2^x
-	template <typename T> inline T exp2(const T &x) {
-		using namespace std;
-		return pow(T(2), x);
-	}
-
-	// Returns the base 2 logarithm of x, i.e., returns the value
-	// y which satisfies the equation x=2^y
-	// Results are undefined if x <= 0
-	template <typename T> inline T log2(const T &x) {
-		using namespace std;
-		return log(x) * T(1.4426950408889634073599246810019);
-	}
-
-	// Returns 1/sqrt(x)
-	// Results are undefined if x < 0
-	template <typename T> inline T inversesqrt(const T &x) {
-		using namespace std;
-		return T(1)/sqrt(x);
-	}
-
-
-	// Common Functions
-	// 
-
-	// fractional part in terms of floor : x-floor(x)
-	template <typename T> inline T fract(const T &x) {
-		using namespace std;
-		return x-floor(x);
-	}
-
-
-
-
-
-
-
-
 
 }
-
-
-
-
-
