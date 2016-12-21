@@ -36,6 +36,18 @@
 
 
 
+// Visual Studio versions prior to 2015 lack constexpr support
+#if defined(_MSC_VER) && _MSC_VER < 1900 && !defined(constexpr)
+#define constexpr
+#endif
+
+// We undefine min and max macros if they exist
+// so it doesn't interfer with our function overloads
+// @$#! macros...
+#undef MIN
+#undef min
+#undef MAX
+#undef max
 
 
 namespace cgra {
@@ -756,7 +768,7 @@ namespace cgra {
 
 
 
-		///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	////     _____           _                  __ __      __       _                                                      ////
 	////    / ____|         | |                / / \ \    / /      | |                                                   ////
