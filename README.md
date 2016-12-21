@@ -5,13 +5,19 @@
 
 # FAQ
 
-##### Why did you make another math library?
+#### Why did you make another math library?
 
-There are a huge number of existing libraries for linear algebra maths in C++ but the majority of them are slow to compile and are complicated to integrate. `cgra_math.hpp` is a single header file that provides a variety of data types and functions most suitable for applications in Computer Graphics and can be integrated straight into your source tree without the hassle.
+There are a large number of existing libraries for linear algebra in C++ but the majority of them are slow to compile and  complicated to integrate. `cgra_math.hpp` is a single header file that provides a variety of data types and functions that most suitable for applications in Computer Graphics. It can be integrated straight into your source tree without any hassle.
 
-##### Why C++11?
+#### Why C++11?
 
 TODO
+
+#### Why are Matrices Column-major?
+
+TODO
+Originally this library was developed for use in OpenGL which requires the data to be packed in column major order.
+Array subscript operator allows you to access the matrix by column then row (x then y) which is easier for beginners to understand. A single array subscript operator also allows us to return a reinterpret cast of the data as a vector with length equal to the number of rows making it easier to modify.
 
 
 # Documentation
@@ -37,6 +43,7 @@ TODO operators
 TODO explicit template override
 
 ### `basic_mat<T, N>`
+Data is stored in column major order
 TODO constructors
 TODO operators
 
@@ -117,6 +124,9 @@ TODO
 
 TODO
 
+# Running the Testing Suite
+
+TODO
 
 # Acknowledgments
 
