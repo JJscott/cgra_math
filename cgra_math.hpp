@@ -1287,10 +1287,16 @@ namespace cgra {
 	// floating-point value using ldexp() should yield the
 	// original input for zero and all finite non-denormized values.
 
-	// Returns the sum value of all x in v, i.e., v[0] + v[1] + ...
+	// Returns the sum of all x in v, i.e., v[0] + v[1] + ...
 	template <typename T, size_t N>
 	inline T sum(const basic_vec<T, N> &v) {
 		return fold( [](auto a, auto b) { return a + b; }, T(0), v);
+	}
+
+	// Returns the product of all x in v, i.e., v[0] * v[1] * ...
+	template <typename T, size_t N>
+	inline T product(const basic_vec<T, N> &v) {
+		return fold( [](auto a, auto b) { return a * b; }, T(0), v);
 	}
 
 	//TODO

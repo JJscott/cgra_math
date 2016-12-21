@@ -31,16 +31,16 @@ TODO
 
 ## Data Structures
 
-### basic_vec<T, N>
+### `basic_vec<T, N>`
 TODO constructors
 TODO operators
 TODO explicit template override
 
-### basic_mat<T, N>
+### `basic_mat<T, N>`
 TODO constructors
 TODO operators
 
-### basic_quat<T, N>
+### `basic_quat<T, N>`
 TODO constructors
 TODO operators
 
