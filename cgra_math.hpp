@@ -9,7 +9,7 @@
 
 /**
 =================
-      TODO
+	  TODO
 =================
 
 - constexpr everything
@@ -171,14 +171,14 @@ namespace cgra {
 
 	using std::isnan;
 
-	// use like: inf<float>()
+	// eg: inf<float>()
 	// only for floating point types
 	template <typename T>
 	inline T inf() {
 		return std::numeric_limits<T>::infinity();
 	}
 
-	// use like: nan<float>()
+	// eg: nan<float>()
 	// only for floating point types
 	template <typename T>
 	inline T nan() {
@@ -385,20 +385,24 @@ namespace cgra {
 		static constexpr size_t size = N;
 
 		// TODO more constructors
-		basic_vec() { }
+		constexpr basic_vec() { }
 
-		const T & operator[](size_t i) const {
-			assert(i < N);
-			return m_data[i];
-		}
+		template <typename ...ArgTs>
+		constexpr basic_vec(ArgTs &&...args) : m_data{std::forward<ArgTs>(args)...} { }
 
 		T & operator[](size_t i) {
 			assert(i < N);
 			return m_data[i];
 		}
 
+		constexpr const T & operator[](size_t i) const {
+			assert(i < N);
+			return m_data[i];
+		}
+
 		T * data() { return &m_data[0]; }
-		const T * data() const { return &m_data[0]; }
+
+		constexpr const T * data() const { return &m_data[0]; }
 
 		inline friend std::ostream & operator<<(std::ostream &out, const basic_vec &v) {
 			return out << '(' << v[0];
@@ -416,22 +420,23 @@ namespace cgra {
 		using value_t = T;
 		static constexpr size_t size = 0;
 
-		basic_vec() { }
+		constexpr basic_vec() { }
 		template <typename U>
-		basic_vec(const basic_vec<U, 0> &v) { }
-
-		const T & operator[](size_t i) const {
-			assert(false);
-			return reinterpret_cast<const T &>(*this);
-		}
+		constexpr basic_vec(const basic_vec<U, 0> &v) { }
 
 		T & operator[](size_t i) {
 			assert(false);
 			return reinterpret_cast<T &>(*this);
 		}
 
+		constexpr const T & operator[](size_t i) const {
+			assert(false);
+			return reinterpret_cast<const T &>(*this);
+		}
+
 		T * data() { return reinterpret_cast<T *>(this); }
-		const T * data() const { return reinterpret_cast<const T *>(this); }
+
+		constexpr const T * data() const { return reinterpret_cast<const T *>(this); }
 
 		inline friend std::ostream & operator<<(std::ostream &out, const basic_vec &v) {
 			return out << "( )";
@@ -448,24 +453,25 @@ namespace cgra {
 
 		union{ T x; T r; T s; };
 
-		basic_vec() : x(0) { }
-		explicit basic_vec(T s) : x(s) { }
-		explicit basic_vec(const T *p) : x(p[0]) { }
+		constexpr basic_vec() : x(0) { }
+		constexpr explicit basic_vec(T s) : x(s) { }
+		constexpr explicit basic_vec(const T *p) : x(p[0]) { }
 		template <typename U>
-		basic_vec(const basic_vec<U, 1> &v) : x(v.x) { }
-
-		const T & operator[](size_t i) const {
-			assert(i < 1);
-			return (&x)[i];
-		}
+		constexpr basic_vec(const basic_vec<U, 1> &v) : x(v.x) { }
 
 		T & operator[](size_t i) {
 			assert(i < 1);
 			return (&x)[i];
 		}
 
+		constexpr const T & operator[](size_t i) const {
+			assert(i < 1);
+			return (&x)[i];
+		}
+
 		T * data() { return &x; }
-		const T * data() const { return &x; }
+
+		constexpr const T * data() const { return &x; }
 
 		inline friend std::ostream & operator<<(std::ostream &out, const basic_vec &v) {
 			return out << '(' << v.x << ')';
@@ -483,25 +489,26 @@ namespace cgra {
 		union{ T x; T r; T s; };
 		union{ T y; T g; T t; };
 
-		basic_vec() : x(0), y(0) { }
-		basic_vec(T _x, T _y) : x(_x), y(_y) { }
-		explicit basic_vec(T s) : x(s), y(s) { }
-		explicit basic_vec(const T *p) : x(p[0]), y(p[1]) { }
+		constexpr basic_vec() : x(0), y(0) { }
+		constexpr basic_vec(T _x, T _y) : x(_x), y(_y) { }
+		constexpr explicit basic_vec(T s) : x(s), y(s) { }
+		constexpr explicit basic_vec(const T *p) : x(p[0]), y(p[1]) { }
 		template <typename U>
-		basic_vec(const basic_vec<U, 2> &v) : x(v.x), y(v.y) { }
-
-		const T & operator[](size_t i) const {
-			assert(i < 2);
-			return (&x)[i];
-		}
+		constexpr basic_vec(const basic_vec<U, 2> &v) : x(v.x), y(v.y) { }
 
 		T & operator[](size_t i) {
 			assert(i < 2);
 			return (&x)[i];
 		}
 
+		constexpr const T & operator[](size_t i) const {
+			assert(i < 2);
+			return (&x)[i];
+		}
+
 		T * data() { return &x; }
-		const T * data() const { return &x; }
+
+		constexpr const T * data() const { return &x; }
 
 		inline friend std::ostream & operator<<(std::ostream &out, const basic_vec &v) {
 			return out << '(' << v.x << ", " << v.y << ')';
@@ -520,25 +527,26 @@ namespace cgra {
 		union{ T y; T g; T t; };
 		union{ T z; T b; T p; };
 
-		basic_vec() : x(0), y(0), z(0) { }
-		basic_vec(T _x, T _y, T _z) : x(_x), y(_y), z(_z) { }
-		explicit basic_vec(T s) : x(s), y(s), z(s) { }
-		explicit basic_vec(const T *p) : x(p[0]), y(p[1]), z(p[2]) { }
+		constexpr basic_vec() : x(0), y(0), z(0) { }
+		constexpr basic_vec(T _x, T _y, T _z) : x(_x), y(_y), z(_z) { }
+		constexpr explicit basic_vec(T s) : x(s), y(s), z(s) { }
+		constexpr explicit basic_vec(const T *p) : x(p[0]), y(p[1]), z(p[2]) { }
 		template <typename U>
-		basic_vec(const basic_vec<U, 3> &v) : x(v.x), y(v.y), z(v.z) { }
-
-		const T & operator[](size_t i) const {
-			assert(i < 3);
-			return (&x)[i];
-		}
+		constexpr basic_vec(const basic_vec<U, 3> &v) : x(v.x), y(v.y), z(v.z) { }
 
 		T & operator[](size_t i) {
 			assert(i < 3);
 			return (&x)[i];
 		}
 
+		constexpr const T & operator[](size_t i) const {
+			assert(i < 3);
+			return (&x)[i];
+		}
+
 		T * data() { return &x; }
-		const T * data() const { return &x; }
+
+		constexpr const T * data() const { return &x; }
 
 		inline friend std::ostream & operator<<(std::ostream &out, const basic_vec &v) {
 			return out << '(' << v.x << ", " << v.y << ", " << v.z << ')';
@@ -558,25 +566,26 @@ namespace cgra {
 		union{ T z; T b; T p; };
 		union{ T w; T a; T q; };
 
-		basic_vec() : x(0), y(0), z(0), w(0) { }
-		basic_vec(T _x, T _y, T _z, T _w) : x(_x), y(_y), z(_z), w(_w) { }
-		explicit basic_vec(T s) : x(s), y(s), z(s), w(s) { }
-		explicit basic_vec(const T *p) : x(p[0]), y(p[1]), z(p[2]), w(p[3]) { }
+		constexpr basic_vec() : x(0), y(0), z(0), w(0) { }
+		constexpr basic_vec(T _x, T _y, T _z, T _w) : x(_x), y(_y), z(_z), w(_w) { }
+		constexpr explicit basic_vec(T s) : x(s), y(s), z(s), w(s) { }
+		constexpr explicit basic_vec(const T *p) : x(p[0]), y(p[1]), z(p[2]), w(p[3]) { }
 		template <typename U>
-		basic_vec(const basic_vec<U, 4> &v) : x(v.x), y(v.y), z(v.z), w(v.w) { }
-
-		const T & operator[](size_t i) const {
-			assert(i < 4);
-			return (&x)[i];
-		}
+		constexpr basic_vec(const basic_vec<U, 4> &v) : x(v.x), y(v.y), z(v.z), w(v.w) { }
 
 		T & operator[](size_t i) {
 			assert(i < 4);
 			return (&x)[i];
 		}
 
+		constexpr const T & operator[](size_t i) const {
+			assert(i < 4);
+			return (&x)[i];
+		}
+
 		T * data() { return &x; }
-		const T * data() const { return &x; }
+
+		constexpr const T * data() const { return &x; }
 
 		inline friend std::ostream & operator<<(std::ostream &out, const basic_vec &v) {
 			return out << '(' << v.x << ", " << v.y << ", " << v.z << ", " << v.w << ')';
@@ -740,9 +749,51 @@ namespace cgra {
 	// ZipWith functions
 	//
 
-	void zip_with() {
+	template <typename ...VecTs>
+	struct vec_min_size { };
 
+	template <typename VecT>
+	struct vec_min_size<VecT> : std::integral_constant<size_t, VecT::size> { };
+
+	template <typename VecT1, typename VecT2, typename ...VecTs>
+	struct vec_min_size<VecT1, VecT2, VecTs...> :
+		std::integral_constant<
+			size_t,
+			(vec_min_size<VecT1>::value < vec_min_size<VecT2>::value) ?
+			vec_min_size<VecT1, VecTs...>::value : vec_min_size<VecT2, VecTs...>::value
+		>
+	{ };
+
+	template <size_t I, typename F, typename ...ArgTs>
+	constexpr auto zip_with_impl_impl(F f, ArgTs &&...args) {
+		return f(std::forward<ArgTs>(args)[I]...);
 	}
+
+	template <typename ResT, typename F, size_t ...Is, typename ...ArgTs>
+	constexpr ResT zip_with_impl(F f, std::index_sequence<Is...>, ArgTs &&...args) {
+		return ResT(zip_with_impl_impl<Is>(f, std::forward<ArgTs>(args)...)...);
+	}
+
+	template <typename F, typename ...ArgTs>
+	constexpr auto zip_with(F f, ArgTs &&...args) {
+		using value_t = decltype(f(std::forward<ArgTs>(args)[0]...));
+		using size = vec_min_size<std::decay_t<ArgTs>...>;
+		using vec_t = basic_vec<value_t, size::value>;
+		using iseq = std::make_index_sequence<size::value>;
+		return zip_with_impl<vec_t>(f, iseq(), std::forward<ArgTs>(args)...);
+	}
+
+	// struct op_add {
+	// 	template <typename T1, typename T2>
+	// 	constexpr auto operator()(T1 &&t1, T2 &&t2) const {
+	// 		return std::forward<T1>(t1) + std::forward<T2>(t2);
+	// 	}
+	// };
+
+	// constexpr vec3i c = zip_with(op_add(), a, b);
+	// auto d = zip_with([](auto g, auto h) { return std::max(g, h); }, a, b);
+
+
 
 
 
@@ -766,6 +817,614 @@ namespace cgra {
 	// Functions
 	// 
 
+	// Angle and Trigonometry Functions
+	// 
+
+	// Element-wise function for x in v
+	// The standard trigonometric sine function
+	template <typename T, size_t N>
+	inline basic_vec<T, N> sin(const basic_vec<T, N> &v) {
+		return zip_with(sin, v);
+	}
+
+	// Element-wise function for x in v
+	// The standard trigonometric cosine function
+	template <typename T, size_t N>
+	inline basic_vec<T, N> cos(const basic_vec<T, N> &v) {
+		return zip_with(sin, v);
+	}
+
+	// Element-wise function for x in v
+	// The standard trigonometric tangent
+	template <typename T, size_t N>
+	inline basic_vec<T, N> tan(const basic_vec<T, N> &v) {
+		return zip_with(sin, v);
+	}
+
+	// Element-wise function for x in v
+	// Arc sine. Returns an angle whose sine is x
+	// The range of values returned by this function is [-pi/2, pi/2]
+	// Results are undefined if ∣x∣>1
+	template <typename T, size_t N>
+	inline basic_vec<T, N> asin(const basic_vec<T, N> &v) {
+		return zip_with(asin, v);
+	}
+
+	// Element-wise function for x in v
+	// Arc cosine. Returns an angle whose cosine is x
+	// The range of values returned by this function is [0, p]
+	// Results are undefined if ∣x∣>1
+	template <typename T, size_t N>
+	inline basic_vec<T, N> acos(const basic_vec<T, N> &v) {
+		return zip_with(acos, v);
+	}
+
+	// Element-wise function for y in v1 and x in v2
+	// Arc tangent. Returns an angle whose tangent is y/x
+	// The signs of x and y are used to determine what quadrant the angle is in
+	// The range of values returned by this function is [−pi, pi]
+	// Results are undefined if x and y are both 0
+	template <typename T1, typename T2, size_t N>
+	inline auto atan(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+		return zip_with(atan2, v2, v1);
+	}
+
+	// Element-wise function for x in v
+	// Arc tangent. Returns an angle whose tangent is y_over_x.
+	// The range of values returned by this function is [-pi/2, pi/2] 
+	template <typename T, size_t N>
+	inline basic_vec<T, N> atan(const basic_vec<T, N> &v) {
+		return zip_with(atan, v);
+	}
+
+	// Element-wise function for x in v
+	// Returns the hyperbolic sine function (e^x - e^-x)/2
+	template <typename T, size_t N>
+	inline basic_vec<T, N> sinh(const basic_vec<T, N> &v) {
+		return zip_with(sinh, v);
+	}
+
+	// Element-wise function for x in v
+	// Returns the hyperbolic cosine function (e^x + e^-x)/2
+	template <typename T, size_t N>
+	inline basic_vec<T, N> cosh(const basic_vec<T, N> &v) {
+		return zip_with(cosh, v);
+	}
+
+	// Element-wise function for x in v
+	// Returns the hyperbolic tangent function sinh(x)/cosh(x)
+	template <typename T, size_t N>
+	inline basic_vec<T, N> tanh(const basic_vec<T, N> &v) {
+		return zip_with(tanh, v);
+	}
+
+	// Element-wise function for x in v
+	// Arc hyperbolic sine; returns the inverse of sinh(x)
+	template <typename T, size_t N>
+	inline basic_vec<T, N> asinh(const basic_vec<T, N> &v) {
+		return zip_with(asinh, v);
+	}
+
+	// Element-wise function for x in v
+	// Arc hyperbolic cosine; returns the non-negative inverse of cosh(x)
+	// Results are undefined if x < 1
+	template <typename T, size_t N>
+	inline basic_vec<T, N> acosh(const basic_vec<T, N> &v) {
+		return zip_with(acosh, v);
+	}
+
+	// Element-wise function for x in v
+	// Arc hyperbolic tangent; returns the inverse of tanh(x)
+	// Results are undefined if ∣x∣>=1
+	template <typename T, size_t N>
+	inline basic_vec<T, N> atanh(const basic_vec<T, N> &v) {
+		return zip_with(atanh, v);
+	}
+
+
+	// Exponential Functions
+	// 
+
+	// Element-wise function for x in v1 and y in v2
+	// Returns x raised to the y power, i.e., x^y
+	// Results are undefined if x < 0
+	// Results are undefined if x = 0 and y <= 0
+	template <typename T1, typename T2, size_t N>
+	inline auto pow(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+		return zip_with(pow, v1, v2);
+	}
+
+	// Element-wise function for x in v
+	// Returns the natural exponentiation of x, i.e., e^x
+	template <typename T, size_t N>
+	inline basic_vec<T, N> exp(const basic_vec<T, N> &v) {
+		return zip_with(exp, v);
+	}
+
+	// Element-wise function for x in v
+	// Returns the natural logarithm of x, i.e., the value y which satisfies the equation x = e^y
+	// Results are undefined if x <= 0.
+	template <typename T, size_t N>
+	inline basic_vec<T, N> log(const basic_vec<T, N> &v) {
+		return zip_with(log, v);
+	}
+
+	// Element-wise function for x in v
+	// Returns 2 raised to the x power, i.e., 2^x
+	template <typename T, size_t N>
+	inline basic_vec<T, N> exp2(const basic_vec<T, N> &v) {
+		return zip_with(exp2, v);
+	}
+
+	// Element-wise function for x in v
+	// Returns the base 2 logarithm of x, i.e., the value y which satisfies the equation x = 2^y
+	// Results are undefined if x <= 0
+	template <typename T, size_t N>
+	inline basic_vec<T, N> log2(const basic_vec<T, N> &v) {
+		return zip_with(log2, v);
+	}
+
+	// Element-wise function for x in v
+	// Returns sqrt(x)
+	// Results are undefined if x < 0
+	template <typename T, size_t N>
+	inline basic_vec<T, N> sqrt(const basic_vec<T, N> &v) {
+		return zip_with(sqrt, v);
+	}
+
+	// Element-wise function for x in v
+	// Returns 1/sqrt(x)
+	// Results are undefined if x <= 0
+	template <typename T, size_t N>
+	inline basic_vec<T, N> inversesqrt(const basic_vec<T, N> &v) {
+		return checknan(T(1) / zip_with(sqrt, v));
+	}
+
+
+	// Common Functions
+	// 
+
+	// Element-wise function for x in v
+	// Returns x if x >= 0; otherwise it returns –x
+	template <typename T, size_t N>
+	inline basic_vec<T, N> abs(const basic_vec<T, N> &v) {
+		return zip_with(abs, v);
+	}
+
+	// Element-wise function for x in v
+	// Returns 1 if x > 0, 0 if x = 0, or –1 if x < 0
+	template <typename T, size_t N>
+	inline basic_vec<T, N> sign(const basic_vec<T, N> &v) {
+		return zip_with(sign, v);
+	}
+
+	// Element-wise function for x in v
+	// Returns a value equal to the nearest integer that is less than or equal to x
+	template <typename T, size_t N>
+	inline basic_vec<T, N> floor(const basic_vec<T, N> &v) {
+		return zip_with(floor, v);
+	}
+
+	//TODO trunc
+	// Element-wise function for x in v
+	// Returns a value equal to the nearest integer to x whose
+	// absolute value is not larger than the absolute value of x
+
+	//TODO round
+	// Element-wise function for x in v
+	// Returns a value equal to the nearest integer to x
+	// The fraction 0.5 will round in a direction chosen by the
+	// implementation, presumably the direction that is fastest
+	// This includes the possibility that round(x) returns the
+	// same value as roundEven(x) for all values of x
+
+	//TODO roundEven
+	// Element-wise function for x in v
+	// Returns a value equal to the nearest integer to x
+	// A fractional part of 0.5 will round toward the nearest even integer
+	// (Both 3.5 and 4.5 for x will return 4.0)
+
+	// Element-wise function for x in v
+	// Returns a value equal to the nearest integer to x whose
+	// absolute value is not larger than the absolute value of x
+	template <typename T, size_t N>
+	inline basic_vec<T, N> ceil(const basic_vec<T, N> &v) {
+		return zip_with(ceil, v);
+	}
+
+	// Element-wise function for x in v
+	// Returns x – floor (x)
+	template <typename T, size_t N>
+	inline basic_vec<T, N> fract(const basic_vec<T, N> &v) {
+		return v-floor(v);
+	}
+
+	// Element-wise function for x in v
+	// Modulus. Returns v-m*floor(v/m)
+	template <typename T1, typename T2, size_t N>
+	inline auto mod(const basic_vec<T1, N> &v, T2 m) {
+		return v-m*floor(v/m);
+	}
+
+	// Element-wise function for x in v and m in mv
+	// Modulus. Returns v-m*floor(v/m)
+	template <typename T1, typename T2, size_t N>
+	inline auto mod(const basic_vec<T1, N> &v, const basic_vec<T2, N> &mv) {
+		return v-mv*floor(v/mv);
+	}
+
+	//TODO modf
+	// Element-wise function for x in v and m in mv
+	// Returns the fractional part of x and sets i to the integer
+	// part (as a whole number floating-point value)
+	// Both the return value and the output parameter will have the same sign as x
+	// 
+	// template <typename T, size_t N>
+	// inline auto mod(const basic_vec<T1> &v, basic_vec<T2> &mv) {
+	// 	return ;
+	// }
+
+	// Element-wise function for x in lhs
+	// Returns rhs if rhs < x; otherwise it returns x
+	template <typename T1, size_t N, typename T2, typename=std::enable_if_t<std::is_arithmetic<T2>::value>>
+	inline auto min(const basic_vec<T1, N> &lhs, T2 rhs) {
+		using common_t = std::common_type_t<T1, T2>;
+		return zip_with([](auto x, auto y) { return min<common_t>(x, y); }, lhs, rhs);
+	}
+
+	// Element-wise function for x in lhs and y in rhs
+	// x and y are different types
+	// Returns y if y < x; otherwise it returns x
+	template <typename T1, typename T2, size_t N>
+	inline auto min(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+		using common_t = std::common_type_t<T1, T2>;
+		return zip_with([](auto x, auto y) { return min<common_t>(x, y); }, lhs, rhs);
+	}
+
+	// Element-wise function for x in lhs and y in rhs
+	// x and y are the same type
+	// Returns y if y < x; otherwise it returns x
+	template <typename T, size_t N>
+	inline auto min(const basic_vec<T, N> &lhs, const basic_vec<T, N> &rhs) {
+		return zip_with([](auto x, auto y) { return min(x, y); }, lhs, rhs);
+	}
+
+	// Element-wise function for x in lhs
+	// Returns rhs if rhs > x; otherwise it returns x
+	template <typename T1, size_t N, typename T2, typename=std::enable_if_t<std::is_arithmetic<T2>::value>>
+	inline auto max(const basic_vec<T1, N> &lhs, T2 rhs) {
+		using common_t = std::common_type_t<T1, T2>;
+		return zip_with([](auto x, auto y) { return max<common_t>(x, y); }, lhs, rhs);
+	}
+
+	// Element-wise function for x in lhs and y in rhs
+	// x and y are different types
+	// Returns y if y > x; otherwise it returns x
+	template <typename T1, typename T2, size_t N>
+	inline auto max(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+		using common_t = std::common_type_t<T1, T2>;
+		return zip_with([](auto x, auto y) { return max<common_t>(x, y); }, lhs, rhs);
+	}
+
+	// Element-wise function for x in lhs and y in rhs
+	// x and y are the same type
+	// Returns y if y > x; otherwise it returns x
+	template <typename T, size_t N>
+	inline auto max(const basic_vec<T, N> &lhs, const basic_vec<T, N> &rhs) {
+		return zip_with([](auto x, auto y) { return max(x, y); }, lhs, rhs);
+	}
+
+	// Element-wise function for x in v
+	// Returns min(max(x, minVal), maxVal)
+	// Results are undefined if minVal > maxVal
+	template <typename T1, size_t N, typename T2, typename T3>
+	inline auto clamp(const basic_vec<T1, N> &v, T2 minVal, T3 maxVal) {
+		return min(max(v, minVal), maxVal);
+	}
+
+	// Element-wise function for x in v, minVal in vminVal and maxVal in vmaxVal
+	// Returns min(max(x, minVal), maxVal)
+	// Results are undefined if minVal > maxVal
+	template <typename T1, typename T2, typename T3, size_t N>
+	inline auto clamp(const basic_vec<T1, N> &v, const basic_vec<T2, N> &vminVal, const basic_vec<T3, N> &vmaxVal) {
+		return min(max(v, vminVal), vmaxVal);
+	}
+
+	// Element-wise function for x in v1 and y in v2
+	// Returns the linear blend of x and y, i.e., x*(1−a) + y*a
+	template <typename T1, typename T2, size_t N, typename T3>
+	inline auto mix(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2, T3 a) {
+		using common_t = std::common_type_t<T1, T2, T3>;
+		return v1*(common_t(1)-a)+v2*a;
+	}
+
+	// Element-wise function for x in v1, y in v2 and a in va
+	// Returns the linear blend of x and y, i.e., x*(1−a) + y*a
+	template <typename T1, typename T2, typename T3, size_t N>
+	inline auto mix(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2, const basic_vec<T3, N> &va) {
+		using common_t = std::common_type_t<T1, T2, T3>;
+		return v1*(common_t(1)-va)+v2*va;
+	}
+
+	// Element-wise function for x in v1, y in v2 and a in va
+	// Selects which vector each returned component comes from
+	// For a component of a that is false, the corresponding component of x is returned
+	// For a component of a that is true, the corresponding component of y is returned.
+	// Components of x and y that are not selected are allowed to be invalid floating-point
+	// values and will have no effect on the results
+	// Thus, this provides different functionality than, for example, 
+	//     genType mix(genType x, genType y, genType(a))
+	// where a is a Boolean vector.
+	template <typename T1, typename T2, size_t N>
+	inline auto mix(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2, const basic_vec<bool, N> &va) {
+		return zip_with([](auto x, auto y, auto a) { return (!a) ? x : y; }, v1, v2, va);
+	}
+
+	// Element-wise function for x in v
+	// Returns 0.0 if x < edge; otherwise it returns 1.0
+	template <typename T1, typename T2, size_t N>
+	inline auto step(T1 edge, const basic_vec<T2, N> &v) {
+		using common_t = std::common_type_t<T1, T2>;
+		return zip_with([](auto edge, auto x) { return (x < edge) ? common_t(0) : common_t(1); }, basic_vec<common_t, N>(edge), v);
+	}
+
+	// Element-wise function for edge in vedge and x in v
+	// Returns 0.0 if x < edge; otherwise it returns 1.0
+	template <typename T1, typename T2, size_t N>
+	inline auto step(const basic_vec<T1, N> &vedge, const basic_vec<T2, N> &v) {
+		using common_t = std::common_type_t<T1, T2>;
+		return zip_with([](auto edge, auto x) { return (x < edge) ? common_t(0) : common_t(1); }, vedge, v);
+	}
+
+	// Element-wise function for edge0 in vedge0, edge1 in vedge1
+	// Returns 0.0 if x <= edge0 and 1.0 if x >= edge1 and performs smooth
+	// Hermite interpolation between 0 and 1 when edge0 < x < edge1
+	// This is useful in cases where you would want a threshold
+	// function with a smooth transition and is equivalent to:
+	//     T t;
+	//     t = clamp ((x – edge0) / (edge1 – edge0), 0, 1);
+	//     return t * t * (3 – 2 * t);
+	// Results are undefined if edge0 >= edge1.
+	template <typename T1, typename T2, typename T3, size_t N>
+	inline auto smoothstep(const basic_vec<T1, N> &edge0, const basic_vec<T2, N> &edge1, T3 x) {
+		using common_t = std::common_type_t<T1, T2, T3>;
+		auto t = clamp((x-edge0)/(edge1-edge0),0, 1);
+		return t * t * (common_t(3)-common_t(2)*t);
+	}
+
+	// Element-wise function for edge0 in vedge0, edge1 in vedge1 and x in v
+	// Returns 0.0 if x <= edge0 and 1.0 if x >= edge1 and performs smooth
+	// Hermite interpolation between 0 and 1 when edge0 < x < edge1
+	// This is useful in cases where you would want a threshold
+	// function with a smooth transition and is equivalent to:
+	//     T t;
+	//     t = clamp ((x – edge0) / (edge1 – edge0), 0, 1);
+	//     return t * t * (3 – 2 * t);
+	// Results are undefined if edge0 >= edge1.
+	template <typename T1, typename T2, typename T3, size_t N>
+	inline auto smoothstep(const basic_vec<T1, N> &vedge0, const basic_vec<T2, N> &vedge1, const basic_vec<T3, N> &v) {
+		using common_t = std::common_type_t<T1, T2, T3>;
+		auto t = clamp((v-vedge0)/(vedge1-vedge0),0, 1);
+		return t * t * (common_t(3)-common_t(2)*t);
+	}
+
+	// Element-wise function for x in v
+	// Returns true if x holds a NaN. Returns false otherwise
+	// Always returns false if NaNs are not implemented
+	template <typename T, size_t N>
+	inline auto isnan(const basic_vec<T, N> &v) {
+		return zip_with([](auto x) { return isnan(x); }, v);
+	}
+
+	// Element-wise function for x in v
+	// Returns true if x holds a positive infinity or negative infinity
+	// Returns false otherwise
+	template <typename T, size_t N>
+	inline auto isinf(const basic_vec<T, N> &v) {
+		return zip_with([](auto x) { return isinf(x); }, v);
+	}
+
+	//TODO
+	// floatBitsToInt
+	// floatBitsToUint
+	// Returns a signed or unsigned integer value representing the encoding of a float
+	// The float value's bit-level representation is preserved
+
+	//TODO
+	// intBitsToFloat
+	// uintBitsToFloat
+	// Returns a float value corresponding to a signed or unsigned integer encoding of a float
+	// If a NaN is passed in, it will not signal, and the resulting value is unspecified.
+	// If an Inf is passed in, the resulting value is the corresponding Inf.
+
+	//TODO
+	// fma
+	// Computes and returns a*b + c.
+	// In uses where the return value is eventually consumed by
+	// a variable declared as precise:
+	//
+	//  - fma() is considered a single operation, whereas the
+	//    expression “a*b + c” consumed by a variable
+	//    declared precise is considered two operations.
+	//
+	//  - The precision of fma() can differ from the precision
+	//    of the expression “a*b + c”.
+	//
+	//  - fma() will be computed with the same precision as
+	//    any other fma() consumed by a precise variable,
+	//    giving invariant results for the same input values of
+	//    a, b, and c.
+	//
+	// Otherwise, in the absence of precise consumption, there
+	// are no special constraints on the number of operations or
+	// difference in precision between fma() and the expression a*b+c.
+
+	//TODO
+	// frexp
+	// Splits x into a floating-point significand in the range
+	// [0.5, 1.0) and an integral exponent of two, such that:
+	//     x = significand*2^exponent
+	// The significand is returned by the function and the
+	// exponent is returned in the parameter exp.
+	// For a floating-point value of zero, the significand and exponent are both zero.
+	// For a floating-point value that is an infinity or is not a number, the results are undefined.
+	// If an implementation supports negative 0, frexp(-0)
+	// should return -0; otherwise it will return 0.
+
+	//TODO
+	// ldexp
+	// Builds a floating-point number from x and the
+	// corresponding integral exponent of two in exp, returning:
+	//     significand*2^exponent
+	// If this product is too large to be represented in the
+	// floating-point type, the result is undefined.
+	// If exp is greater than +128 (single-precision) or +1024
+	// (double-precision), the value returned is undefined.
+	// If exp is less than -126 (single-precision) or -1022 (doubleprecision),
+	// the value returned may be flushed to zero.
+	// Additionally, splitting the value into a significand and
+	// exponent using frexp() and then reconstructing a
+	// floating-point value using ldexp() should yield the
+	// original input for zero and all finite non-denormized values.
+
+	// Returns the sum value of all x in v, i.e., v[0] + v[1] + ...
+	template <typename T, size_t N>
+	inline T sum(const basic_vec<T, N> &v) {
+		return fold( [](auto a, auto b) { return a + b; }, T(0), v);
+	}
+
+	//TODO
+	// Floating-Point Pack and Unpack Functions (all)
+
+	// Geometric Functions
+	// 
+
+	// Returns the length of vector v, i.e.,sqrt(v[0]^2 + v[1]^2  + ...)
+	template <typename T, size_t N>
+	inline T length(const basic_vec<T, N> &v) {
+		return sqrt(sum(v*v));
+	}
+
+	// Returns the distance between p1 and p2, i.e., length (p1 – p2)
+	template <typename T1, typename T2, size_t N>
+	inline auto distance(const basic_vec<T1, N> &p1, const basic_vec<T2, N> &p2) {
+		return length(p1-p2);
+	}
+
+	// Returns the dot product of v1 and v2, i.e., v1[0]*v1[0] + v1[1]*v2[1] + ...
+	template <typename T1, typename T2, size_t N>
+	inline auto dot(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+		return sum(v1*v2);
+	}
+
+	// Returns a vector in the same direction as v but with a length of 1
+	template <typename T, size_t N>
+	inline basic_vec<T, N> normalize(const basic_vec<T, N> &v) {
+		return v / length(v);
+	}
+
+	// If dot(nref, i) < 0 return n, otherwise return -n
+	template <typename T1, typename T2, typename T3, size_t N>
+	inline auto faceforward(const basic_vec<T1, N> &n, const basic_vec<T2, N> &i, const basic_vec<T3, N> &nref) {
+		using common_t = std::common_type_t<T1, T2, T3>;
+		return (dot(nref, i) < common_t(0)) ? n : -n ;
+	}
+
+	// For the incident vector i and surface orientation n,
+	// returns the reflection direction:
+	//     I – 2 * dot(N, I) * N
+	// n must already be normalized in order to achieve the desired result.
+	template <typename T1, typename T2, size_t N>
+	inline auto reflect(const basic_vec<T1, N> &i, const basic_vec<T2, N> &n) {
+		using common_t = std::common_type_t<T1, T2>;
+		return i - common_t(2) * dot(n, i) * n;
+	}
+
+	// For the incident vector i and surface normal n, and the
+	// ratio of indices of refraction eta, return the refraction vector.
+	// The result is computed by :
+	//     k = 1.0 - eta * eta * (1.0 - dot(n, i) * dot(n, i))
+	//     if (k < 0.0)
+	//         return genType(0.0) // or genDType(0.0)
+	//     else
+	//         return eta * i - (eta * dot(n, i) + sqrt(k)) * n
+	// The input parameters for the incident vector i and the surface
+	// normal n must already be normalized to get the desired results.
+	template <typename T1, typename T2, size_t N, typename T3>
+	inline auto refract(const basic_vec<T1, N> &i, const basic_vec<T2, N> &n, T3 eta) {
+		using common_t = std::common_type_t<T1, T2, T3>;
+		auto k = common_t(1) - eta * eta * (common_t(1) - dot(n, i) * dot(n, i));
+		if (k < common_t(0)) {
+			return basic_vec<common_t, N>();
+		}
+		return eta * i - (eta * dot(n, i) + std::sqrt(k)) * n;
+	}
+
+
+	// Vector Relational Functions
+	//
+
+	// Element-wise function for x in v1 and y in v2
+	// Returns the comparison of x < y
+	template <typename T1, typename T2, size_t N>
+	inline auto lessThan(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+		return zip_with([](auto x, auto y) { return x < y; }, v1, v2);
+	}
+
+	// Element-wise function for x in v1 and y in v2
+	// Returns the comparison of x <= y
+	template <typename T1, typename T2, size_t N>
+	inline auto lessThanEqual(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+		return zip_with([](auto x, auto y) { return x <= y; }, v1, v2);
+	}
+
+	// Element-wise function for x in v1 and y in v2
+	// Returns the comparison of x > y
+	template <typename T1, typename T2, size_t N>
+	inline auto greaterThan(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+		return zip_with([](auto x, auto y) { return x > y; }, v1, v2);
+	}
+
+	// Element-wise function for x in v1 and y in v2
+	// Returns the comparison of x >= y
+	template <typename T1, typename T2, size_t N>
+	inline auto greaterThanEqual(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+		return zip_with([](auto x, auto y) { return x >= y; }, v1, v2);
+	}
+
+	// Element-wise function for x in v1 and y in v2
+	// Returns the comparison of x == y
+	template <typename T1, typename T2, size_t N>
+	inline auto equal(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+		return zip_with([](auto x, auto y) { return x == y; }, v1, v2);
+	}
+
+	// Element-wise function for x in v1 and y in v2
+	// Returns the comparison of x != y
+	template <typename T1, typename T2, size_t N>
+	inline auto notEqual(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+		return zip_with([](auto x, auto y) { return x != y; }, v1, v2);
+	}
+
+	// Returns true if any component of v is true
+	template <size_t N>
+	inline bool any(const basic_vec<bool, N> &v) {
+		return fold([](auto x, auto y) { return x || y; }, false, v);
+	}
+
+	// Returns true only if all components of x are true
+	template <size_t N>
+	inline bool all(const basic_vec<bool, N> &v) {
+		return fold([](auto x, auto y) { return x && y; }, true, v);
+	}
+
+	// Note : C++ does not support "not" as a function name, hence it has been omitted
+
+	//TODO
+	// 8 Integer Functions
+
+
+
 
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -783,10 +1442,12 @@ namespace cgra {
 	// Angle and Trigonometry Functions
 	// 
 
+	// Converts degrees to radians, i.e., degrees * pi/180
 	template <typename T> inline T radians(T x) {
 		return x * pi / T(180.0);
 	}
 
+	// Converts radians to degrees, i.e., radians * 180/pi
 	template <typename T> inline T degrees(T x) {
 		return x / pi * T(180.0);
 	}
@@ -855,19 +1516,22 @@ namespace cgra {
 	// Exponential Functions
 	// 
 
-	// base 2 exponentiation
+	// Returns 2 raised to the x power, i.e., 2^x
 	template <typename T> inline T exp2(const T &x) {
 		using namespace std;
 		return pow(T(2), x);
 	}
 
-	// base 2 logarithm
+	// Returns the base 2 logarithm of x, i.e., returns the value
+	// y which satisfies the equation x=2^y
+	// Results are undefined if x <= 0
 	template <typename T> inline T log2(const T &x) {
 		using namespace std;
 		return log(x) * T(1.4426950408889634073599246810019);
 	}
 
-	// inverse square root
+	// Returns 1/sqrt(x)
+	// Results are undefined if x < 0
 	template <typename T> inline T inversesqrt(const T &x) {
 		using namespace std;
 		return T(1)/sqrt(x);
