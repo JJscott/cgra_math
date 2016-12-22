@@ -486,7 +486,7 @@ namespace cgra {
 	template <typename T, size_t M, size_t N>
 	class basic_mat {
 	private:
-		T m_data[M*N];
+		basic_vec<T, M*N> m_data; // avoids reinterpret_cast
 
 	public:
 		using value_t = T;
@@ -495,7 +495,7 @@ namespace cgra {
 		static constexpr size_t size = M * N;
 
 		// TODO more constructors
-		basic_mat() { }
+		constexpr basic_mat() { }
 
 		const T & operator[](size_t i) const {
 			assert(i < M);
@@ -508,7 +508,12 @@ namespace cgra {
 		}
 
 		T * data() { return &m_data[0]; }
-		const T * data() const { return &m_data[0]; }
+
+		constexpr const T * data() const { return &m_data[0]; }
+
+		basic_vec<T, M*N> & data_as_vec() { return m_data; }
+		
+		constexpr const basic_vec<T, M*N> & data_as_vec() const { return m_data; }
 
 		// stream insertion
 		inline friend std::ostream & operator<<(std::ostream &out, const basic_mat &m) {
@@ -530,36 +535,49 @@ namespace cgra {
 
 	// Quaternion class of type T
 	template <typename T>
-	class basic_quat {
+	class basic_quat : private basic_vec<T, 4> {
 	public:
 		using value_t = T;
 		static constexpr size_t size = 4;
 
-		T w, x, y, z;
+		using basic_vec<T, 4>::x;
+		using basic_vec<T, 4>::y;
+		using basic_vec<T, 4>::z;
+		using basic_vec<T, 4>::w;
 
-		basic_quat() : w(1), x(0), y(0), z(0) { }
-		basic_quat(T _w, T _x, T _y, T _z) :  w(_w), x(_x), y(_y), z(_z) { }
+		constexpr basic_quat() : basic_vec<T, 4>(0, 0, 0, 1) { }
+
+		constexpr basic_quat(T _x, T _y, T _z, T _w) :  basic_vec<T, 4>(_x, _y, _z, _w) { }
+
 		template <typename U> 
-		basic_quat(const basic_quat<U>& q) : w(q.w), x(q.x), y(q.y), z(q.z) { }
-		template <typename U>
-		basic_quat(T _w, const basic_vec<U, 3> &v) : w(_w), x(v.x), y(v.y), z(v.z) { }
-		template <typename U1, typename U2>
-		basic_quat(const basic_vec<U1, 1> &v1, const basic_vec<U2, 3> &v2) : w(v1.x), x(v2.x), y(v2.y), z(v2.z) { }
-		template <typename U>
-		basic_quat(const basic_vec<U, 4> &v) : w(v.w), x(v.x), y(v.y), z(v.z) { }
+		constexpr basic_quat(const basic_quat<U>& q) : basic_vec<T, 4>(q.data_as_vec()) { }
 
-		const T & operator[](size_t i) const {
-			assert(i < 4);
-			return (&w)[i];
-		}
+		template <typename U>
+		constexpr basic_quat(const basic_vec<U, 3> &v, T _w) : basic_vec<T, 4>(v, _w) { }
+
+		template <typename U1, typename U2>
+		constexpr basic_quat(const basic_vec<U1, 3> &v1, const basic_vec<U2, 1> &v2) :  basic_vec<T, 4>(v1, v2) { }
+
+		template <typename U>
+		constexpr basic_quat(const basic_vec<U, 4> &v) : basic_vec<T, 4>(v) { }
 
 		T & operator[](size_t i) {
 			assert(i < 4);
 			return (&w)[i];
 		}
 
+		constexpr const T & operator[](size_t i) const {
+			assert(i < 4);
+			return (&w)[i];
+		}
+
 		T * data() { return &w; }
-		const T * data() const { return &w; }
+
+		constexpr const T * data() const { return &w; }
+
+		basic_vec<T, 4> & data_as_vec() { return *this; }
+
+		constexpr const basic_vec<T, 4> & data_as_vec() const { return *this; }
 
 		inline friend std::ostream & operator<<(std::ostream &out, const basic_quat &v) {
 			return out << '(' << v.w << ", " << v.x << ", " << v.y << ", " << v.z << ')';
@@ -709,6 +727,10 @@ namespace cgra {
 		return zip_with([](auto x) { return acos(x); }, v);
 	}
 
+	// Arc tangent. Returns an angle whose tangent is y/x
+	// The signs of x and y are used to determine what quadrant the angle is in
+	// The range of values returned by this function is [−pi, pi]
+	// Results are undefined if x and y are both 0
 	template <typename T>
 	inline auto atan(const T &y, const T &x) -> std::enable_if_t<std::is_arithmetic<T>::value, T> {
 		return std::atan2(y, x);
@@ -1524,6 +1546,8 @@ namespace cgra {
 		return ResT(zip_with_impl_impl<Is>(f, std::forward<ArgTs>(args)...)...);
 	}
 
+	//TODO
+	// decsription
 	template <typename F, typename ...ArgTs>
 	constexpr auto zip_with(F f, ArgTs &&...args) {
 		using value_t = decltype(f(std::forward<ArgTs>(args)[0]...));
@@ -1548,12 +1572,62 @@ namespace cgra {
 	//
 	// Produce a scalar by applying f(T,T) -> T to adjacent pairs of elements
 	// from vector a in left-to-right order starting with f(z, v[0])
-	template<typename F, typename T, size_t N>
-	T fold(F f, T z, const basic_vec<T, N> &v) {
-		T r = f(z, v[0]);
-		for (size_t i = 1; i < N; ++i)
+	template<typename F, typename T1, typename T2, size_t N>
+	auto fold(F f, T1 z, const basic_vec<T2, N> &v) {
+		auto r = z;
+		for (size_t i = 0; i < N; ++i)
 			r = f(r, v[i]);
 		return r;
 	}
 
+}
+
+
+
+//   __    __       ___           _______. __    __   __  .__   __.   _______   //
+//  |  |  |  |     /   \         /       ||  |  |  | |  | |  \ |  |  /  _____|  //
+//  |  |__|  |    /  ^  \       |   (----`|  |__|  | |  | |   \|  | |  |  __    //
+//  |   __   |   /  /_\  \       \   \    |   __   | |  | |  . `  | |  | |_ |   //
+//  |  |  |  |  /  _____  \  .----)   |   |  |  |  | |  | |  |\   | |  |__| |   //
+//  |__|  |__| /__/     \__\ |_______/    |__|  |__| |__| |__| \__|  \______|   //
+//                                                                              //
+//==============================================================================//
+
+namespace cgra {
+	//TODO
+	// decsription
+	template <class T>
+	inline size_t hash_combine(std::size_t seed, T v) {
+		std::hash<T> h;
+		return seed ^ (h(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
+	}
+}
+
+namespace std {
+	//TODO
+	// decsription
+	template<typename T, size_t N>
+	struct hash<cgra::basic_vec<T, N>> {
+		inline size_t operator()(const cgra::basic_vec<T, N> &v) const {
+			return cgra::fold(cgra::hash_combine, 73, v); // 73 Sheldon Cooper's favorite number
+		}
+	};
+
+	//TODO
+	// decsription
+	template<typename T, size_t M, size_t N>
+	struct hash<cgra::basic_mat<T, M, N>> {
+		inline size_t operator()(const cgra::basic_mat<T, M, N> &m) const {
+			return cgra::fold(cgra::hash_combine, 73, m.data_as_vec());
+		}
+	};
+
+	//TODO
+	// decsription
+	template<typename T>
+	struct hash<cgra::basic_quat<T>> {
+		inline size_t operator()(const cgra::basic_quat<T> &q) const {
+			return cgra::fold(cgra::hash_combine, 73, q.data_as_vec());
+		}
+	};
 }
