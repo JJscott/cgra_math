@@ -586,6 +586,120 @@ namespace cgra {
 	};
 
 
+
+	//    ______   .______    _______ .______          ___   .___________.  ______   .______           ______   ____    ____  _______ .______       __        ______        ___       _______       _______.  //
+	//   /  __  \  |   _  \  |   ____||   _  \        /   \  |           | /  __  \  |   _  \         /  __  \  \   \  /   / |   ____||   _  \     |  |      /  __  \      /   \     |       \     /       |  //
+	//  |  |  |  | |  |_)  | |  |__   |  |_)  |      /  ^  \ `---|  |----`|  |  |  | |  |_)  |       |  |  |  |  \   \/   /  |  |__   |  |_)  |    |  |     |  |  |  |    /  ^  \    |  .--.  |   |   (----`  //
+	//  |  |  |  | |   ___/  |   __|  |      /      /  /_\  \    |  |     |  |  |  | |      /        |  |  |  |   \      /   |   __|  |      /     |  |     |  |  |  |   /  /_\  \   |  |  |  |    \   \      //
+	//  |  `--'  | |  |      |  |____ |  |\  \----./  _____  \   |  |     |  `--'  | |  |\  \----.   |  `--'  |    \    /    |  |____ |  |\  \----.|  `----.|  `--'  |  /  _____  \  |  '--'  |.----)   |     //
+	//   \______/  | _|      |_______|| _| `._____/__/     \__\  |__|      \______/  | _| `._____|    \______/      \__/     |_______|| _| `._____||_______| \______/  /__/     \__\ |_______/ |_______/      //
+	//                                                                                                                                                                                                        //
+	//========================================================================================================================================================================================================//
+
+	namespace detail {
+		struct nothing { };
+
+		namespace op {
+			struct add { template <typename T1, typename T2> constexpr auto operator()(T1 &&t1, T2 &&t2) const { return std::forward<T1>(t1) + std::forward<T2>(t2); } };
+			struct sub { template <typename T1, typename T2> constexpr auto operator()(T1 &&t1, T2 &&t2) const { return std::forward<T1>(t1) - std::forward<T2>(t2); } };
+			struct mul { template <typename T1, typename T2> constexpr auto operator()(T1 &&t1, T2 &&t2) const { return std::forward<T1>(t1) * std::forward<T2>(t2); } };
+			struct div { template <typename T1, typename T2> constexpr auto operator()(T1 &&t1, T2 &&t2) const { return std::forward<T1>(t1) / std::forward<T2>(t2); } };
+			struct mod { template <typename T1, typename T2> constexpr auto operator()(T1 &&t1, T2 &&t2) const { return std::forward<T1>(t1) % std::forward<T2>(t2); } };
+
+			struct add_assign { template <typename T1, typename T2> constexpr nothing operator()(T1 &&t1, T2 &&t2) const { std::forward<T1>(t1) += std::forward<T2>(t2); return{}; } };
+			struct sub_assign { template <typename T1, typename T2> constexpr nothing operator()(T1 &&t1, T2 &&t2) const { std::forward<T1>(t1) -= std::forward<T2>(t2); return{}; } };
+			struct mul_assign { template <typename T1, typename T2> constexpr nothing operator()(T1 &&t1, T2 &&t2) const { std::forward<T1>(t1) *= std::forward<T2>(t2); return{}; } };
+			struct div_assign { template <typename T1, typename T2> constexpr nothing operator()(T1 &&t1, T2 &&t2) const { std::forward<T1>(t1) /= std::forward<T2>(t2); return{}; } };
+			struct mod_assign { template <typename T1, typename T2> constexpr nothing operator()(T1 &&t1, T2 &&t2) const { std::forward<T1>(t1) %= std::forward<T2>(t2); return{}; } };
+			
+			struct lshift { template <typename T1, typename T2> constexpr auto operator()(T1 &&t1, T2 &&t2) const { return std::forward<T1>(t1) << std::forward<T2>(t2); } };
+			struct rshift { template <typename T1, typename T2> constexpr auto operator()(T1 &&t1, T2 &&t2) const { return std::forward<T1>(t1) >> std::forward<T2>(t2); } };
+			struct lshift_assign { template <typename T1, typename T2> constexpr nothing operator()(T1 &&t1, T2 &&t2) const { std::forward<T1>(t1) <<= std::forward<T2>(t2); return{}; } };
+			struct rshift_assign { template <typename T1, typename T2> constexpr nothing operator()(T1 &&t1, T2 &&t2) const { std::forward<T1>(t1) >>= std::forward<T2>(t2); return{}; } };
+
+			struct logical_not { template <typename T> constexpr auto operator()(T &&t) const { return !std::forward<T>(t) } };
+			struct logical_or { template <typename T1, typename T2> constexpr auto operator()(T1 &&t1, T2 &&t2) const { return std::forward<T1>(t1) || std::forward<T2>(t2); } };
+			struct logical_and { template <typename T1, typename T2> constexpr auto operator()(T1 &&t1, T2 &&t2) const { return std::forward<T1>(t1) && std::forward<T2>(t2); } };
+
+			struct binary_not { template <typename T> constexpr auto operator()(T &&t) const { return ~std::forward<T>(t) } };
+			struct binary_or { template <typename T1, typename T2> constexpr auto operator()(T1 &&t1, T2 &&t2) const { return std::forward<T1>(t1) | std::forward<T2>(t2); } };
+			struct binary_xor { template <typename T1, typename T2> constexpr auto operator()(T1 &&t1, T2 &&t2) const { return std::forward<T1>(t1) ^ std::forward<T2>(t2); } };
+			struct binary_and { template <typename T1, typename T2> constexpr auto operator()(T1 &&t1, T2 &&t2) const { return std::forward<T1>(t1) & std::forward<T2>(t2); } };
+			struct binary_or_assign  { template <typename T1, typename T2> constexpr nothing operator()(T1 &&t1, T2 &&t2) const { std::forward<T1>(t1) |= std::forward<T2>(t2); return{}; } };
+			struct binary_xor_assign { template <typename T1, typename T2> constexpr nothing operator()(T1 &&t1, T2 &&t2) const { std::forward<T1>(t1) ^= std::forward<T2>(t2); return{}; } };
+			struct binary_and_assign { template <typename T1, typename T2> constexpr nothing operator()(T1 &&t1, T2 &&t2) const { std::forward<T1>(t1) &= std::forward<T2>(t2); return{}; } };
+
+			struct equal { template <typename T1, typename T2> constexpr auto operator()(T1 &&t1, T2 &&t2) const { return std::forward<T1>(t1) == std::forward<T2>(t2); } };
+			struct nequal { template <typename T1, typename T2> constexpr auto operator()(T1 &&t1, T2 &&t2) const { return std::forward<T1>(t1) != std::forward<T2>(t2); } };
+			struct less { template <typename T1, typename T2> constexpr auto operator()(T1 &&t1, T2 &&t2) const { return std::forward<T1>(t1) < std::forward<T2>(t2); } };
+			struct greater { template <typename T1, typename T2> constexpr auto operator()(T1 &&t1, T2 &&t2) const { return std::forward<T1>(t1) > std::forward<T2>(t2); } };
+			struct less_equal { template <typename T1, typename T2> constexpr auto operator()(T1 &&t1, T2 &&t2) const { return std::forward<T1>(t1) <= std::forward<T2>(t2); } };
+			struct greater_equal { template <typename T1, typename T2> constexpr auto operator()(T1 &&t1, T2 &&t2) const { return std::forward<T1>(t1) >= std::forward<T2>(t2); } };
+		}
+	}
+
+	template<typename T1, size_t N, typename T2>
+	basic_vec<T1, N> & operator+=(basic_vec<T1, N> &lhs, const T2 &rhs) {
+		zip_with(detail::op::add_assign(), lhs, basic_vec<T1, N>(rhs))
+		return lhs;
+	}
+
+	template<typename T1, size_t N, typename T2>
+	basic_vec<T1, N> & operator-=(basic_vec<T1, N> &lhs, const T2 &rhs) {
+		zip_with(detail::op::sub_assign(), lhs, basic_vec<T1, N>(rhs))
+		return lhs;
+	}
+
+	template<typename T1, size_t N, typename T2>
+	basic_vec<T1, N> & operator*=(basic_vec<T1, N> &lhs, const T2 &rhs) {
+		zip_with(detail::op::mul_assign(), lhs, basic_vec<T1, N>(rhs))
+		return lhs;
+	}
+
+	template<typename T1, size_t N, typename T2>
+	basic_vec<T1, N> & operator/=(basic_vec<T1, N> &lhs, const T2 &rhs) {
+		zip_with(detail::op::div_assign(), lhs, basic_vec<T1, N>(rhs))
+		return lhs;
+	}
+
+	template<typename T1, size_t N, typename T2>
+	basic_vec<T1, N> & operator%=(basic_vec<T1, N> &lhs, const T2 &rhs) {
+		zip_with(detail::op::mod_assign(), lhs, basic_vec<T1, N>(rhs))
+		return lhs;
+	}
+
+	template<typename T1, size_t N, typename T2>
+	basic_vec<T1, N> & operator|=(basic_vec<T1, N> &lhs, const T2 &rhs) {
+		zip_with(detail::op::binary_or_assign(), lhs, basic_vec<T1, N>(rhs))
+		return lhs;
+	}
+
+	template<typename T1, size_t N, typename T2>
+	basic_vec<T1, N> & operator^=(basic_vec<T1, N> &lhs, const T2 &rhs) {
+		zip_with(detail::op::binary_xor_assign(), lhs, basic_vec<T1, N>(rhs))
+		return lhs;
+	}
+
+	template<typename T1, size_t N, typename T2>
+	basic_vec<T1, N> & operator&=(basic_vec<T1, N> &lhs, const T2 &rhs) {
+		zip_with(detail::op::binary_and_assign(), lhs, basic_vec<T1, N>(rhs))
+		return lhs;
+	}
+
+	template<typename T1, size_t N, typename T2>
+	basic_vec<T1, N> & operator>>=(basic_vec<T1, N> &lhs, const T2 &rhs) {
+		zip_with(detail::op::rshift_assign(), lhs, basic_vec<T1, N>(rhs))
+		return lhs;
+	}
+
+	template<typename T1, size_t N, typename T2>
+	basic_vec<T1, N> & operator<<=(basic_vec<T1, N> &lhs, const T2 &rhs) {
+		zip_with(detail::op::lshift_assign(), lhs, basic_vec<T1, N>(rhs))
+		return lhs;
+	}
+
+
+
 	// Iterator functions
 	// 
 
@@ -1540,19 +1654,36 @@ namespace cgra {
 	//                                                                                                                                                                                                  //
 	//==================================================================================================================================================================================================//
 
-	// zip_with functions
-	//
-	
-	// A helper function used internally by zip_with
-	template <size_t I, typename F, typename ...ArgTs>
-	constexpr auto zip_with_impl_impl(F f, ArgTs &&...args) {
-		return f(std::forward<ArgTs>(args)[I]...);
-	}
+	namespace detail {
+		// A helper function used internally by zip_with
+		template <size_t I, typename F, typename ...ArgTs>
+		constexpr auto zip_with_impl_impl(F f, ArgTs &&...args) {
+			return f(std::forward<ArgTs>(args)[I]...);
+		}
 
-	// A helper function used internally by zip_with
-	template <typename ResT, typename F, size_t ...Is, typename ...ArgTs>
-	constexpr ResT zip_with_impl(F f, std::index_sequence<Is...>, ArgTs &&...args) {
-		return ResT(zip_with_impl_impl<Is>(f, std::forward<ArgTs>(args)...)...);
+		// A helper function used internally by zip_with
+		template <typename ResT, typename F, size_t ...Is, typename ...ArgTs>
+		constexpr ResT zip_with_impl(F f, std::index_sequence<Is...>, ArgTs &&...args) {
+			return ResT(zip_with_impl_impl<Is>(f, std::forward<ArgTs>(args)...)...);
+		}
+
+		// A helper function used internally by fold
+		template <size_t I, size_t N>
+		struct fold_impl {
+			template <typename F, typename T1, typename ArgT>
+			static constexpr decltype(auto) apply(F f, T1 &&t1, ArgT &&v) {
+				return fold_impl<I + 1, N>::apply(f, f(std::forward<T1>(t1), std::forward<ArgT>(v)[I]), std::forward<ArgT>(v));
+			}
+		};
+
+		// A helper function used internally by fold
+		template <size_t N>
+		struct fold_impl<N, N> {
+			template <typename F, typename T1, typename ArgT>
+			static constexpr decltype(auto) apply(F f, T1 &&t1, ArgT &&) {
+				return std::forward<T1>(t1);
+			}
+		};
 	}
 
 	//TODO
@@ -1565,38 +1696,6 @@ namespace cgra {
 		using iseq = std::make_index_sequence<size::value>;
 		return zip_with_impl<vec_t>(f, iseq(), std::forward<ArgTs>(args)...);
 	}
-
-	// struct op_add {
-	// 	template <typename T1, typename T2>
-	// 	constexpr auto operator()(T1 &&t1, T2 &&t2) const {
-	// 		return std::forward<T1>(t1) + std::forward<T2>(t2);
-	// 	}
-	// };
-
-	// constexpr vec3i c = zip_with(op_add(), a, b);
-	// auto d = zip_with([](auto g, auto h) { return std::max(g, h); }, a, b);
-
-
-	// fold functions
-	//
-
-	// A helper function used internally by fold
-	template <size_t I, size_t N>
-	struct fold_impl {
-		template <typename F, typename T1, typename ArgT>
-		static constexpr decltype(auto) apply(F f, T1 &&t1, ArgT &&v) {
-			return fold_impl<I + 1, N>::apply(f, f(std::forward<T1>(t1), std::forward<ArgT>(v)[I]), std::forward<ArgT>(v));
-		}
-	};
-
-	// A helper function used internally by fold
-	template <size_t N>
-	struct fold_impl<N, N> {
-		template <typename F, typename T1, typename ArgT>
-		static constexpr decltype(auto) apply(F f, T1 &&t1, ArgT &&) {
-			return std::forward<T1>(t1);
-		}
-	};
 
 	// Produce a scalar by applying f(T1,T2) -> T3 to adjacent pairs of elements
 	// from vector a in left-to-right order starting with f(z, v[0])
