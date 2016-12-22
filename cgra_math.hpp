@@ -647,12 +647,6 @@ namespace cgra {
 
 
 
-
-
-
-
-
-
 	//       ___      .__   __.   _______  __       _______     ___.___________..______       __    _______     _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
 	//      /   \     |  \ |  |  /  _____||  |     |   ____|   /  /|           ||   _  \     |  |  /  _____|   |   ____||  |  |  | |  \ |  |  /      ||           ||  |  /  __  \  |  \ |  |     /       |  //
 	//     /  ^  \    |   \|  | |  |  __  |  |     |  |__     /  / `---|  |----`|  |_)  |    |  | |  |  __     |  |__   |  |  |  | |   \|  | |  ,----'`---|  |----`|  | |  |  |  | |   \|  |    |   (----`  //
@@ -1510,6 +1504,33 @@ namespace cgra {
 
 
 
+	//  .___  ___.  _______ .___________.    ___          _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
+	//  |   \/   | |   ____||           |   /   \        |   ____||  |  |  | |  \ |  |  /      ||           ||  |  /  __  \  |  \ |  |     /       |  //
+	//  |  \  /  | |  |__   `---|  |----`  /  ^  \       |  |__   |  |  |  | |   \|  | |  ,----'`---|  |----`|  | |  |  |  | |   \|  |    |   (----`  //
+	//  |  |\/|  | |   __|      |  |      /  /_\  \      |   __|  |  |  |  | |  . `  | |  |         |  |     |  | |  |  |  | |  . `  |     \   \      //
+	//  |  |  |  | |  |____     |  |     /  _____  \     |  |     |  `--'  | |  |\   | |  `----.    |  |     |  | |  `--'  | |  |\   | .----)   |     //
+	//  |__|  |__| |_______|    |__|    /__/     \__\    |__|      \______/  |__| \__|  \______|    |__|     |__|  \______/  |__| \__| |_______/      //
+	//                                                                                                                                                //
+	//================================================================================================================================================//
+
+	template <typename ...VecTs>
+	struct vec_min_size { };
+
+	template <typename VecT>
+	struct vec_min_size<VecT> : std::integral_constant<size_t, VecT::size> { };
+
+	// A meta struct with an integral_constant value equal to the minimum size of its template arguments
+	template <typename VecT1, typename VecT2, typename ...VecTs>
+	struct vec_min_size<VecT1, VecT2, VecTs...> :
+		std::integral_constant<
+			size_t,
+			(vec_min_size<VecT1>::value < vec_min_size<VecT2>::value) ?
+			vec_min_size<VecT1, VecTs...>::value : vec_min_size<VecT2, VecTs...>::value
+		>
+	{ };
+
+
+
 	//   __    __   __    _______  __    __       ______   .______       _______   _______ .______          _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
 	//  |  |  |  | |  |  /  _____||  |  |  |     /  __  \  |   _  \     |       \ |   ____||   _  \        |   ____||  |  |  | |  \ |  |  /      ||           ||  |  /  __  \  |  \ |  |     /       |  //
 	//  |  |__|  | |  | |  |  __  |  |__|  |    |  |  |  | |  |_)  |    |  .--.  ||  |__   |  |_)  |       |  |__   |  |  |  | |   \|  | |  ,----'`---|  |----`|  | |  |  |  | |   \|  |    |   (----`  //
@@ -1521,26 +1542,14 @@ namespace cgra {
 
 	// zip_with functions
 	//
-	template <typename ...VecTs>
-	struct vec_min_size { };
-
-	template <typename VecT>
-	struct vec_min_size<VecT> : std::integral_constant<size_t, VecT::size> { };
-
-	template <typename VecT1, typename VecT2, typename ...VecTs>
-	struct vec_min_size<VecT1, VecT2, VecTs...> :
-		std::integral_constant<
-			size_t,
-			(vec_min_size<VecT1>::value < vec_min_size<VecT2>::value) ?
-			vec_min_size<VecT1, VecTs...>::value : vec_min_size<VecT2, VecTs...>::value
-		>
-	{ };
-
+	
+	// A helper function used internally by zip_with
 	template <size_t I, typename F, typename ...ArgTs>
 	constexpr auto zip_with_impl_impl(F f, ArgTs &&...args) {
 		return f(std::forward<ArgTs>(args)[I]...);
 	}
 
+	// A helper function used internally by zip_with
 	template <typename ResT, typename F, size_t ...Is, typename ...ArgTs>
 	constexpr ResT zip_with_impl(F f, std::index_sequence<Is...>, ArgTs &&...args) {
 		return ResT(zip_with_impl_impl<Is>(f, std::forward<ArgTs>(args)...)...);
@@ -1568,16 +1577,33 @@ namespace cgra {
 	// auto d = zip_with([](auto g, auto h) { return std::max(g, h); }, a, b);
 
 
-	// Fold function
+	// fold functions
 	//
-	// Produce a scalar by applying f(T,T) -> T to adjacent pairs of elements
+
+	// A helper function used internally by fold
+	template <size_t I, size_t N>
+	struct fold_impl {
+		template <typename F, typename T1, typename ArgT>
+		static constexpr decltype(auto) apply(F f, T1 &&t1, ArgT &&v) {
+			return fold_impl<I + 1, N>::apply(f, f(std::forward<T1>(t1), std::forward<ArgT>(v)[I]), std::forward<ArgT>(v));
+		}
+	};
+
+	// A helper function used internally by fold
+	template <size_t N>
+	struct fold_impl<N, N> {
+		template <typename F, typename T1, typename ArgT>
+		static constexpr decltype(auto) apply(F f, T1 &&t1, ArgT &&) {
+			return std::forward<T1>(t1);
+		}
+	};
+
+	// Produce a scalar by applying f(T1,T2) -> T3 to adjacent pairs of elements
 	// from vector a in left-to-right order starting with f(z, v[0])
-	template<typename F, typename T1, typename T2, size_t N>
-	auto fold(F f, T1 z, const basic_vec<T2, N> &v) {
-		auto r = z;
-		for (size_t i = 0; i < N; ++i)
-			r = f(r, v[i]);
-		return r;
+	// Typically T1 = T3 and T2 is a vector of some T
+	template <typename F, typename T1, typename ArgT>
+	constexpr decltype(auto) fold(F f, T1 &&t1, ArgT &&v) {
+		return fold_impl<0, std::decay_t<ArgT>::size>::apply(f, std::forward<T1>(t1), std::forward<ArgT>(v));
 	}
 
 }
