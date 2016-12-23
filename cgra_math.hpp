@@ -621,13 +621,13 @@ namespace cgra {
 			struct logical_or { template <typename T1, typename T2> constexpr auto operator()(T1 &&t1, T2 &&t2) const { return std::forward<T1>(t1) || std::forward<T2>(t2); } };
 			struct logical_and { template <typename T1, typename T2> constexpr auto operator()(T1 &&t1, T2 &&t2) const { return std::forward<T1>(t1) && std::forward<T2>(t2); } };
 
-			struct binary_not { template <typename T> constexpr auto operator()(T &&t) const { return ~std::forward<T>(t) } };
-			struct binary_or { template <typename T1, typename T2> constexpr auto operator()(T1 &&t1, T2 &&t2) const { return std::forward<T1>(t1) | std::forward<T2>(t2); } };
-			struct binary_xor { template <typename T1, typename T2> constexpr auto operator()(T1 &&t1, T2 &&t2) const { return std::forward<T1>(t1) ^ std::forward<T2>(t2); } };
-			struct binary_and { template <typename T1, typename T2> constexpr auto operator()(T1 &&t1, T2 &&t2) const { return std::forward<T1>(t1) & std::forward<T2>(t2); } };
-			struct binary_or_assign  { template <typename T1, typename T2> constexpr nothing operator()(T1 &&t1, T2 &&t2) const { std::forward<T1>(t1) |= std::forward<T2>(t2); return{}; } };
-			struct binary_xor_assign { template <typename T1, typename T2> constexpr nothing operator()(T1 &&t1, T2 &&t2) const { std::forward<T1>(t1) ^= std::forward<T2>(t2); return{}; } };
-			struct binary_and_assign { template <typename T1, typename T2> constexpr nothing operator()(T1 &&t1, T2 &&t2) const { std::forward<T1>(t1) &= std::forward<T2>(t2); return{}; } };
+			struct bitwise_not { template <typename T> constexpr auto operator()(T &&t) const { return ~std::forward<T>(t) } };
+			struct bitwise_or { template <typename T1, typename T2> constexpr auto operator()(T1 &&t1, T2 &&t2) const { return std::forward<T1>(t1) | std::forward<T2>(t2); } };
+			struct bitwise_xor { template <typename T1, typename T2> constexpr auto operator()(T1 &&t1, T2 &&t2) const { return std::forward<T1>(t1) ^ std::forward<T2>(t2); } };
+			struct bitwise_and { template <typename T1, typename T2> constexpr auto operator()(T1 &&t1, T2 &&t2) const { return std::forward<T1>(t1) & std::forward<T2>(t2); } };
+			struct bitwise_or_assign  { template <typename T1, typename T2> constexpr nothing operator()(T1 &&t1, T2 &&t2) const { std::forward<T1>(t1) |= std::forward<T2>(t2); return{}; } };
+			struct bitwise_xor_assign { template <typename T1, typename T2> constexpr nothing operator()(T1 &&t1, T2 &&t2) const { std::forward<T1>(t1) ^= std::forward<T2>(t2); return{}; } };
+			struct bitwise_and_assign { template <typename T1, typename T2> constexpr nothing operator()(T1 &&t1, T2 &&t2) const { std::forward<T1>(t1) &= std::forward<T2>(t2); return{}; } };
 
 			struct equal { template <typename T1, typename T2> constexpr auto operator()(T1 &&t1, T2 &&t2) const { return std::forward<T1>(t1) == std::forward<T2>(t2); } };
 			struct nequal { template <typename T1, typename T2> constexpr auto operator()(T1 &&t1, T2 &&t2) const { return std::forward<T1>(t1) != std::forward<T2>(t2); } };
@@ -1643,6 +1643,55 @@ namespace cgra {
 		>
 	{ };
 
+	// Type traits for a binary operation involving linear algebra types, used for SFINAE on templated functions and operator overloads
+	namespace {
+		template<class A, class B> 
+		struct traits { };
+
+		template<typename T1, typename T2, size_t N>
+		struct traits<basic_vec<T1, N>, basic_vec<T2, N>> {
+			using scalar = std::common_type_t<T1, T2>;
+			using result = basic_vec<T, N>;
+			using bool_result = basic_vec<bool, N>;
+			using arith_result = basic_vec<decltype(+T()), N>;
+			using compare_as = std::array<T, N>;
+		};
+
+		template<typename T1, size_t N, >
+		struct traits<basic_vec<T, N>, T> {
+			using scalar = T;
+			using result = basic_vec<T, N>;
+			using bool_result = basic_vec<bool, N>;
+			using arith_result = basic_vec<decltype(+T()), N>;
+			using compare_as = std::array<T, N>;
+		};
+
+
+
+
+
+		template<class T, int M>
+		struct traits<basic_vec<T, N>, T> { typedef T scalar; typedef vec<T, M  > result; typedef vec<bool, M  > bool_result; typedef vec<decltype(+T()), M  > arith_result; };
+		
+		template<class T, int M>
+		struct traits<T, vec<T, M  >> { typedef T scalar; typedef vec<T, M  > result; typedef vec<bool, M  > bool_result; typedef vec<decltype(+T()), M  > arith_result; };
+		
+		template<class T, int M, int N>
+		struct traits<mat<T, M, N>, mat<T, M, N>> { typedef T scalar; typedef mat<T, M, N> result; typedef mat<bool, M, N> bool_result; typedef mat<decltype(+T()), M, N> arith_result; typedef std::array<T, M*N> compare_as; };
+		
+		template<class T, int M, int N>
+		struct traits<mat<T, M, N>, T         > { typedef T scalar; typedef mat<T, M, N> result; typedef mat<bool, M, N> bool_result; typedef mat<decltype(+T()), M, N> arith_result; };
+		
+		template<class T, int M, int N>
+		struct traits<T, mat<T, M, N>> { typedef T scalar; typedef mat<T, M, N> result; typedef mat<bool, M, N> bool_result; typedef mat<decltype(+T()), M, N> arith_result; };
+	}
+
+	template<class A, class B = A> using scalar_t = typename detail::traits<A, B>::scalar; // Underlying scalar type when performing elementwise operations
+	template<class A, class B = A> using result_t = typename detail::traits<A, B>::result; // Result of calling a function on linear algebra types
+	template<class A, class B = A> using bool_result_t = typename detail::traits<A, B>::bool_result; // Result of a comparison or unary not operation on linear algebra types
+	template<class A, class B = A> using arith_result_t = typename detail::traits<A, B>::arith_result; // Result of an arithmetic operation on linear algebra types (accounts for integer promotion)
+
+
 
 
 	//   __    __   __    _______  __    __       ______   .______       _______   _______ .______          _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
@@ -1690,7 +1739,7 @@ namespace cgra {
 	// decsription
 	template <typename F, typename ...ArgTs>
 	constexpr auto zip_with(F f, ArgTs &&...args) {
-		using value_t = decltype(f(std::forward<ArgTs>(args)[0]...));
+		using value_t = std::decay_t<decltype(f(std::forward<ArgTs>(args)[0]...))>;
 		using size = vec_min_size<std::decay_t<ArgTs>...>;
 		using vec_t = basic_vec<value_t, size::value>;
 		using iseq = std::make_index_sequence<size::value>;
