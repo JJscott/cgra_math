@@ -792,7 +792,7 @@ namespace cgra {
 	// The standard trigonometric sine function
 	template <typename T, size_t N>
 	inline basic_vec<T, N> sin(const basic_vec<T, N> &v) {
-		return zip_with([](auto x) { return sin(x); }, v);
+		return zip_with([](auto &&x) { return sin(decltype(x)(x)); }, v);
 	}
 
 	using std::cos;
@@ -801,7 +801,7 @@ namespace cgra {
 	// The standard trigonometric cosine function
 	template <typename T, size_t N>
 	inline basic_vec<T, N> cos(const basic_vec<T, N> &v) {
-		return zip_with([](auto x) { return cos(x); }, v);
+		return zip_with([](auto &&x) { return cos(decltype(x)(x)); }, v);
 	}
 
 	using std::tan;
@@ -810,7 +810,7 @@ namespace cgra {
 	// The standard trigonometric tangent
 	template <typename T, size_t N>
 	inline basic_vec<T, N> tan(const basic_vec<T, N> &v) {
-		return zip_with([](auto x) { return tan(x); }, v);
+		return zip_with([](auto &&x) { return tan(decltype(x)(x)); }, v);
 	}
 
 	using std::asin;
@@ -821,7 +821,7 @@ namespace cgra {
 	// Results are undefined if ∣x∣>1
 	template <typename T, size_t N>
 	inline basic_vec<T, N> asin(const basic_vec<T, N> &v) {
-		return zip_with([](auto x) { return asin(x); }, v);
+		return zip_with([](auto &&x) { return asin(decltype(x)(x)); }, v);
 	}
 
 	using std::acos;
@@ -832,7 +832,7 @@ namespace cgra {
 	// Results are undefined if ∣x∣>1
 	template <typename T, size_t N>
 	inline basic_vec<T, N> acos(const basic_vec<T, N> &v) {
-		return zip_with([](auto x) { return acos(x); }, v);
+		return zip_with([](auto &&x) { return acos(decltype(x)(x)); }, v);
 	}
 
 	// Arc tangent. Returns an angle whose tangent is y/x
@@ -851,7 +851,7 @@ namespace cgra {
 	// Results are undefined if x and y are both 0
 	template <typename T1, typename T2, size_t N>
 	inline auto atan(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-		return zip_with([](auto x) { return atan2(x); }, v2, v1);
+		return zip_with([](auto &&x) { return atan2(decltype(x)(x)); }, v2, v1);
 	}
 
 	using std::atan;
@@ -861,7 +861,7 @@ namespace cgra {
 	// The range of values returned by this function is [-pi/2, pi/2] 
 	template <typename T, size_t N>
 	inline basic_vec<T, N> atan(const basic_vec<T, N> &v) {
-		return zip_with([](auto x) { return atan(x); }, v);
+		return zip_with([](auto &&x) { return atan(decltype(x)(x)); }, v);
 	}
 
 	using std::sinh;
@@ -870,7 +870,7 @@ namespace cgra {
 	// Returns the hyperbolic sine function (e^x - e^-x)/2
 	template <typename T, size_t N>
 	inline basic_vec<T, N> sinh(const basic_vec<T, N> &v) {
-		return zip_with([](auto x) { return sinh(x); }, v);
+		return zip_with([](auto &&x) { return sinh(decltype(x)(x)); }, v);
 	}
 
 	using std::cosh;
@@ -879,7 +879,7 @@ namespace cgra {
 	// Returns the hyperbolic cosine function (e^x + e^-x)/2
 	template <typename T, size_t N>
 	inline basic_vec<T, N> cosh(const basic_vec<T, N> &v) {
-		return zip_with([](auto x) { return cosh(x); }, v);
+		return zip_with([](auto &&x) { return cosh(decltype(x)(x)); }, v);
 	}
 
 	using std::tanh;
@@ -888,7 +888,7 @@ namespace cgra {
 	// Returns the hyperbolic tangent function sinh(x)/cosh(x)
 	template <typename T, size_t N>
 	inline basic_vec<T, N> tanh(const basic_vec<T, N> &v) {
-		return zip_with([](auto x) { return tanh(x); }, v);
+		return zip_with([](auto &&x) { return tanh(decltype(x)(x)); }, v);
 	}
 
 	using std::asinh;
@@ -897,7 +897,7 @@ namespace cgra {
 	// Arc hyperbolic sine; returns the inverse of sinh(x)
 	template <typename T, size_t N>
 	inline basic_vec<T, N> asinh(const basic_vec<T, N> &v) {
-		return zip_with([](auto x) { return asinh(x); }, v);
+		return zip_with([](auto &&x) { return asinh(decltype(x)(x)); }, v);
 	}
 
 	using std::acosh;
@@ -907,7 +907,7 @@ namespace cgra {
 	// Results are undefined if x < 1
 	template <typename T, size_t N>
 	inline basic_vec<T, N> acosh(const basic_vec<T, N> &v) {
-		return zip_with([](auto x) { return acosh(x); }, v);
+		return zip_with([](auto &&x) { return acosh(decltype(x)(x)); }, v);
 	}
 
 	using std::atanh;
@@ -917,7 +917,7 @@ namespace cgra {
 	// Results are undefined if ∣x∣>=1
 	template <typename T, size_t N>
 	inline basic_vec<T, N> atanh(const basic_vec<T, N> &v) {
-		return zip_with([](auto x) { return atanh(x); }, v);
+		return zip_with([](auto &&x) { return atanh(decltype(x)(x)); }, v);
 	}
 
 	//TODO
@@ -1182,7 +1182,7 @@ namespace cgra {
 	template <typename T1, size_t N, typename T2, typename=std::enable_if_t<std::is_arithmetic<T2>::value>>
 	inline auto min(const basic_vec<T1, N> &lhs, T2 rhs) {
 		using common_t = std::common_type_t<T1, T2>;
-		return zip_with([](auto x, auto y) { return min<common_t>(x, y); }, lhs, rhs);
+		return zip_with([](auto &&x, auto &&y) { return min<common_t>(decltype(x)(x), decltype(y)(y)); }, lhs, rhs);
 	}
 
 	// Element-wise function for x in lhs and y in rhs
@@ -1191,7 +1191,7 @@ namespace cgra {
 	template <typename T1, typename T2, size_t N>
 	inline auto min(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
 		using common_t = std::common_type_t<T1, T2>;
-		return zip_with([](auto x, auto y) { return min<common_t>(x, y); }, lhs, rhs);
+		return zip_with([](auto &&x, auto &&y) { return min<common_t>(decltype(x)(x), decltype(y)(y)); }, lhs, rhs);
 	}
 
 	// Element-wise function for x in lhs and y in rhs
@@ -1199,7 +1199,7 @@ namespace cgra {
 	// Returns y if y < x; otherwise it returns x
 	template <typename T, size_t N>
 	inline auto min(const basic_vec<T, N> &lhs, const basic_vec<T, N> &rhs) {
-		return zip_with([](auto x, auto y) { return min(x, y); }, lhs, rhs);
+		return zip_with([](auto &&x, auto &&y) { return min(decltype(x)(x), decltype(y)(y)); }, lhs, rhs);
 	}
 
 	using std::max;
@@ -1209,7 +1209,7 @@ namespace cgra {
 	template <typename T1, size_t N, typename T2, typename=std::enable_if_t<std::is_arithmetic<T2>::value>>
 	inline auto max(const basic_vec<T1, N> &lhs, T2 rhs) {
 		using common_t = std::common_type_t<T1, T2>;
-		return zip_with([](auto x, auto y) { return max<common_t>(x, y); }, lhs, rhs);
+		return zip_with([](auto &&x, auto &&y) { return max<common_t>(decltype(x)(x), decltype(y)(y)); }, lhs, rhs);
 	}
 
 	// Element-wise function for x in lhs and y in rhs
@@ -1218,7 +1218,7 @@ namespace cgra {
 	template <typename T1, typename T2, size_t N>
 	inline auto max(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
 		using common_t = std::common_type_t<T1, T2>;
-		return zip_with([](auto x, auto y) { return max<common_t>(x, y); }, lhs, rhs);
+		return zip_with([](auto &&x, auto &&y) { return max<common_t>(decltype(x)(x), decltype(y)(y)); }, lhs, rhs);
 	}
 
 	// Element-wise function for x in lhs and y in rhs
@@ -1226,7 +1226,7 @@ namespace cgra {
 	// Returns y if y > x; otherwise it returns x
 	template <typename T, size_t N>
 	inline auto max(const basic_vec<T, N> &lhs, const basic_vec<T, N> &rhs) {
-		return zip_with([](auto x, auto y) { return max(x, y); }, lhs, rhs);
+		return zip_with([](auto &&x, auto &&y) { return max(decltype(x)(x), decltype(y)(y)); }, lhs, rhs);
 	}
 
 	// mod for both scalar a,b,c or elements in vector a,b,c
@@ -1270,7 +1270,7 @@ namespace cgra {
 	// where a is a Boolean vector.
 	template <typename T1, typename T2, size_t N>
 	inline auto mix(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2, const basic_vec<bool, N> &va) {
-		return zip_with([](auto x, auto y, auto a) { return (!a) ? x : y; }, v1, v2, va);
+		return zip_with([](auto &&x, auto &&y, auto &&a) { return (!decltype(a)(a)) ? decltype(x)(x) : decltype(y)(y); }, v1, v2, va);
 	}
 
 	// Returns 0.0 if x < edge; otherwise it returns 1.0
@@ -1284,7 +1284,7 @@ namespace cgra {
 	template <typename T1, typename T2, size_t N>
 	inline auto step(T1 edge, const basic_vec<T2, N> &v) {
 		using common_t = std::common_type_t<T1, T2>;
-		return zip_with([](auto edge, auto x) { return (x < edge) ? common_t(0) : common_t(1); }, basic_vec<common_t, N>(edge), v);
+		return zip_with([](auto &&edge, auto &&x) { return (decltype(x)(x) < decltype(edge)(edge)) ? common_t(0) : common_t(1); }, basic_vec<common_t, N>(edge), v);
 	}
 
 	// Element-wise function for edge in vedge and x in v
@@ -1292,7 +1292,7 @@ namespace cgra {
 	template <typename T1, typename T2, size_t N>
 	inline auto step(const basic_vec<T1, N> &vedge, const basic_vec<T2, N> &v) {
 		using common_t = std::common_type_t<T1, T2>;
-		return zip_with([](auto edge, auto x) { return (x < edge) ? common_t(0) : common_t(1); }, vedge, v);
+		return zip_with([](auto &&edge, auto &&x) { return (decltype(x)(x) < decltype(edge)(edge)) ? common_t(0) : common_t(1); }, vedge, v);
 	}
 
 	// Returns 0.0 if x <= edge0 and 1.0 if x >= edge1 and performs smooth
@@ -1348,7 +1348,7 @@ namespace cgra {
 	// Always returns false if NaNs are not implemented
 	template <typename T, size_t N>
 	inline auto isnan(const basic_vec<T, N> &v) {
-		return zip_with([](auto x) { return isnan(x); }, v);
+		return zip_with([](auto &&x) { return isnan(decltype(x)(x)); }, v);
 	}
 
 	using std::isinf;
@@ -1358,7 +1358,7 @@ namespace cgra {
 	// Returns false otherwise
 	template <typename T, size_t N>
 	inline auto isinf(const basic_vec<T, N> &v) {
-		return zip_with([](auto x) { return isinf(x); }, v);
+		return zip_with([](auto &&x) { return isinf(decltype(x)(x)); }, v);
 	}
 
 	//TODO
@@ -1427,13 +1427,13 @@ namespace cgra {
 	// Returns the sum of all x in v, i.e., v[0] + v[1] + ...
 	template <typename T, size_t N>
 	inline T sum(const basic_vec<T, N> &v) {
-		return fold( [](auto a, auto b) { return a + b; }, T(0), v);
+		return fold( [](auto &&a, auto &&b) { return decltype(a)(a) + decltype(b)(b); }, T(0), v);
 	}
 
 	// Returns the product of all x in v, i.e., v[0] * v[1] * ...
 	template <typename T, size_t N>
 	inline T product(const basic_vec<T, N> &v) {
-		return fold( [](auto a, auto b) { return a * b; }, T(0), v);
+		return fold( [](auto &&a, auto &&b) { return decltype(a)(a) * decltype(b)(b); }, T(0), v);
 	}
 
 
@@ -1550,54 +1550,54 @@ namespace cgra {
 	// Returns the comparison of x < y
 	template <typename T1, typename T2, size_t N>
 	inline auto lessThan(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-		return zip_with([](auto x, auto y) { return x < y; }, v1, v2);
+		return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) < decltype(y)(y); }, v1, v2);
 	}
 
 	// Element-wise function for x in v1 and y in v2
 	// Returns the comparison of x <= y
 	template <typename T1, typename T2, size_t N>
 	inline auto lessThanEqual(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-		return zip_with([](auto x, auto y) { return x <= y; }, v1, v2);
+		return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) <= decltype(y)(y); }, v1, v2);
 	}
 
 	// Element-wise function for x in v1 and y in v2
 	// Returns the comparison of x > y
 	template <typename T1, typename T2, size_t N>
 	inline auto greaterThan(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-		return zip_with([](auto x, auto y) { return x > y; }, v1, v2);
+		return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) > decltype(y)(y); }, v1, v2);
 	}
 
 	// Element-wise function for x in v1 and y in v2
 	// Returns the comparison of x >= y
 	template <typename T1, typename T2, size_t N>
 	inline auto greaterThanEqual(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-		return zip_with([](auto x, auto y) { return x >= y; }, v1, v2);
+		return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) >= decltype(y)(y); }, v1, v2);
 	}
 
 	// Element-wise function for x in v1 and y in v2
 	// Returns the comparison of x == y
 	template <typename T1, typename T2, size_t N>
 	inline auto equal(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-		return zip_with([](auto x, auto y) { return x == y; }, v1, v2);
+		return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) == decltype(y)(y); }, v1, v2);
 	}
 
 	// Element-wise function for x in v1 and y in v2
 	// Returns the comparison of x != y
 	template <typename T1, typename T2, size_t N>
 	inline auto notEqual(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-		return zip_with([](auto x, auto y) { return x != y; }, v1, v2);
+		return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) != decltype(y)(y); }, v1, v2);
 	}
 
 	// Returns true if any component of v is true
 	template <size_t N>
 	inline bool any(const basic_vec<bool, N> &v) {
-		return fold([](auto x, auto y) { return x || y; }, false, v);
+		return fold([](auto &&x, auto &&y) { return decltype(x)(x) || decltype(y)(y); }, false, v);
 	}
 
 	// Returns true only if all components of x are true
 	template <size_t N>
 	inline bool all(const basic_vec<bool, N> &v) {
-		return fold([](auto x, auto y) { return x && y; }, true, v);
+		return fold([](auto &&x, auto &&y) { return decltype(x)(x) && decltype(y)(y); }, true, v);
 	}
 
 	// Note : C++ does not support "not" as a function name, hence it has been omitted
@@ -1615,6 +1615,7 @@ namespace cgra {
 	//=======================================================================================================================================================================//
 
 	//TODO
+
 
 
 
@@ -1643,53 +1644,6 @@ namespace cgra {
 		>
 	{ };
 
-	// Type traits for a binary operation involving linear algebra types, used for SFINAE on templated functions and operator overloads
-	namespace {
-		template<class A, class B> 
-		struct traits { };
-
-		template<typename T1, typename T2, size_t N>
-		struct traits<basic_vec<T1, N>, basic_vec<T2, N>> {
-			using scalar = std::common_type_t<T1, T2>;
-			using result = basic_vec<T, N>;
-			using bool_result = basic_vec<bool, N>;
-			using arith_result = basic_vec<decltype(+T()), N>;
-			using compare_as = std::array<T, N>;
-		};
-
-		template<typename T1, size_t N, >
-		struct traits<basic_vec<T, N>, T> {
-			using scalar = T;
-			using result = basic_vec<T, N>;
-			using bool_result = basic_vec<bool, N>;
-			using arith_result = basic_vec<decltype(+T()), N>;
-			using compare_as = std::array<T, N>;
-		};
-
-
-
-
-
-		template<class T, int M>
-		struct traits<basic_vec<T, N>, T> { typedef T scalar; typedef vec<T, M  > result; typedef vec<bool, M  > bool_result; typedef vec<decltype(+T()), M  > arith_result; };
-		
-		template<class T, int M>
-		struct traits<T, vec<T, M  >> { typedef T scalar; typedef vec<T, M  > result; typedef vec<bool, M  > bool_result; typedef vec<decltype(+T()), M  > arith_result; };
-		
-		template<class T, int M, int N>
-		struct traits<mat<T, M, N>, mat<T, M, N>> { typedef T scalar; typedef mat<T, M, N> result; typedef mat<bool, M, N> bool_result; typedef mat<decltype(+T()), M, N> arith_result; typedef std::array<T, M*N> compare_as; };
-		
-		template<class T, int M, int N>
-		struct traits<mat<T, M, N>, T         > { typedef T scalar; typedef mat<T, M, N> result; typedef mat<bool, M, N> bool_result; typedef mat<decltype(+T()), M, N> arith_result; };
-		
-		template<class T, int M, int N>
-		struct traits<T, mat<T, M, N>> { typedef T scalar; typedef mat<T, M, N> result; typedef mat<bool, M, N> bool_result; typedef mat<decltype(+T()), M, N> arith_result; };
-	}
-
-	template<class A, class B = A> using scalar_t = typename detail::traits<A, B>::scalar; // Underlying scalar type when performing elementwise operations
-	template<class A, class B = A> using result_t = typename detail::traits<A, B>::result; // Result of calling a function on linear algebra types
-	template<class A, class B = A> using bool_result_t = typename detail::traits<A, B>::bool_result; // Result of a comparison or unary not operation on linear algebra types
-	template<class A, class B = A> using arith_result_t = typename detail::traits<A, B>::arith_result; // Result of an arithmetic operation on linear algebra types (accounts for integer promotion)
 
 
 
@@ -1706,7 +1660,7 @@ namespace cgra {
 	namespace detail {
 		// A helper function used internally by zip_with
 		template <size_t I, typename F, typename ...ArgTs>
-		constexpr auto zip_with_impl_impl(F f, ArgTs &&...args) {
+		constexpr decltype(auto) zip_with_impl_impl(F f, ArgTs &&...args) {
 			return f(std::forward<ArgTs>(args)[I]...);
 		}
 
@@ -1743,7 +1697,7 @@ namespace cgra {
 		using size = vec_min_size<std::decay_t<ArgTs>...>;
 		using vec_t = basic_vec<value_t, size::value>;
 		using iseq = std::make_index_sequence<size::value>;
-		return zip_with_impl<vec_t>(f, iseq(), std::forward<ArgTs>(args)...);
+		return detail::zip_with_impl<vec_t>(f, iseq(), std::forward<ArgTs>(args)...);
 	}
 
 	// Produce a scalar by applying f(T1,T2) -> T3 to adjacent pairs of elements
@@ -1751,10 +1705,11 @@ namespace cgra {
 	// Typically T1 = T3 and T2 is a vector of some T
 	template <typename F, typename T1, typename ArgT>
 	constexpr decltype(auto) fold(F f, T1 &&t1, ArgT &&v) {
-		return fold_impl<0, std::decay_t<ArgT>::size>::apply(f, std::forward<T1>(t1), std::forward<ArgT>(v));
+		return detail::fold_impl<0, std::decay_t<ArgT>::size>::apply(f, std::forward<T1>(t1), std::forward<ArgT>(v));
 	}
 
 }
+
 
 
 
