@@ -2,6 +2,8 @@
 # Source files
 SET(sources
 	"main.cpp"
+	"math_test.hpp"
+	"math_test.cpp"
 )
 
 
