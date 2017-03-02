@@ -90,7 +90,23 @@ TODO
 
 ## Angle and Trigonometry Functions
 
-TODO
+any T
+scalar S
+vecT
+
+
+| Function | Description |
+|:--:|:--:|
+| `T radians(T x)` | Converts degrees to radians, i.e., degrees * pi/180 |
+| `T radians(T x)` | Converts radians to degrees, i.e., radians * 180/pi |
+| `T angle(vecT v1, vecT v2)` | Returns the angle between 2 vectors in radians |
+| `T sin(T)` <br> `vecT sin(vecT)` | The standard trigonometric sine function |
+|  |  |
+|  |  |
+|  |  |
+|  |  |
+|  |  |
+
 
 ## Exponential Functions
 
