@@ -2204,63 +2204,63 @@ namespace cgra {
 
 	using std::min;
 
-	// Element-wise function for x in lhs
-	// Returns rhs if rhs < x; otherwise it returns x
+	// Element-wise function for x in v
+	// Returns y if y < x; otherwise it returns x
 	template <typename T1, size_t N, typename T2, typename=std::enable_if_t<std::is_arithmetic<T2>::value>>
-	inline auto min(const basic_vec<T1, N> &lhs, T2 rhs) {
+	inline auto min(const basic_vec<T1, N> &v, T2 y) {
 		using common_t = std::common_type_t<T1, T2>;
-		return zip_with([](auto &&x, auto &&y) { return min<common_t>(decltype(x)(x), decltype(y)(y)); }, lhs, rhs);
+		return zip_with([](auto &&x, auto &&y) { return min<common_t>(decltype(x)(x), decltype(y)(y)); }, v, y);
 	}
 
-	// Element-wise function for x in lhs and y in rhs
+	// Element-wise function for x in v1 and y in v2
 	// x and y are different types
 	// Returns y if y < x; otherwise it returns x
 	template <typename T1, typename T2, size_t N>
-	inline auto min(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+	inline auto min(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
 		using common_t = std::common_type_t<T1, T2>;
-		return zip_with([](auto &&x, auto &&y) { return min<common_t>(decltype(x)(x), decltype(y)(y)); }, lhs, rhs);
+		return zip_with([](auto &&x, auto &&y) { return min<common_t>(decltype(x)(x), decltype(y)(y)); }, v1, v2);
 	}
 
-	// Element-wise function for x in lhs and y in rhs
+	// Element-wise function for x in v1 and y in v2
 	// x and y are the same type
 	// Returns y if y < x; otherwise it returns x
 	template <typename T, size_t N>
-	inline auto min(const basic_vec<T, N> &lhs, const basic_vec<T, N> &rhs) {
-		return zip_with([](auto &&x, auto &&y) { return min(decltype(x)(x), decltype(y)(y)); }, lhs, rhs);
+	inline auto min(const basic_vec<T, N> &v1, const basic_vec<T, N> &v2) {
+		return zip_with([](auto &&x, auto &&y) { return min(decltype(x)(x), decltype(y)(y)); }, v1, v2);
 	}
 
 	using std::max;
 
-	// Element-wise function for x in lhs
-	// Returns rhs if rhs > x; otherwise it returns x
+	// Element-wise function for x in v
+	// Returns y if y > x; otherwise it returns x
 	template <typename T1, size_t N, typename T2, typename=std::enable_if_t<std::is_arithmetic<T2>::value>>
-	inline auto max(const basic_vec<T1, N> &lhs, T2 rhs) {
+	inline auto max(const basic_vec<T1, N> &v, T2 y) {
 		using common_t = std::common_type_t<T1, T2>;
-		return zip_with([](auto &&x, auto &&y) { return max<common_t>(decltype(x)(x), decltype(y)(y)); }, lhs, rhs);
+		return zip_with([](auto &&x, auto &&y) { return max<common_t>(decltype(x)(x), decltype(y)(y)); }, v, y);
 	}
 
-	// Element-wise function for x in lhs and y in rhs
+	// Element-wise function for x in v1 and y in v2
 	// x and y are different types
 	// Returns y if y > x; otherwise it returns x
 	template <typename T1, typename T2, size_t N>
-	inline auto max(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+	inline auto max(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
 		using common_t = std::common_type_t<T1, T2>;
-		return zip_with([](auto &&x, auto &&y) { return max<common_t>(decltype(x)(x), decltype(y)(y)); }, lhs, rhs);
+		return zip_with([](auto &&x, auto &&y) { return max<common_t>(decltype(x)(x), decltype(y)(y)); }, v1, v2);
 	}
 
-	// Element-wise function for x in lhs and y in rhs
+	// Element-wise function for x in v1 and y in v2
 	// x and y are the same type
 	// Returns y if y > x; otherwise it returns x
 	template <typename T, size_t N>
-	inline auto max(const basic_vec<T, N> &lhs, const basic_vec<T, N> &rhs) {
-		return zip_with([](auto &&x, auto &&y) { return max(decltype(x)(x), decltype(y)(y)); }, lhs, rhs);
+	inline auto max(const basic_vec<T, N> &v1, const basic_vec<T, N> &v2) {
+		return zip_with([](auto &&x, auto &&y) { return max(decltype(x)(x), decltype(y)(y)); }, v1, v2);
 	}
 
-	// mod for both scalar a,b,c or elements in vector a,b,c
+	// clamp for both scalar a, b, c or elements in vector a, b, c
 	// Returns min(max(x, minVal), maxVal)
 	// Results are undefined if minVal > maxVal
-	template <typename T>
-	inline auto clamp(const T &a, const T &minVal, const T &maxVal) {
+	template <typename T1, typename T2, typename T3>
+	inline auto clamp(const T &a, const T &b, const T &c) {
 		return min(max(a, minVal), maxVal);
 	}
 
