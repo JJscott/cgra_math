@@ -2256,11 +2256,11 @@ namespace cgra {
 		return zip_with([](auto &&x, auto &&y) { return max(decltype(x)(x), decltype(y)(y)); }, v1, v2);
 	}
 
-	// clamp for both scalar a, b, c or elements in vector a, b, c
+	// clamp for both scalar a, minVal, maxVal or elements in vector a, minVal, maxVal
 	// Returns min(max(x, minVal), maxVal)
 	// Results are undefined if minVal > maxVal
-	template <typename T1, typename T2, typename T3>
-	inline auto clamp(const T &a, const T &b, const T &c) {
+	template <typename T1, typename T1, typename T3>
+	inline auto clamp(const T &a, const T &minVal, const T &maxVal) {
 		return min(max(a, minVal), maxVal);
 	}
 
@@ -2293,7 +2293,7 @@ namespace cgra {
 	// Components of x and y that are not selected are allowed to be invalid floating-point
 	// values and will have no effect on the results
 	// Thus, this provides different functionality than, for example, 
-	//     genType mix(genType x, genType y, genType(a))
+	//     vecT mix(vecT x, vecT y, vecT(a))
 	// where a is a Boolean vector.
 	template <typename T1, typename T2, size_t N>
 	inline auto mix(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2, const basic_vec<bool, N> &va) {
