@@ -482,6 +482,36 @@ namespace cgra {
 		}
 	};
 
+	namespace detail {
+		// A specialised vector that repeats the same element at every index up to N
+		template<typename T, N>
+		class repeat_vec {
+		private:
+			T v;
+		public:
+			using value_t = T;
+			static constexpr size_t size = N;
+
+			constexpr repeat_vec() { }
+
+			constexpr repeat_vec(const T &_v) : v(_v) { }
+
+			T & operator[](size_t i) {
+				assert(i < N);
+				return v;
+			}
+
+			constexpr const T & operator[](size_t i) const {
+				assert(i < N);
+				return v;
+			}
+
+			inline friend std::ostream & operator<<(std::ostream &out, const basic_vec &v) {
+				return out << '(' << v << ", ..."  << ")";
+			}
+		};
+	}
+
 
 	// Cols, Rows-dimensional matrix class of type T
 	template <typename T, size_t Cols, size_t Rows>
@@ -2664,18 +2694,18 @@ namespace cgra {
 	//================================================================================================================================================//
 
 	template <typename ...VecTs>
-	struct vec_min_size { };
+	struct min_size { };
 
 	template <typename VecT>
-	struct vec_min_size<VecT> : std::integral_constant<size_t, VecT::size> { };
+	struct min_size<VecT> : std::integral_constant<size_t, VecT::size> { };
 
 	// A meta struct with an integral_constant value equal to the minimum size of its template arguments
 	template <typename VecT1, typename VecT2, typename ...VecTs>
-	struct vec_min_size<VecT1, VecT2, VecTs...> :
+	struct min_size<VecT1, VecT2, VecTs...> :
 		std::integral_constant<
 			size_t,
-			(vec_min_size<VecT1>::value < vec_min_size<VecT2>::value) ?
-			vec_min_size<VecT1, VecTs...>::value : vec_min_size<VecT2, VecTs...>::value
+			(min_size<VecT1>::value < min_size<VecT2>::value) ?
+			min_size<VecT1, VecTs...>::value : min_size<VecT2, VecTs...>::value
 		>
 	{ };
 
@@ -2729,7 +2759,7 @@ namespace cgra {
 	template <typename F, typename ...ArgTs>
 	constexpr auto zip_with(F f, ArgTs &&...args) {
 		using value_t = std::decay_t<decltype(f(std::forward<ArgTs>(args)[0]...))>;
-		using size = vec_min_size<std::decay_t<ArgTs>...>;
+		using size = min_size<std::decay_t<ArgTs>...>;
 		using vec_t = basic_vec<value_t, size::value>;
 		using iseq = std::make_index_sequence<size::value>;
 		return detail::zip_with_impl<vec_t>(f, iseq(), std::forward<ArgTs>(args)...);
