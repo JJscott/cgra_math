@@ -22,18 +22,23 @@ Array subscript operator allows you to access the matrix by column then row (x t
 
 # Documentation
 
+* [Scalars](#scalars)
 * [Data Structures](#data-structures)
 * [Operator Overloads](#operator-overloads)
 * [Angle and Trigonometry Functions](#angle-and-trigonometry-functions)
 * [Exponential Functions](#exponential-functions)
 * [Common Functions](#common-functions)
+* [Packing Functions](#packing-functions)
 * [Geometric Functions](#geometric-functions)
-* [Vector Relational Functions](#vector-relational-functions)
+* [Relational Functions](#relational-functions)
+* [Integer Functions](#integer-functions)
 * [Matrix Functions](#matrix-functions)
 * [Transform Functions](#transform-functions)
 * [Quaternion Functions](#quaternion-functions)
 * [Higher Order Functions](#higher-order-functions)
 
+
+## Scalars
 
 ## Data Structures
 
@@ -100,11 +105,19 @@ TODO
 
 TODO
 
+## Packing Functions
+
+TODO
+
 ## Geometric Functions
 
 TODO
 
-## Vector Relational Functions
+## Relational Functions
+
+TODO
+
+## Integer Functions
 
 TODO
 

@@ -13,7 +13,6 @@
 =================
 
 - constexpr everything
-- zip_with
 - vector/matrix/quaternion functions
 - transform functions
 - clean up common function definitions and remove duplicates
@@ -107,7 +106,8 @@ namespace cgra {
 	}
 
 	// return a random value of T in range [0, upper)
-	template <typename T> inline T random(T upper = T(1)) {
+	template <typename T>
+	inline T random(T upper = T(1)) {
 		return random<T>(T(0), upper);
 	}
 
@@ -1256,8 +1256,7 @@ namespace cgra {
 
 	template<typename T1, size_t M, size_t N, typename T2>
 	inline basic_mat<T1, M, N> & operator*=(basic_mat<T1, M, N> &lhs, const basic_mat<T2, M, N> &rhs) {
-		zip_with(detail::op::mul_assign(), lhs.data_as_vec(), rhs.data_as_vec());
-		return lhs;
+		// TODO
 	}
 
 	template<typename T1, size_t M, size_t N, typename T2>
@@ -1413,7 +1412,17 @@ namespace cgra {
 
 	template<typename T1, typename T2, size_t M, size_t N>
 	inline auto operator*(const basic_mat<T1, M, N> &lhs, const basic_mat<T2, M, N> &rhs) {
-		return lhs;// TODO
+		// TODO
+	}
+
+	template<typename T1, size_t M, size_t N, typename T2>
+	inline auto operator*(const basic_mat<T1, M, N> &lhs, const basic_vec<T2, M> &rhs) {
+		// TODO
+	}
+
+	template<typename T1, typename T2, size_t M, size_t N>
+	inline auto operator*(const basic_vec<T1, N> &lhs, const basic_mat<T2, M, N> &rhs) {
+		// TODO
 	}
 
 	template<typename T1, size_t M, size_t N, typename T2>
@@ -2639,6 +2648,198 @@ namespace cgra {
 	//  |  | |  |\   |     |  |     |  |____ |  |__| | |  |____ |  |\  \----.   |  |     |  `--'  | |  |\   | |  `----.    |  |     |  | |  `--'  | |  |\   | .----)   |     //
 	//  |__| |__| \__|     |__|     |_______| \______| |_______|| _| `._____|   |__|      \______/  |__| \__|  \______|    |__|     |__|  \______/  |__| \__| |_______/      //
 	//                                                                                                                                                                       //
+	//=======================================================================================================================================================================//
+
+	//TODO
+
+
+
+
+	//  .___  ___.      ___   .___________..______       __  ___   ___     _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
+	//  |   \/   |     /   \  |           ||   _  \     |  | \  \ /  /    |   ____||  |  |  | |  \ |  |  /      ||           ||  |  /  __  \  |  \ |  |     /       |  //
+	//  |  \  /  |    /  ^  \ `---|  |----`|  |_)  |    |  |  \  V  /     |  |__   |  |  |  | |   \|  | |  ,----'`---|  |----`|  | |  |  |  | |   \|  |    |   (----`  //
+	//  |  |\/|  |   /  /_\  \    |  |     |      /     |  |   >   <      |   __|  |  |  |  | |  . `  | |  |         |  |     |  | |  |  |  | |  . `  |     \   \      //
+	//  |  |  |  |  /  _____  \   |  |     |  |\  \----.|  |  /  .  \     |  |     |  `--'  | |  |\   | |  `----.    |  |     |  | |  `--'  | |  |\   | .----)   |     //
+	//  |__|  |__| /__/     \__\  |__|     | _| `._____||__| /__/ \__\    |__|      \______/  |__| \__|  \______|    |__|     |__|  \______/  |__| \__| |_______/      //
+	//                                                                                                                                                                 //
+	//=======================================================================================================================================================================//
+
+	namespace detail {
+		template <typename T>
+		inline T det2x2(
+			T e00, T e01,
+			T e10, T e11
+		) {
+			return e00 * e11 - e10 * e01;
+		}
+
+		template <typename T>
+		inline T det3x3(
+			T e00, T e01, T e02,
+			T e10, T e11, T e12,
+			T e20, T e21, T e22
+		) {
+			T d = 0;
+			d += e00 * e11 * e22;
+			d += e01 * e12 * e20;
+			d += e02 * e10 * e21;
+			d -= e00 * e12 * e21;
+			d -= e01 * e10 * e22;
+			d -= e02 * e11 * e20;
+			return d;
+		}
+	}
+
+	// inverse of matrix (error if not invertible)
+	template <typename T>
+	inline basic_mat<T, 1, 1> inverse(const basic_mat<T, 1, 1> &m) {
+		//TODO
+	}
+
+	// determinant of matrix
+	template <typename T>
+	inline T determinant(const basic_mat<T, 2, 2> &m) {
+		return m[0][0] * m[1][1] - m[1][0] * m[0][1];
+	}
+
+	// inverse of matrix (error if not invertible)
+	template <typename T>
+	inline basic_mat<T, 2, 2> inverse(const basic_mat<T, 2, 2> &m) {
+		basic_mat<T, 2, 2> r;
+		T invdet = 1 / determinant(m);
+		// FIXME proper detect infinite determinant
+		assert(!isinf(invdet) && invdet == invdet && invdet != 0);
+		r[0][0] =  m[1][1] * invdet;
+		r[0][1] = -m[0][1] * invdet;
+		r[1][0] = -m[1][0] * invdet;
+		r[1][1] =  m[0][0] * invdet;
+		return r;
+	}
+
+	// determinant of matrix
+	template <typename T>
+	inline T determinant(const basic_mat<T, 3, 3> &m) {
+		T d = 0;
+		d += m[0][0] * m[1][1] * m[2][2];
+		d += m[0][1] * m[1][2] * m[2][0];
+		d += m[0][2] * m[1][0] * m[2][1];
+		d -= m[0][0] * m[1][2] * m[2][1];
+		d -= m[0][1] * m[1][0] * m[2][2];
+		d -= m[0][2] * m[1][1] * m[2][0];
+		return d;
+	}
+
+	// inverse of matrix (error if not invertible)
+	template <typename T>
+	inline basic_mat<T, 3, 3> inverse(const basic_mat<T, 3, 3> &m) {
+		basic_mat<T, 3, 3> r;
+		// first column of cofactors, can use for determinant
+		T c00 = matrix3<T>::det2x2(m[1][1], m[1][2], m[2][1], m[2][2]);
+		T c01 = -matrix3<T>::det2x2(m[1][0], m[1][2], m[2][0], m[2][2]);
+		T c02 = matrix3<T>::det2x2(m[1][0], m[1][1], m[2][0], m[2][1]);
+		// get determinant by expanding about first column
+		T invdet = 1 / (m[0][0] * c00 + m[0][1] * c01 + m[0][2] * c02);
+		// FIXME proper detect infinite determinant
+		assert(!isinf(invdet) && invdet == invdet && invdet != 0);
+		// transpose of cofactor matrix * (1 / det)
+		r[0][0] = c00 * invdet;
+		r[1][0] = c01 * invdet;
+		r[2][0] = c02 * invdet;
+		r[0][1] = -detail::det2x2(m[0][1], m[0][2], m[2][1], m[2][2]) * invdet;
+		r[1][1] =  detail::det2x2(m[0][0], m[0][2], m[2][0], m[2][2]) * invdet;
+		r[2][1] = -detail::det2x2(m[0][0], m[0][1], m[2][0], m[2][1]) * invdet;
+		r[0][2] =  detail::det2x2(m[0][1], m[0][2], m[1][1], m[1][2]) * invdet;
+		r[1][2] = -detail::det2x2(m[0][0], m[0][2], m[1][0], m[1][2]) * invdet;
+		r[2][2] =  detail::det2x2(m[0][0], m[0][1], m[1][0], m[1][1]) * invdet;
+		return r;
+	}
+
+	//TODO
+	// determinant of matrix
+	template <typename T>
+	inline T determinant(const basic_mat<T, 4, 4> &m) {
+		T d = 0;
+		// expand about first column
+		d += m[0][0] * detail::det3x3(m[1][1], m[1][2], m[1][3], m[2][1], m[2][2], m[2][3], m[3][1], m[3][2], m[3][3]);
+		d -= m[0][1] * detail::det3x3(m[1][0], m[1][2], m[1][3], m[2][0], m[2][2], m[2][3], m[3][0], m[3][2], m[3][3]);
+		d += m[0][2] * detail::det3x3(m[1][0], m[1][1], m[1][3], m[2][0], m[2][1], m[2][3], m[3][0], m[3][1], m[3][3]);
+		d -= m[0][3] * detail::det3x3(m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2], m[3][0], m[3][1], m[3][2]);
+		return d;
+	}
+
+	// inverse of matrix (error if not invertible)
+	template <typename T>
+	inline basic_mat<T, 4, 4> inverse(const basic_mat<T, 4, 4> &m) {
+		basic_mat<T, 4, 4><T> r;
+		// first column of cofactors, can use for determinant
+		T c0 =  detail::det3x3(m[1][1], m[1][2], m[1][3], m[2][1], m[2][2], m[2][3], m[3][1], m[3][2], m[3][3]);
+		T c1 = -detail::det3x3(m[1][0], m[1][2], m[1][3], m[2][0], m[2][2], m[2][3], m[3][0], m[3][2], m[3][3]);
+		T c2 =  detail::det3x3(m[1][0], m[1][1], m[1][3], m[2][0], m[2][1], m[2][3], m[3][0], m[3][1], m[3][3]);
+		T c3 = -detail::det3x3(m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2], m[3][0], m[3][1], m[3][2]);
+		// get determinant by expanding about first column
+		T invdet = 1 / (m[0][0] * c0 + m[0][1] * c1 + m[0][2] * c2 + m[0][3] * c3);
+		// FIXME proper detect infinite determinant
+		assert(!isinf(invdet) && invdet == invdet && invdet != 0);
+		// transpose of cofactor matrix * (1 / det)
+		r[0][0] = c0 * invdet;
+		r[1][0] = c1 * invdet;
+		r[2][0] = c2 * invdet;
+		r[3][0] = c3 * invdet;
+		r[0][1] = -detail::det3x3(m[0][1], m[0][2], m[0][3], m[2][1], m[2][2], m[2][3], m[3][1], m[3][2], m[3][3]) * invdet;
+		r[1][1] =  detail::det3x3(m[0][0], m[0][2], m[0][3], m[2][0], m[2][2], m[2][3], m[3][0], m[3][2], m[3][3]) * invdet;
+		r[2][1] = -detail::det3x3(m[0][0], m[0][1], m[0][3], m[2][0], m[2][1], m[2][3], m[3][0], m[3][1], m[3][3]) * invdet;
+		r[3][1] =  detail::det3x3(m[0][0], m[0][1], m[0][2], m[2][0], m[2][1], m[2][2], m[3][0], m[3][1], m[3][2]) * invdet;
+		r[0][2] =  detail::det3x3(m[0][1], m[0][2], m[0][3], m[1][1], m[1][2], m[1][3], m[3][1], m[3][2], m[3][3]) * invdet;
+		r[1][2] = -detail::det3x3(m[0][0], m[0][2], m[0][3], m[1][0], m[1][2], m[1][3], m[3][0], m[3][2], m[3][3]) * invdet;
+		r[2][2] =  detail::det3x3(m[0][0], m[0][1], m[0][3], m[1][0], m[1][1], m[1][3], m[3][0], m[3][1], m[3][3]) * invdet;
+		r[3][2] = -detail::det3x3(m[0][0], m[0][1], m[0][2], m[1][0], m[1][1], m[1][2], m[3][0], m[3][1], m[3][2]) * invdet;
+		r[0][3] = -detail::det3x3(m[0][1], m[0][2], m[0][3], m[1][1], m[1][2], m[1][3], m[2][1], m[2][2], m[2][3]) * invdet;
+		r[1][3] =  detail::det3x3(m[0][0], m[0][2], m[0][3], m[1][0], m[1][2], m[1][3], m[2][0], m[2][2], m[2][3]) * invdet;
+		r[2][3] = -detail::det3x3(m[0][0], m[0][1], m[0][3], m[1][0], m[1][1], m[1][3], m[2][0], m[2][1], m[2][3]) * invdet;
+		r[3][3] =  detail::det3x3(m[0][0], m[0][1], m[0][2], m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2]) * invdet;
+		return r;
+	}
+
+	// transpose of matrix
+	// TODO
+	template <typename T, size_t M, size_t N>
+	inline basic_mat<T, N, M> transpose(const basic_mat<T, M, N> &m) {
+		basic_mat<T, N, M> r;
+		for (size_t j = 0; j < M; ++j)
+			for (size_t i = 0; i < N; ++i)
+				r[i][j] = m[j][i];
+		return r;
+	}
+
+	// component-wise multiplication 
+	// see (*) operator overload for matrix product
+	// TODO
+	template <typename T1, typename T2, size_t M, size_t N>
+	inline auto matrixCompMult(const basic_mat<T1, M, N> &lhs, const basic_mat<T2, M, N> &rhs) {
+		return zip_with(detail::op::mul(), lhs.data_as_vec(), rhs.data_as_vec());
+	}
+
+	// outerProduct
+	// TODO
+	template <typename T1, typename T2, size_t N>
+	inline auto outerProduct(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+		basic_mat<std::common_type_t<T1, T2>, N, N> r;
+		for (size_t j = 0; j < N; ++j)
+			for (size_t i = 0; i < N; ++i)
+				r[j][i] = lhs[j] * rhs[i];
+		return r;
+	}
+
+
+
+
+	//    ______      __    __       ___   .___________. _______ .______      .__   __.  __    ______   .__   __.     _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
+	//   /  __  \    |  |  |  |     /   \  |           ||   ____||   _  \     |  \ |  | |  |  /  __  \  |  \ |  |    |   ____||  |  |  | |  \ |  |  /      ||           ||  |  /  __  \  |  \ |  |     /       |  //
+	//  |  |  |  |   |  |  |  |    /  ^  \ `---|  |----`|  |__   |  |_)  |    |   \|  | |  | |  |  |  | |   \|  |    |  |__   |  |  |  | |   \|  | |  ,----'`---|  |----`|  | |  |  |  | |   \|  |    |   (----`  //
+	//  |  |  |  |   |  |  |  |   /  /_\  \    |  |     |   __|  |      /     |  . `  | |  | |  |  |  | |  . `  |    |   __|  |  |  |  | |  . `  | |  |         |  |     |  | |  |  |  | |  . `  |     \   \      //
+	//  |  `--'  '--.|  `--'  |  /  _____  \   |  |     |  |____ |  |\  \----.|  |\   | |  | |  `--'  | |  |\   |    |  |     |  `--'  | |  |\   | |  `----.    |  |     |  | |  `--'  | |  |\   | .----)   |     //
+	//   \_____\_____\\______/  /__/     \__\  |__|     |_______|| _| `._____||__| \__| |__|  \______/  |__| \__|    |__|      \______/  |__| \__|  \______|    |__|     |__|  \______/  |__| \__| |_______/      //
+	//                                                                                                                                                                                                            //
 	//=======================================================================================================================================================================//
 
 	//TODO
