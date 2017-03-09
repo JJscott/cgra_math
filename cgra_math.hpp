@@ -16,7 +16,8 @@
 - vector/matrix/quaternion functions
 - transform functions
 - clean up common function definitions and remove duplicates
-- generic constructor for vectors (concat etc)
+- fix generic constructor for vectors (concat etc)
+- comments and documentation
 */
 
 #pragma once
@@ -137,7 +138,7 @@ namespace cgra {
 	using vec0i = basic_vec<int,      0>;
 	using vec0u = basic_vec<unsigned, 0>;
 	using vec0b = basic_vec<bool,     0>;
-
+ 
 	using vec1f = basic_vec<float,    1>;
 	using vec1d = basic_vec<double,   1>;
 	using vec1i = basic_vec<int,      1>;
@@ -657,13 +658,13 @@ namespace cgra {
 			}
 
 			inline friend std::ostream & operator<<(std::ostream &out, const basic_vec &v) {
-				return out << '(' << v << ", ..."  << ")";
+				return out << '(' << v << ", ... , n=" << size << ")";
 			}
 		};
 	}
 
 
-	// Cols, Rows-dimensional matrix class of type T
+	// [Cols, Rows]-dimensional matrix class of type T
 	template <typename T, size_t Cols, size_t Rows>
 	class basic_mat {
 	private:
@@ -2848,7 +2849,7 @@ namespace cgra {
 	//  |  |  |  |  /  _____  \   |  |     |  |\  \----.|  |  /  .  \     |  |     |  `--'  | |  |\   | |  `----.    |  |     |  | |  `--'  | |  |\   | .----)   |     //
 	//  |__|  |__| /__/     \__\  |__|     | _| `._____||__| /__/ \__\    |__|      \______/  |__| \__|  \______|    |__|     |__|  \______/  |__| \__| |_______/      //
 	//                                                                                                                                                                 //
-	//=======================================================================================================================================================================//
+	//=================================================================================================================================================================//
 
 	namespace detail {
 		template <typename T>
@@ -2878,15 +2879,18 @@ namespace cgra {
 
 	// inverse of matrix (error if not invertible)
 	template <typename T>
-	inline basic_mat<T, 1, 1> inverse(const basic_mat<T, 1, 1> &m) {
-		//TODO
+	inline basic_mat<T, Cols, Rows> inverse(const basic_mat<T, Cols, Rows> &m) {
+		// TODO
+		return m;
 	}
 
-	// determinant of matrix
+	// inverse of matrix (error if not invertible)
 	template <typename T>
-	inline T determinant(const basic_mat<T, 2, 2> &m) {
-		return m[0][0] * m[1][1] - m[1][0] * m[0][1];
+	inline basic_mat<T, 1, 1> inverse(const basic_mat<T, 1, 1> &m) {
+		// TODO (error if not invertible)
+		return 1 / m;
 	}
+
 
 	// inverse of matrix (error if not invertible)
 	template <typename T>
@@ -2900,19 +2904,6 @@ namespace cgra {
 		r[1][0] = -m[1][0] * invdet;
 		r[1][1] =  m[0][0] * invdet;
 		return r;
-	}
-
-	// determinant of matrix
-	template <typename T>
-	inline T determinant(const basic_mat<T, 3, 3> &m) {
-		T d = 0;
-		d += m[0][0] * m[1][1] * m[2][2];
-		d += m[0][1] * m[1][2] * m[2][0];
-		d += m[0][2] * m[1][0] * m[2][1];
-		d -= m[0][0] * m[1][2] * m[2][1];
-		d -= m[0][1] * m[1][0] * m[2][2];
-		d -= m[0][2] * m[1][1] * m[2][0];
-		return d;
 	}
 
 	// inverse of matrix (error if not invertible)
@@ -2940,18 +2931,6 @@ namespace cgra {
 		return r;
 	}
 
-	//TODO
-	// determinant of matrix
-	template <typename T>
-	inline T determinant(const basic_mat<T, 4, 4> &m) {
-		T d = 0;
-		// expand about first column
-		d += m[0][0] * detail::det3x3(m[1][1], m[1][2], m[1][3], m[2][1], m[2][2], m[2][3], m[3][1], m[3][2], m[3][3]);
-		d -= m[0][1] * detail::det3x3(m[1][0], m[1][2], m[1][3], m[2][0], m[2][2], m[2][3], m[3][0], m[3][2], m[3][3]);
-		d += m[0][2] * detail::det3x3(m[1][0], m[1][1], m[1][3], m[2][0], m[2][1], m[2][3], m[3][0], m[3][1], m[3][3]);
-		d -= m[0][3] * detail::det3x3(m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2], m[3][0], m[3][1], m[3][2]);
-		return d;
-	}
 
 	// inverse of matrix (error if not invertible)
 	template <typename T>
@@ -2986,13 +2965,47 @@ namespace cgra {
 		return r;
 	}
 
+
+	// determinant of matrix
+	template <typename T>
+	inline T determinant(const basic_mat<T, 2, 2> &m) {
+		return m[0][0] * m[1][1] - m[1][0] * m[0][1];
+	}
+
+	// determinant of matrix
+	template <typename T>
+	inline T determinant(const basic_mat<T, 3, 3> &m) {
+		T d = 0;
+		d += m[0][0] * m[1][1] * m[2][2];
+		d += m[0][1] * m[1][2] * m[2][0];
+		d += m[0][2] * m[1][0] * m[2][1];
+		d -= m[0][0] * m[1][2] * m[2][1];
+		d -= m[0][1] * m[1][0] * m[2][2];
+		d -= m[0][2] * m[1][1] * m[2][0];
+		return d;
+	}
+
+	//TODO
+	// determinant of matrix
+	template <typename T>
+	inline T determinant(const basic_mat<T, 4, 4> &m) {
+		T d = 0;
+		// expand about first column
+		d += m[0][0] * detail::det3x3(m[1][1], m[1][2], m[1][3], m[2][1], m[2][2], m[2][3], m[3][1], m[3][2], m[3][3]);
+		d -= m[0][1] * detail::det3x3(m[1][0], m[1][2], m[1][3], m[2][0], m[2][2], m[2][3], m[3][0], m[3][2], m[3][3]);
+		d += m[0][2] * detail::det3x3(m[1][0], m[1][1], m[1][3], m[2][0], m[2][1], m[2][3], m[3][0], m[3][1], m[3][3]);
+		d -= m[0][3] * detail::det3x3(m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2], m[3][0], m[3][1], m[3][2]);
+		return d;
+	}
+
+
 	// transpose of matrix
 	// TODO
-	template <typename T, size_t M, size_t N>
-	inline basic_mat<T, N, M> transpose(const basic_mat<T, M, N> &m) {
-		basic_mat<T, N, M> r;
-		for (size_t j = 0; j < M; ++j)
-			for (size_t i = 0; i < N; ++i)
+	template <typename T, size_t Cols, size_t Rows>
+	inline basic_mat<T, Rows, Cols> transpose(const basic_mat<T, Rows, Cols> &m) {
+		basic_mat<T, Rows, Cols> r;
+		for (size_t j = 0; j < Cols; ++j)
+			for (size_t i = 0; i < Rows; ++i)
 				r[i][j] = m[j][i];
 		return r;
 	}
@@ -3000,8 +3013,8 @@ namespace cgra {
 	// component-wise multiplication 
 	// see (*) operator overload for matrix product
 	// TODO
-	template <typename T1, typename T2, size_t M, size_t N>
-	inline auto matrixCompMult(const basic_mat<T1, M, N> &lhs, const basic_mat<T2, M, N> &rhs) {
+	template <typename T1, typename T2, size_t Rows, size_t Cols>
+	inline auto matrixCompMult(const basic_mat<T1, Rows, Cols> &lhs, const basic_mat<T2, Rows, Cols> &rhs) {
 		return zip_with(detail::op::mul(), lhs.data_as_vec(), rhs.data_as_vec());
 	}
 
@@ -3019,6 +3032,19 @@ namespace cgra {
 
 
 
+
+	//  .___________..______          ___      .__   __.      _______. _______   ______   .______      .___  ___.     _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
+	//  |           ||   _  \        /   \     |  \ |  |     /       ||   ____| /  __  \  |   _  \     |   \/   |    |   ____||  |  |  | |  \ |  |  /      ||           ||  |  /  __  \  |  \ |  |     /       |  //
+	//  `---|  |----`|  |_)  |      /  ^  \    |   \|  |    |   (----`|  |__   |  |  |  | |  |_)  |    |  \  /  |    |  |__   |  |  |  | |   \|  | |  ,----'`---|  |----`|  | |  |  |  | |   \|  |    |   (----`  //
+	//      |  |     |      /      /  /_\  \   |  . `  |     \   \    |   __|  |  |  |  | |      /     |  |\/|  |    |   __|  |  |  |  | |  . `  | |  |         |  |     |  | |  |  |  | |  . `  |     \   \      //
+	//      |  |     |  |\  \----./  _____  \  |  |\   | .----)   |   |  |     |  `--'  | |  |\  \----.|  |  |  |    |  |     |  `--'  | |  |\   | |  `----.    |  |     |  | |  `--'  | |  |\   | .----)   |     //
+	//      |__|     | _| `._____/__/     \__\ |__| \__| |_______/    |__|      \______/  | _| `._____||__|  |__|    |__|      \______/  |__| \__|  \______|    |__|     |__|  \______/  |__| \__| |_______/      //
+	//                                                                                                                                                                                                            //
+	//============================================================================================================================================================================================================//
+
+
+
+
 	//    ______      __    __       ___   .___________. _______ .______      .__   __.  __    ______   .__   __.     _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
 	//   /  __  \    |  |  |  |     /   \  |           ||   ____||   _  \     |  \ |  | |  |  /  __  \  |  \ |  |    |   ____||  |  |  | |  \ |  |  /      ||           ||  |  /  __  \  |  \ |  |     /       |  //
 	//  |  |  |  |   |  |  |  |    /  ^  \ `---|  |----`|  |__   |  |_)  |    |   \|  | |  | |  |  |  | |   \|  |    |  |__   |  |  |  | |   \|  | |  ,----'`---|  |----`|  | |  |  |  | |   \|  |    |   (----`  //
@@ -3026,7 +3052,7 @@ namespace cgra {
 	//  |  `--'  '--.|  `--'  |  /  _____  \   |  |     |  |____ |  |\  \----.|  |\   | |  | |  `--'  | |  |\   |    |  |     |  `--'  | |  |\   | |  `----.    |  |     |  | |  `--'  | |  |\   | .----)   |     //
 	//   \_____\_____\\______/  /__/     \__\  |__|     |_______|| _| `._____||__| \__| |__|  \______/  |__| \__|    |__|      \______/  |__| \__|  \______|    |__|     |__|  \______/  |__| \__| |_______/      //
 	//                                                                                                                                                                                                            //
-	//=======================================================================================================================================================================//
+	//============================================================================================================================================================================================================//
 
 	//TODO
 
