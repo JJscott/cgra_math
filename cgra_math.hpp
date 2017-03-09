@@ -263,6 +263,152 @@ namespace cgra {
 
 #endif
 
+	// Constructor magics
+	// TODO description
+	namespace detail {
+
+		struct vec_element_ctor_tag {};
+
+		template <typename ...Seqs>
+		struct seq_cat {};
+
+		template <typename ...Seqs>
+		using seq_cat_t = typename seq_cat<Seqs...>::type;
+
+		template <typename Seq>
+		struct seq_cat<Seq> {
+			using type = Seq;
+		};
+
+		template <typename Seq0, typename Seq1, typename Seq2, typename ...Seqs>
+		struct seq_cat<Seq0, Seq1, Seq2, Seqs...> {
+			using type = seq_cat_t<seq_cat_t<Seq0, Seq1>, Seq2, Seqs...>;
+		};
+
+		template <typename T, T ...Is, T ...Js>
+		struct seq_cat<std::integer_sequence<T, Is...>, std::integer_sequence<T, Js...>> {
+			using type = std::integer_sequence<T, Is..., Js...>;
+		};
+
+		template <typename Seq, size_t N>
+		struct seq_repeat {
+			using type = seq_cat_t<Seq, typename seq_repeat<Seq, N - 1>::type>;
+		};
+
+		template <typename Seq, size_t N>
+		using seq_repeat_t = typename seq_repeat<Seq, N>::type;
+
+		template <typename Seq>
+		struct seq_repeat<Seq, 0> {
+			using type = std::integer_sequence<typename Seq::value_type>;
+		};
+
+		template <typename Seq>
+		struct seq_repeat<Seq, 1> {
+			using type = Seq;
+		};
+
+		template <typename Seq>
+		struct seq_repeat<Seq, 2> {
+			using type = seq_cat_t<Seq, Seq>;
+		};
+
+		template <typename SeqR, typename Seq0, size_t N, typename = void>
+		struct seq_trim_impl {};
+
+		template <typename SeqR, typename Seq0>
+		struct seq_trim_impl<SeqR, Seq0, 0> {
+			using type = SeqR;
+		};
+
+		template <typename T, T ...Rs, T I0, T ...Is, size_t N>
+		struct seq_trim_impl<std::integer_sequence<T, Rs...>, std::integer_sequence<T, I0, Is...>, N, std::enable_if_t<(N > 0)>> {
+			using type = typename seq_trim_impl<std::integer_sequence<T, Rs..., I0>, std::integer_sequence<T, Is...>, N - 1>::type;
+		};
+
+		template <typename Seq, size_t N>
+		struct seq_trim {
+			static_assert(N <= Seq::size(), "sequence too small");
+			using type = typename seq_trim_impl<std::integer_sequence<typename Seq::value_type>, Seq, N>::type;
+		};
+
+		template <typename Seq, size_t N>
+		using seq_trim_t = typename seq_trim<Seq, N>::type;
+
+		template <typename T>
+		struct has_array_subscript {
+			template <typename U>
+			static auto go(U u) -> decltype(u[0], std::true_type());
+			static auto go(...)->std::false_type;
+			static constexpr bool value = decltype(go(std::declval<T>()))::value;
+		};
+
+		template <typename T, bool IsVec>
+		struct cat_arg_vec_size_impl {
+			static constexpr size_t value = 1;
+		};
+
+		template <typename T>
+		struct cat_arg_vec_size_impl<T, true> {
+			static constexpr size_t value = std::decay_t<T>::size;
+		};
+
+		template <typename T>
+		struct cat_arg_vec_size {
+			static constexpr size_t value = cat_arg_vec_size_impl<T, has_array_subscript<T>::value>::value;
+		};
+
+		template <typename Seq, typename Tup>
+		struct cat_arg_seq {};
+
+		template <size_t ...Is, typename ...Ts>
+		struct cat_arg_seq<std::index_sequence<Is...>, std::tuple<Ts...>> {
+			using type = seq_cat_t<seq_repeat_t<std::index_sequence<Is>, cat_arg_vec_size<Ts>::value>...>;
+		};
+
+		template <typename Tup>
+		struct cat_val_seq {};
+
+		template <typename ...Ts>
+		struct cat_val_seq<std::tuple<Ts...>> {
+			using type = seq_cat_t<std::make_index_sequence<cat_arg_vec_size<Ts>::value>...>;
+		};
+
+		template <typename T, bool IsVec>
+		struct vec_get_impl {
+			constexpr static decltype(auto) go(T &&t, size_t) {
+				return std::forward<T>(t);
+			}
+		};
+
+		template <typename T>
+		struct vec_get_impl<T, true> {
+			constexpr static decltype(auto) go(T &&t, size_t i) {
+				return std::forward<T>(t)[i];
+			}
+		};
+
+		template <typename T>
+		constexpr decltype(auto) vec_get(T &&t, size_t i) {
+			return vec_get_impl<T, has_array_subscript<T>::value>::go(std::forward<T>(t), i);
+		}
+
+		template <typename VecT, typename ArgTupT, size_t ...Js, size_t ...Ks>
+		constexpr VecT cat_impl_impl(ArgTupT &&args, std::index_sequence<Js...>, std::index_sequence<Ks...>) {
+			return VecT(detail::vec_element_ctor_tag(), vec_get(std::get<Js>(std::forward<ArgTupT>(args)), Ks)...);
+		}
+
+		template <typename VecT, typename ...Ts>
+		constexpr VecT cat_impl(Ts &&...args) {
+			using argseq0 = typename cat_arg_seq<std::index_sequence_for<Ts...>, std::tuple<Ts...>>::type;
+			using valseq0 = typename cat_val_seq<std::tuple<Ts...>>::type;
+			// trim to size so that extra components are ignored
+			using argseq = seq_trim_t<argseq0, VecT::size>;
+			using valseq = seq_trim_t<valseq0, VecT::size>;
+			return cat_impl_impl<VecT>(std::forward_as_tuple(std::forward<Ts>(args)...), argseq(), valseq());
+		}
+
+	}
 
 	// N-dimensional vector class of type T
 	template <typename T, size_t N>
@@ -280,6 +426,10 @@ namespace cgra {
 		template <typename ...ArgTs>
 		constexpr basic_vec(ArgTs &&...args) : m_data{std::forward<ArgTs>(args)...} { }
 
+		// TODO force at least 2 args when scalar ctor is a thing
+		template <typename ...ArgTs>
+		constexpr basic_vec(ArgTs &&...args) : m_data{ detail::cat_impl<basic_vec>(std::forward<ArgTs>(args)...).m_data } {}
+
 		T & operator[](size_t i) {
 			assert(i < N);
 			return m_data[i];
@@ -295,10 +445,10 @@ namespace cgra {
 		constexpr const T * data() const { return &m_data[0]; }
 
 		inline friend std::ostream & operator<<(std::ostream &out, const basic_vec &v) {
-			return out << '(' << v[0];
+			out << '(' << v[0];
 			for (size_t i = 1; i < N; ++i)
 				out << ", " << v[i];
-			out << ')';
+			return out << ')';
 		}
 	};
 
