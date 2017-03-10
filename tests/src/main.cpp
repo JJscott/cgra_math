@@ -3,8 +3,9 @@
 #include <cgra_math.hpp>
 
 #include "cgra_math.hpp"
+#include "math_test.hpp"
 
 int main() {
 	std::cout << "Hello World" << std::endl;
-	// run_tests();
+	test::run_tests();
 }

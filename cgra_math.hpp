@@ -161,7 +161,7 @@ namespace cgra {
 		result_type operator()(Generator& g, param_type param) {
 			result_type r;
 			for (int i = 0; i < r.size; ++i)
-				r[i] = m_elem_dist(g, m_elem_dist.param_type(param.min(), param.max()));
+				r[i] = m_elem_dist(g, typename elem_dist_type::param_type(param.a()[i], param.b()[i]));
 			return r;
 		}
 
@@ -2247,7 +2247,7 @@ namespace cgra {
 	// Results are undefined if x and y are both 0
 	template <typename T1, typename T2, size_t N>
 	inline auto atan(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-		return zip_with([](auto &&x) { return atan2(decltype(x)(x)); }, v2, v1);
+		return zip_with([](auto &&x, auto &&y) { return atan2(decltype(x)(x), decltype(y)(y)); }, v2, v1);
 	}
 
 	using std::atan;
@@ -2419,7 +2419,7 @@ namespace cgra {
 	// Results are undefined if x = 0 and y <= 0
 	template <typename T1, typename T2, size_t N>
 	inline auto pow(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-		return zip_with(pow, v1, v2);
+		return zip_with([](auto &&x, auto &&y) { return pow(decltype(x)(x), decltype(y)(y)); }, v1, v2);
 	}
 
 	using std::exp;
@@ -2428,7 +2428,7 @@ namespace cgra {
 	// Returns the natural exponentiation of x, i.e., e^x
 	template <typename T, size_t N>
 	inline basic_vec<T, N> exp(const basic_vec<T, N> &v) {
-		return zip_with(exp, v);
+		return zip_with([](auto &&x) { return exp(decltype(x)(x)); }, v);
 	}
 
 	using std::log;
@@ -2438,14 +2438,14 @@ namespace cgra {
 	// Results are undefined if x <= 0.
 	template <typename T, size_t N>
 	inline basic_vec<T, N> log(const basic_vec<T, N> &v) {
-		return zip_with(log, v);
+		return zip_with([](auto &&x) { return log(decltype(x)(x)); }, v);
 	}
 
 	// exp2 for both scalar x or elements in vector x
 	// Returns 2 raised to the x power, i.e., 2^x
 	template <typename T>
 	inline T exp2(const T &x) {
-		return pow(T(2), x);
+		return zip_with([](auto &&x) { return pow(decltype(x)(2), decltype(x)(x)); }, x);
 	}
 
 	// log2 for both scalar x or elements in vector x
@@ -2464,7 +2464,7 @@ namespace cgra {
 	// Results are undefined if x < 0
 	template <typename T, size_t N>
 	inline basic_vec<T, N> sqrt(const basic_vec<T, N> &v) {
-		return zip_with(sqrt, v);
+		return zip_with([](auto &&x) { return sqrt(decltype(x)(x)); }, v);
 	}
 
 	// inversesqrt for both scalar x or elements in vector x
@@ -2472,7 +2472,7 @@ namespace cgra {
 	// Results are undefined if x < 0
 	template <typename T>
 	inline T inversesqrt(const T &x) {
-		return checknan(T(1)/sqrt(x));
+		return T(1) / sqrt(x);
 	}
 
 
@@ -2492,7 +2492,7 @@ namespace cgra {
 	// Returns x if x >= 0; otherwise it returns –x
 	template <typename T, size_t N>
 	inline basic_vec<T, N> abs(const basic_vec<T, N> &v) {
-		return zip_with(abs, v);
+		return zip_with([](auto &&x) { return abs(decltype(x)(x)); }, v);
 	}
 
 	// Returns 1 if x > 0, 0 if x = 0, or –1 if x < 0
@@ -2505,7 +2505,7 @@ namespace cgra {
 	// Returns 1 if x > 0, 0 if x = 0, or –1 if x < 0
 	template <typename T, size_t N>
 	inline basic_vec<T, N> sign(const basic_vec<T, N> &v) {
-		return zip_with(sign, v);
+		return zip_with([](auto &&x) { return sign(decltype(x)(x)); }, v);
 	}
 
 	using std::floor;
@@ -2514,7 +2514,7 @@ namespace cgra {
 	// Returns a value equal to the nearest integer that is less than or equal to x
 	template <typename T, size_t N>
 	inline basic_vec<T, N> floor(const basic_vec<T, N> &v) {
-		return zip_with(floor, v);
+		return zip_with([](auto &&x) { return floor(decltype(x)(x)); }, v);
 	}
 
 	//TODO trunc
@@ -2543,7 +2543,7 @@ namespace cgra {
 	// absolute value is not larger than the absolute value of x
 	template <typename T, size_t N>
 	inline basic_vec<T, N> ceil(const basic_vec<T, N> &v) {
-		return zip_with(ceil, v);
+		return zip_with([](auto &&x) { return ceil(decltype(x)(x)); }, v);
 	}
 
 	// fract for both scalar x or elements in vector x
@@ -2578,7 +2578,7 @@ namespace cgra {
 	template <typename T1, size_t N, typename T2, typename=std::enable_if_t<std::is_arithmetic<T2>::value>>
 	inline auto min(const basic_vec<T1, N> &v, T2 y) {
 		using common_t = std::common_type_t<T1, T2>;
-		return zip_with([](auto &&x, auto &&y) { return min<common_t>(decltype(x)(x), decltype(y)(y)); }, v, y);
+		return zip_with([](auto &&x, auto &&y) { return min<common_t>(decltype(x)(x), decltype(y)(y)); }, v, basic_vec<T2, N>(y));
 	}
 
 	// Element-wise function for x in v1 and y in v2
@@ -2605,7 +2605,7 @@ namespace cgra {
 	template <typename T1, size_t N, typename T2, typename=std::enable_if_t<std::is_arithmetic<T2>::value>>
 	inline auto max(const basic_vec<T1, N> &v, T2 y) {
 		using common_t = std::common_type_t<T1, T2>;
-		return zip_with([](auto &&x, auto &&y) { return max<common_t>(decltype(x)(x), decltype(y)(y)); }, v, y);
+		return zip_with([](auto &&x, auto &&y) { return max<common_t>(decltype(x)(x), decltype(y)(y)); }, v, basic_vec<T2, N>(y));
 	}
 
 	// Element-wise function for x in v1 and y in v2
