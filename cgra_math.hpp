@@ -23,9 +23,11 @@
 
 #pragma once
 
-#include <cassert> // assert, static_assert
-#include <algorithm>
+#include <cassert> // assert
 #include <cmath>
+
+#include <algorithm>
+#include <array>
 #include <iomanip>
 #include <iostream>
 #include <limits>
@@ -585,7 +587,7 @@ namespace cgra {
 	template <typename T, size_t N>
 	class basic_vec {
 	private:
-		T m_data[N];
+		std::array<T, N> m_data;
 
 	public:
 		using value_t = T;
@@ -594,9 +596,12 @@ namespace cgra {
 		// TODO more constructors
 		constexpr basic_vec() { }
 
+		template <typename ...ArgTs>
+		constexpr basic_vec(detail::vec_element_ctor_tag, ArgTs &&...args) : m_data{std::forward<ArgTs>(args)...} { }
+
 		// TODO force at least 2 args when scalar ctor is a thing
 		template <typename ...ArgTs>
-		constexpr basic_vec(ArgTs &&...args) : m_data{detail::cat_impl<basic_vec>(std::forward<ArgTs>(args)...).m_data} {}
+		constexpr basic_vec(ArgTs &&...args) : basic_vec(detail::cat_impl<basic_vec>(std::forward<ArgTs>(args)...)) { }
 
 		T & operator[](size_t i) {
 			assert(i < N);
@@ -662,10 +667,11 @@ namespace cgra {
 		union{ T x; T r; T s; };
 
 		constexpr basic_vec() : x(0) { }
-		constexpr explicit basic_vec(T s) : x(s) { }
-		constexpr explicit basic_vec(const T *p) : x(p[0]) { }
-		template <typename U>
-		constexpr basic_vec(const basic_vec<U, 1> &v) : x(v.x) { }
+
+		constexpr explicit basic_vec(detail::vec_element_ctor_tag, T s) : x(s) { }
+		
+		template <typename ...ArgTs>
+		constexpr basic_vec(ArgTs &&...args) : basic_vec(detail::cat_impl<basic_vec>(std::forward<ArgTs>(args)...)) { }
 
 		T & operator[](size_t i) {
 			assert(i < 1);
@@ -698,11 +704,11 @@ namespace cgra {
 		union{ T y; T g; T t; };
 
 		constexpr basic_vec() : x(0), y(0) { }
-		constexpr basic_vec(T _x, T _y) : x(_x), y(_y) { }
-		constexpr explicit basic_vec(T s) : x(s), y(s) { }
-		constexpr explicit basic_vec(const T *p) : x(p[0]), y(p[1]) { }
-		template <typename U>
-		constexpr basic_vec(const basic_vec<U, 2> &v) : x(v.x), y(v.y) { }
+
+		constexpr basic_vec(detail::vec_element_ctor_tag, T _x, T _y) : x(_x), y(_y) { }
+
+		template <typename ...ArgTs>
+		constexpr basic_vec(ArgTs &&...args) : basic_vec(detail::cat_impl<basic_vec>(std::forward<ArgTs>(args)...)) { }
 
 		T & operator[](size_t i) {
 			assert(i < 2);
@@ -736,11 +742,11 @@ namespace cgra {
 		union{ T z; T b; T p; };
 
 		constexpr basic_vec() : x(0), y(0), z(0) { }
-		constexpr basic_vec(T _x, T _y, T _z) : x(_x), y(_y), z(_z) { }
-		constexpr explicit basic_vec(T s) : x(s), y(s), z(s) { }
-		constexpr explicit basic_vec(const T *p) : x(p[0]), y(p[1]), z(p[2]) { }
-		template <typename U>
-		constexpr basic_vec(const basic_vec<U, 3> &v) : x(v.x), y(v.y), z(v.z) { }
+		
+		constexpr basic_vec(detail::vec_element_ctor_tag, T _x, T _y, T _z) : x(_x), y(_y), z(_z) { }
+		
+		template <typename ...ArgTs>
+		constexpr basic_vec(ArgTs &&...args) : basic_vec(detail::cat_impl<basic_vec>(std::forward<ArgTs>(args)...)) { }
 
 		T & operator[](size_t i) {
 			assert(i < 3);
@@ -775,11 +781,11 @@ namespace cgra {
 		union{ T w; T a; T q; };
 
 		constexpr basic_vec() : x(0), y(0), z(0), w(0) { }
-		constexpr basic_vec(T _x, T _y, T _z, T _w) : x(_x), y(_y), z(_z), w(_w) { }
-		constexpr explicit basic_vec(T s) : x(s), y(s), z(s), w(s) { }
-		constexpr explicit basic_vec(const T *p) : x(p[0]), y(p[1]), z(p[2]), w(p[3]) { }
-		template <typename U>
-		constexpr basic_vec(const basic_vec<U, 4> &v) : x(v.x), y(v.y), z(v.z), w(v.w) { }
+		
+		constexpr basic_vec(detail::vec_element_ctor_tag, T _x, T _y, T _z, T _w) : x(_x), y(_y), z(_z), w(_w) { }
+		
+		template <typename ...ArgTs>
+		constexpr basic_vec(ArgTs &&...args) : basic_vec(detail::cat_impl<basic_vec>(std::forward<ArgTs>(args)...)) { }
 
 		T & operator[](size_t i) {
 			assert(i < 4);
