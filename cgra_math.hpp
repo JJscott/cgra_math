@@ -60,6 +60,7 @@ namespace cgra {
 	template <typename, size_t> class basic_vec;
 	template <typename, size_t, size_t> class basic_mat;
 	template <typename> class basic_quat;
+	
 
 	// pi
 	constexpr double pi = 3.1415926535897932384626433832795;

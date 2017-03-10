@@ -70,7 +70,10 @@ void floating_point_vec_test() {
 
 		// Operator overloads
 		//
-		test_true(almost_equal(-(-a), a),			"negation (double negation)");
+		test_true(a == a),	"equality (identity)");
+		test_true(a != b),	"inequality (non-identity)");
+
+		test_true(almost_equal(-(-a), a),	"negation (double negation)");
 
 		test_true(almost_equal(a+b, b+a),			"addition (commutativity)");
 		test_true(almost_equal(a+(b+c), (a+b)+c),	"addition (associativity)");
@@ -92,11 +95,16 @@ void floating_point_vec_test() {
 		test_true(almost_equal((a+b)/c, a/c + b/c),		"division (right distributive)");
 		test_false(almost_equal(a/(b+c), a/b + a/c),	"division (left antidistributive)");
 
+		// TODO
+		// += -= *= /= %= <<= >>= |= ^= &=
+		// % << >> ! || && ~ | ^ & <
 
 		// Angle and Trigonometry Functions
 		// 
 		test_true(almost_equal(degrees(radians(a)), a), "degrees / radians");
 		test_true(almost_equal(radians(degrees(a)), a), "radians / degrees");
+		
+		//TODO angle
 
 		test_true(almost_equal(asin(sin(pi * a/2)), pi * a/2),	"trigonometry (sin double inverse)");
 		test_true(almost_equal(acos(cos(pi * pos)), pi * pos),	"trigonometry (cos double inverse)");
@@ -112,7 +120,9 @@ void floating_point_vec_test() {
 		test_true(almost_equal(sin(a)*sin(a) + cos(a)*cos(a), one),							"trigonometry (sin-cos pythagorean)");
 		test_true(almost_equal(one+tan(a)*tan(a), (one/cos(a))*(one/cos(a))),				"trigonometry (tan-sec pythagorean)");
 		test_true(almost_equal(one+(one/tan(a))*(one/tan(a)), (one/sin(a))*(one/sin(a))),	"trigonometry (tan-sec pythagorean)");
-
+		
+		// TODO csc, sec, cot, acsc, asec, acot
+		// TODO all h-variants
 
 		// Exponential Functions
 		// 
@@ -133,7 +143,7 @@ void floating_point_vec_test() {
 		// Common Functions
 		// 
 		test_true(almost_equal(abs(a), abs(-a)),	"abs  (absolute and negation)");
-		test_true(almost_equal(sign(zero), zero),			"sign (sign of zero is zero)");
+		test_true(almost_equal(sign(zero), zero),	"sign (sign of zero is zero)");
 		test_true(almost_equal(sign(a)*abs(a), a),	"sign (sign multiplied by absolute)");
 
 		test_true(all(lessThanEqual(floor(a), a)),		"floor / all / lessThanEqual (less than equal floor)");
@@ -141,9 +151,11 @@ void floating_point_vec_test() {
 		test_true(all(greaterThanEqual(ceil(a), a)),	"ceil / all / greaterThanEqual (greater than equal floor)");
 		test_true(almost_equal(fract(ceil(a)), zero),	"ceil / fract (zero fractional component)");
 
+		// TODO trunc round roundEven
 
 		test_true(almost_equal(mod(pos+one, so), fract(pos)),	"mod scalar / fract (mod 1 fractional part)");
 		test_true(almost_equal(mod(pos+one, one),  fract(pos)),	"mod vector / fract (mod 1 fractional part)");
+		// TODO modf
 
 		test_true(all(lessThanEqual(min(a,sa), a)) && all(lessThanEqual(min(a,sa), vec_t(sa))),			"min scalar (less than equality)");
 		test_true(all(lessThanEqual(min(a,b), a)) && all(lessThanEqual(min(a,b), b)),					"min vector (less than equality)");
@@ -152,12 +164,27 @@ void floating_point_vec_test() {
 		test_true(almost_equal(min(a,sa)+max(a,sa),  a+sa),		"min / max scalar (summation equality)");
 		test_true(almost_equal(min(a,b)+max(a,b),  a+b),		"min / max vector (summation equality)");
 
-
 		test_true(almost_equal(mix(a, a, sa), a),						"mix scalar (identity)");
 		test_true(almost_equal(mix(a, b, sa) + mix(b, a, sa), a+b),		"mix scalar (summation equality)");
 		test_true(almost_equal(mix(a, a, pos), a),						"mix scalar (identity)");
 		test_true(almost_equal(mix(a, b, pos) + mix(b, a, pos), a+b),	"mix scalar (summation equality)");
 
+		// TODO step, smoothstep, isnan, isinf
+		// TODO floatBitsToInt floatBitsToUint intBitsToFloat uintBitsToFloat
+		// TODO fma frexp ldexp
+		// TODO sum product
+
+
+		// Geometric Functions
+		//
+		// TODO length distance dot normalize
+		// TODO faceforward reflect refract project reject
+
+		// Relational Functions
+		//
+		test_true(all(notEqual(lessThan(a, b), greaterThanEqual(a, b))),	"all lessThan / greaterThanEqual (exclusivity)");
+		test_true(all(notEqual(lessThanEqual(a, b), greaterThan(a, b))),	"all lessThanEqual / greaterThan (exclusivity)");
+		// TODO any all equal notEqual (and another test for lessThen etc.)
 
 	}
 
@@ -173,16 +200,16 @@ void floating_point_vec_test() {
 void vector_tests() {
 
 	
-	// floating_point_vec_test<float, 1>();
-	// floating_point_vec_test<float, 2>();
+	floating_point_vec_test<float, 1>();
+	floating_point_vec_test<float, 2>();
 	floating_point_vec_test<float, 3>();
-	// floating_point_vec_test<float, 4>();
-	// floating_point_vec_test<float, 5>();
-	// floating_point_vec_test<double, 1>();
-	// floating_point_vec_test<double, 2>();
-	// floating_point_vec_test<double, 3>();
-	// floating_point_vec_test<double, 4>();
-	// floating_point_vec_test<double, 5>();
+	floating_point_vec_test<float, 4>();
+	floating_point_vec_test<float, 5>();
+	floating_point_vec_test<double, 1>();
+	floating_point_vec_test<double, 2>();
+	floating_point_vec_test<double, 3>();
+	floating_point_vec_test<double, 4>();
+	floating_point_vec_test<double, 5>();
 
 }
 

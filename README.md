@@ -23,6 +23,7 @@ Array subscript operator allows you to access the matrix by column then row (x t
 # Documentation
 
 * [Scalars](#scalars)
+* [Random](#random)
 * [Data Structures](#data-structures)
 * [Operator Overloads](#operator-overloads)
 * [Angle and Trigonometry Functions](#angle-and-trigonometry-functions)
@@ -39,6 +40,8 @@ Array subscript operator allows you to access the matrix by column then row (x t
 
 
 ## Scalars
+
+## Random
 
 ## Data Structures
 
