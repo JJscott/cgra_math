@@ -18,6 +18,7 @@
 - clean up common function definitions and remove duplicates
 - fix generic constructor for vectors (concat etc)
 - comments and documentation
+- create inputstream operators for data types to recreate from output
 */
 
 #pragma once
@@ -53,7 +54,10 @@
 
 namespace cgra {
 
-
+	// Forward declarations
+	template <typename, size_t> class basic_vec;
+	template <typename, size_t, size_t> class basic_mat;
+	template <typename> class basic_quat;
 
 	// pi
 	constexpr double pi = 3.1415926535897932384626433832795;
@@ -78,29 +82,201 @@ namespace cgra {
 		return std::numeric_limits<T>::quiet_NaN();
 	}
 
+
+
+
+
+
+	//TODO insert lol RANDOM xD header here
+
+	//  .______          ___      .__   __.  _______   ______   .___  ___.  //
+	//  |   _  \        /   \     |  \ |  | |       \ /  __  \  |   \/   |  //
+	//  |  |_)  |      /  ^  \    |   \|  | |  .--.  |  |  |  | |  \  /  |  //
+	//  |      /      /  /_\  \   |  . `  | |  |  |  |  |  |  | |  |\/|  |  //
+	//  |  |\  \----./  _____  \  |  |\   | |  '--'  |  `--'  | |  |  |  |  //
+	//  | _| `._____/__/     \__\ |__| \__| |_______/ \______/  |__|  |__|  //
+	//                                                                      //
+	//======================================================================//
+
+	namespace detail {
+
+		template <typename T, typename = void>
+		struct distribution {};
+
+		template <typename T>
+		using distribution_t = typename distribution<T>::type;
+
+	}
+
+	template <typename T, size_t N>
+	class uniform_vec_distribution {
+	public:
+		using result_type = basic_vec<T, N>;
+		using elem_dist_type = detail::distribution_t<T>;
+
+		class param_type {
+		private:
+			result_type m_a;
+			result_type m_b;
+
+		public:
+			param_type(const result_type &a = result_type(0), const result_type &b = result_type(1)) : m_a(a), m_b(b) { }
+
+			result_type const a() { return m_a; }
+			result_type const b() { return m_b; }
+
+			friend bool operator==(const param_type &p1, const param_type &p2) {
+				return p1.m_a == p2.m_a && p1.m_b == p2.m_b;
+			}
+		};
+
+	private:
+		param_type m_param;
+		elem_dist_type m_elem_dist;
+
+	public: 
+		uniform_vec_distribution(const result_type &a = result_type(0), const result_type &b = result_type(1)) : m_param(a, b) { }
+		uniform_vec_distribution(const param_type& param) : m_param(param) { }
+
+		result_type const a() { return m_param.a(); }
+		result_type const b() { return m_param.b(); }
+
+		void reset() { }
+
+		param_type const param() { return m_param; }
+		
+		void param(const param_type &param) { m_param = param; }
+
+		result_type const min() { return this->a(); }
+		result_type const max() { return this->b(); }
+
+		template <typename Generator>
+		result_type operator()(Generator& g) {
+			return (*this)(g, this->param());
+		}
+
+		template <typename Generator>
+		result_type operator()(Generator& g, param_type param) {
+			result_type r;
+			for (int i = 0; i < r.size; ++i)
+				r[i] = m_elem_dist(g, m_elem_dist.param_type(param.min(), param.max()));
+			return r;
+		}
+
+		//TODO 
+		// == != << >>
+	};
+
+	template <typename T, size_t Cols, size_t Rows>
+	class uniform_mat_distribution {
+	public:
+		using result_type = basic_mat<T, Cols, Rows>;
+		using elem_dist_type = detail::distribution_t<T>;
+
+		class param_type {
+		private:
+			result_type m_a;
+			result_type m_b;
+
+		public:
+			param_type(const result_type &a = result_type(0), const result_type &b = result_type(1)) : m_a(a), m_b(b) { }
+
+			result_type const a() { return m_a; }
+			result_type const b() { return m_b; }
+
+			friend bool operator==(const param_type &p1, const param_type &p2) {
+				return p1.m_a == p2.m_a && p1.m_b == p2.m_b;
+			}
+		};
+
+	private:
+		param_type m_param;
+		elem_dist_type m_elem_dist;
+
+	public: 
+		uniform_mat_distribution(const result_type &a = result_type(0), const result_type &b = result_type(1)) : m_param(a, b) { }
+		uniform_mat_distribution(const param_type& param) : m_param(param) { }
+
+		result_type const a() { return m_param.a(); }
+		result_type const b() { return m_param.b(); }
+
+		void reset() { }
+
+		param_type const param() { return m_param; }
+		
+		void param(const param_type &param) { m_param = param; }
+
+		result_type const min() { return this->a(); }
+		result_type const max() { return this->b(); }
+
+		template <typename Generator>
+		result_type operator()(Generator& g) {
+			return (*this)(g, this->param());
+		}
+
+		template <typename Generator>
+		result_type operator()(Generator& g, param_type param) {
+			result_type r;
+			for (int j = 0; j < r.cols; ++j)
+				for (int i = 0; i < r.rows; ++i)
+					r[j][i] = m_elem_dist(g, m_elem_dist.param_type(param.min(), param.max()));
+			return r;
+		}
+
+		//TODO 
+		// == != << >>
+	};
+
+	template <typename T>
+	class uniform_quat_distribution {
+
+	};
+
+
+	// distribution specializations
+	namespace detail {
+
+		template <typename T>
+		struct distribution<T, std::enable_if_t<std::is_integral<T>::value>> {
+			using type = std::uniform_int_distribution<
+				std::conditional_t<
+					sizeof(T) < sizeof(short),
+					std::conditional_t<
+						std::is_signed<T>::value,
+						short,
+						unsigned short
+					>,
+					T
+				>
+			>;
+		};
+
+		template <typename T>
+		struct distribution<T, std::enable_if_t<std::is_floating_point<T>::value>> {
+			using type = std::uniform_real_distribution<T>;
+		};
+
+		template <typename T, size_t N>
+		struct distribution<basic_vec<T, N>> {
+			using type = uniform_vec_distribution<T, N>;
+		};
+
+		template <typename T, size_t Cols, size_t Rows>
+		struct distribution<basic_mat<T, Cols, Rows>> {
+			using type = uniform_mat_distribution<T, Cols, Rows>;
+		};
+
+		template <typename T>
+		struct distribution<basic_quat<T>> {
+			using type = uniform_quat_distribution<T>;
+		};
+	}
+
 	// return a random value of T in range [lower, upper)
 	template <typename T>
 	inline T random(T lower, T upper) {
 		// create a distrubution object based on the type T
-		using dist_t = std::conditional_t<
-			std::is_floating_point<T>::value,
-			std::uniform_real_distribution<T>,
-			std::conditional_t<
-				std::is_integral<T>::value,
-				std::uniform_int_distribution<
-					std::conditional_t<
-						sizeof(T) < sizeof(short),
-						std::conditional_t<
-							std::is_signed<T>::value,
-							short,
-							unsigned short
-						>,
-						T
-					>
-				>,
-				void
-			>
-		>;
+		using dist_t = detail::distribution_t<T>;
 		static thread_local std::default_random_engine re { std::random_device()() };
 		dist_t dist(lower, upper);
 		return dist(re);
@@ -122,12 +298,6 @@ namespace cgra {
 //  |_______/ /__/     \__\  |__|    /__/     \__\    |_______/       |__|     | _| `._____| \______/   \______|    |__|      \______/  | _| `._____||_______|_______/      //
 //                                                                                                                                                                          //
 //==========================================================================================================================================================================//
-
-	// Forward declarations
-
-	template <typename, size_t> class basic_vec;
-	template <typename, size_t, size_t> class basic_mat;
-	template <typename> class basic_quat;
 
 	// Aliases
 	// 
@@ -424,12 +594,9 @@ namespace cgra {
 		// TODO more constructors
 		constexpr basic_vec() { }
 
-		template <typename ...ArgTs>
-		constexpr basic_vec(ArgTs &&...args) : m_data{std::forward<ArgTs>(args)...} { }
-
 		// TODO force at least 2 args when scalar ctor is a thing
 		template <typename ...ArgTs>
-		constexpr basic_vec(ArgTs &&...args) : m_data{ detail::cat_impl<basic_vec>(std::forward<ArgTs>(args)...).m_data } {}
+		constexpr basic_vec(ArgTs &&...args) : m_data{detail::cat_impl<basic_vec>(std::forward<ArgTs>(args)...).m_data} {}
 
 		T & operator[](size_t i) {
 			assert(i < N);
@@ -635,7 +802,7 @@ namespace cgra {
 
 	namespace detail {
 		// A specialised vector that repeats the same element at every index up to N
-		template<typename T, N>
+		template<typename T, size_t N>
 		class repeat_vec {
 		private:
 			T v;
@@ -657,7 +824,7 @@ namespace cgra {
 				return v;
 			}
 
-			inline friend std::ostream & operator<<(std::ostream &out, const basic_vec &v) {
+			inline friend std::ostream & operator<<(std::ostream &out, const repeat_vec &v) {
 				return out << '(' << v << ", ... , n=" << size << ")";
 			}
 		};
@@ -2455,8 +2622,8 @@ namespace cgra {
 	// clamp for both scalar a, minVal, maxVal or elements in vector a, minVal, maxVal
 	// Returns min(max(x, minVal), maxVal)
 	// Results are undefined if minVal > maxVal
-	template <typename T1, typename T1, typename T3>
-	inline auto clamp(const T &a, const T &minVal, const T &maxVal) {
+	template <typename T1, typename T2, typename T3>
+	inline auto clamp(const T1 &a, const T2 &minVal, const T3 &maxVal) {
 		return min(max(a, minVal), maxVal);
 	}
 
@@ -2878,8 +3045,8 @@ namespace cgra {
 	}
 
 	// inverse of matrix (error if not invertible)
-	template <typename T>
-	inline basic_mat<T, Cols, Rows> inverse(const basic_mat<T, Cols, Rows> &m) {
+	template <typename T, size_t N>
+	inline basic_mat<T, N, N> inverse(const basic_mat<T, N, N> &m) {
 		// TODO
 		return m;
 	}
@@ -2911,9 +3078,9 @@ namespace cgra {
 	inline basic_mat<T, 3, 3> inverse(const basic_mat<T, 3, 3> &m) {
 		basic_mat<T, 3, 3> r;
 		// first column of cofactors, can use for determinant
-		T c00 = matrix3<T>::det2x2(m[1][1], m[1][2], m[2][1], m[2][2]);
-		T c01 = -matrix3<T>::det2x2(m[1][0], m[1][2], m[2][0], m[2][2]);
-		T c02 = matrix3<T>::det2x2(m[1][0], m[1][1], m[2][0], m[2][1]);
+		T c00 =  detail::det2x2(m[1][1], m[1][2], m[2][1], m[2][2]);
+		T c01 = -detail::det2x2(m[1][0], m[1][2], m[2][0], m[2][2]);
+		T c02 =  detail::det2x2(m[1][0], m[1][1], m[2][0], m[2][1]);
 		// get determinant by expanding about first column
 		T invdet = 1 / (m[0][0] * c00 + m[0][1] * c01 + m[0][2] * c02);
 		// FIXME proper detect infinite determinant
@@ -2935,7 +3102,7 @@ namespace cgra {
 	// inverse of matrix (error if not invertible)
 	template <typename T>
 	inline basic_mat<T, 4, 4> inverse(const basic_mat<T, 4, 4> &m) {
-		basic_mat<T, 4, 4><T> r;
+		basic_mat<T, 4, 4> r;
 		// first column of cofactors, can use for determinant
 		T c0 =  detail::det3x3(m[1][1], m[1][2], m[1][3], m[2][1], m[2][2], m[2][3], m[3][1], m[3][2], m[3][3]);
 		T c1 = -detail::det3x3(m[1][0], m[1][2], m[1][3], m[2][0], m[2][2], m[2][3], m[3][0], m[3][2], m[3][3]);
