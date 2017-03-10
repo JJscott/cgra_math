@@ -70,8 +70,8 @@ void floating_point_vec_test() {
 
 		// Operator overloads
 		//
-		test_true(a == a),	"equality (identity)");
-		test_true(a != b),	"inequality (non-identity)");
+		test_true(a == a,	"equality (identity)");
+		test_true(a != b,	"inequality (non-identity)");
 
 		test_true(almost_equal(-(-a), a),	"negation (double negation)");
 
@@ -200,16 +200,16 @@ void floating_point_vec_test() {
 void vector_tests() {
 
 	
-	floating_point_vec_test<float, 1>();
+	// floating_point_vec_test<float, 1>();
 	floating_point_vec_test<float, 2>();
-	floating_point_vec_test<float, 3>();
-	floating_point_vec_test<float, 4>();
-	floating_point_vec_test<float, 5>();
-	floating_point_vec_test<double, 1>();
-	floating_point_vec_test<double, 2>();
-	floating_point_vec_test<double, 3>();
-	floating_point_vec_test<double, 4>();
-	floating_point_vec_test<double, 5>();
+	// floating_point_vec_test<float, 3>();
+	// floating_point_vec_test<float, 4>();
+	// floating_point_vec_test<float, 5>();
+	// floating_point_vec_test<double, 1>();
+	// floating_point_vec_test<double, 2>();
+	// floating_point_vec_test<double, 3>();
+	// floating_point_vec_test<double, 4>();
+	// floating_point_vec_test<double, 5>();
 
 }
 
