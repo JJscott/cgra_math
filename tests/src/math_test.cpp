@@ -50,8 +50,8 @@ void floating_point_vec_test() {
 		vec_t nb = normalize(b);
 		vec_t nc = normalize(c);
 
-		vec_t pos = random<vec_t>(vec_t(-1), vec_t(1));
-		vec_t neg = random<vec_t>(vec_t(-1), vec_t(1));
+		vec_t pos = random<vec_t>(vec_t(0), vec_t(1));
+		vec_t neg = random<vec_t>(vec_t(-1), vec_t(0));
 
 		// random scalars
 		T sa = random<T>(-1, 1);
@@ -66,6 +66,13 @@ void floating_point_vec_test() {
 		// set scalars
 		// T sz = T(0);
 		T so = T(1);
+
+
+		// TODO remove this debug stuff later
+		//cout << endl <<  "a=" << a << endl;
+		//cout << "b=" << b << endl;
+		//cout << "c=" << c << endl;
+		//cout << "pos=" << pos << endl;
 
 
 		// Operator overloads
