@@ -441,150 +441,171 @@ namespace cgra {
 	// TODO description
 	namespace detail {
 
+		// note: msvc has some trouble with expansion of template (type) parameter packs that result in integers,
+		// so we use integral_constant-like types instead (especially for seq_repeat, make_index_sequence).
+
+		template <typename ...Ts>
+		using void_t = void;
+
+		template <size_t X>
+		using index_constant = std::integral_constant<size_t, X>;
+
 		struct vec_element_ctor_tag {};
-	
+
 		template <typename VecT, typename T, typename = void>
 		struct is_relatively_scalar : std::false_type {};
-		
-		// TODO void_t is c++17
+
 		template <typename VecT, typename T>
-		struct is_relatively_scalar<VecT, T, std::void_t<typename std::decay_t<VecT>::value_t>> :
+		struct is_relatively_scalar<VecT, T, void_t<typename std::decay_t<VecT>::value_t>> :
 			std::is_convertible<T, typename std::decay_t<VecT>::value_t>
 		{};
-		
+
 		template <typename VecT0, typename VecT1, typename = void, typename = void>
 		struct is_relatively_vector : std::true_type {};
-		
+
 		template <typename VecT0, typename VecT1, typename X>
-		struct is_relatively_vector<VecT0, VecT1, std::void_t<typename std::decay_t<VecT0>::value_t>, X> : std::false_type {};
-		
+		struct is_relatively_vector<VecT0, VecT1, void_t<typename std::decay_t<VecT0>::value_t>, X> : std::false_type {};
+
 		template <typename VecT0, typename VecT1, typename X>
-		struct is_relatively_vector<VecT0, VecT1, X, std::void_t<typename std::decay_t<VecT1>::value_t>> : std::false_type {};
-		
+		struct is_relatively_vector<VecT0, VecT1, X, void_t<typename std::decay_t<VecT1>::value_t>> : std::false_type {};
+
 		template <typename VecT0, typename VecT1>
-		struct is_relatively_vector<VecT0, VecT1, std::void_t<typename std::decay_t<VecT0>::value_t>, std::void_t<typename std::decay_t<VecT1>::value_t>> :
+		struct is_relatively_vector<VecT0, VecT1, void_t<typename std::decay_t<VecT0>::value_t>, void_t<typename std::decay_t<VecT1>::value_t>> :
 			std::integral_constant<bool,
-				std::is_convertible<typename std::decay_t<VecT1>::value_t, typename std::decay_t<VecT0>::value_t>::value
+			std::is_convertible<typename std::decay_t<VecT1>::value_t, typename std::decay_t<VecT0>::value_t>::value
 			>
 		{};
-		
+
 		template <typename ...Seqs>
 		struct seq_cat {};
-		
+
 		template <typename ...Seqs>
 		using seq_cat_t = typename seq_cat<Seqs...>::type;
-		
+
 		template <typename Seq>
 		struct seq_cat<Seq> {
 			using type = Seq;
 		};
-		
+
 		template <typename Seq0, typename Seq1, typename Seq2, typename ...Seqs>
 		struct seq_cat<Seq0, Seq1, Seq2, Seqs...> {
 			using type = seq_cat_t<seq_cat_t<Seq0, Seq1>, Seq2, Seqs...>;
 		};
-		
+
 		template <typename T, T ...Is, T ...Js>
 		struct seq_cat<std::integer_sequence<T, Is...>, std::integer_sequence<T, Js...>> {
 			using type = std::integer_sequence<T, Is..., Js...>;
 		};
-		
-		template <typename Seq, size_t N>
+
+		template <typename Seq, typename N>
 		struct seq_repeat {
-			using type = seq_cat_t<Seq, typename seq_repeat<Seq, N - 1>::type>;
+			using type = seq_cat_t<Seq, typename seq_repeat<Seq, index_constant<N::value - 1>>::type>;
 		};
-		
-		template <typename Seq, size_t N>
+
+		template <typename Seq, typename N>
 		using seq_repeat_t = typename seq_repeat<Seq, N>::type;
-		
+
 		template <typename Seq>
-		struct seq_repeat<Seq, 0> {
+		struct seq_repeat<Seq, index_constant<0>> {
 			using type = std::integer_sequence<typename Seq::value_type>;
 		};
-		
+
 		template <typename Seq>
-		struct seq_repeat<Seq, 1> {
+		struct seq_repeat<Seq, index_constant<1>> {
 			using type = Seq;
 		};
-		
+
 		template <typename Seq>
-		struct seq_repeat<Seq, 2> {
+		struct seq_repeat<Seq, index_constant<2>> {
 			using type = seq_cat_t<Seq, Seq>;
 		};
-		
-		template <typename SeqR, typename Seq0, size_t N, typename = void>
+
+		template <typename SeqR, typename Seq0, typename N, typename = void>
 		struct seq_trim_impl {};
-		
+
 		template <typename SeqR, typename Seq0>
-		struct seq_trim_impl<SeqR, Seq0, 0> {
+		struct seq_trim_impl<SeqR, Seq0, index_constant<0>> {
 			using type = SeqR;
 		};
-		
-		template <typename T, T ...Rs, T I0, T ...Is, size_t N>
-		struct seq_trim_impl<std::integer_sequence<T, Rs...>, std::integer_sequence<T, I0, Is...>, N, std::enable_if_t<(N > 0)>> {
-			using type = typename seq_trim_impl<std::integer_sequence<T, Rs..., I0>, std::integer_sequence<T, Is...>, N - 1>::type;
+
+		template <typename T, T ...Rs, T I0, T ...Is, typename N>
+		struct seq_trim_impl<
+			std::integer_sequence<T, Rs...>,
+			std::integer_sequence<T, I0, Is...>,
+			N, std::enable_if_t<(N::value > 0)>
+	> {
+			using type = typename seq_trim_impl<
+				std::integer_sequence<T, Rs..., I0>,
+				std::integer_sequence<T, Is...>,
+				index_constant<N::value - 1>
+			>::type;
 		};
-		
-		template <typename Seq, size_t N>
+
+		template <typename Seq, typename N>
 		struct seq_trim {
-			static_assert(N <= Seq::size(), "sequence too small");
+			static_assert(N::value <= Seq::size(), "sequence too small");
 			using type = typename seq_trim_impl<std::integer_sequence<typename Seq::value_type>, Seq, N>::type;
 		};
-		
-		template <typename Seq, size_t N>
+
+		template <typename Seq, typename N>
 		using seq_trim_t = typename seq_trim<Seq, N>::type;
-		
+
 		template <typename T, bool IsVec>
-		struct cat_arg_vec_size_impl {
-			static constexpr size_t value = 1;
-		};
-		
+		struct cat_arg_vec_size_impl : index_constant<1> {};
+
 		template <typename T>
-		struct cat_arg_vec_size_impl<T, true> {
-			static constexpr size_t value = std::decay_t<T>::size;
-		};
-		
+		struct cat_arg_vec_size_impl<T, true> : index_constant<std::decay_t<T>::size> {};
+
 		template <typename CatT, typename T>
-		struct cat_arg_vec_size {
-			static constexpr size_t value = cat_arg_vec_size_impl<T, is_relatively_vector<CatT, T>::value>::value;
-		};
-		
+		struct cat_arg_vec_size : cat_arg_vec_size_impl<T, is_relatively_vector<CatT, T>::value> {};
+
 		template <typename CatT, typename Seq, typename Tup>
 		struct cat_arg_seq {};
-		
+
 		template <typename CatT, size_t ...Is, typename ...Ts>
 		struct cat_arg_seq<CatT, std::index_sequence<Is...>, std::tuple<Ts...>> {
-			using type = seq_cat_t<seq_repeat_t<std::index_sequence<Is>, cat_arg_vec_size<CatT, Ts>::value>...>;
+			using type = seq_cat_t<std::index_sequence<>, seq_repeat_t<std::index_sequence<Is>, cat_arg_vec_size<CatT, Ts>>...>;
 		};
-		
+
+		template <typename N>
+		struct make_index_sequence {
+			using type = std::make_index_sequence<N::value>;
+		};
+
+		template <typename N>
+		using make_index_sequence_t = typename make_index_sequence<N>::type;
+
 		template <typename CatT, typename Tup>
 		struct cat_val_seq {};
-		
+
 		template <typename CatT, typename ...Ts>
 		struct cat_val_seq<CatT, std::tuple<Ts...>> {
-			using type = seq_cat_t<std::make_index_sequence<cat_arg_vec_size<CatT, Ts>::value>...>;
+			using type = seq_cat_t<std::index_sequence<>, make_index_sequence_t<cat_arg_vec_size<CatT, Ts>>...>;
 		};
-		
+
 		template <typename T, bool IsVec>
 		struct vec_get_impl {
 			constexpr static decltype(auto) go(T &&t, size_t) {
 				return std::forward<T>(t);
 			}
 		};
-		
+
 		template <typename T>
 		struct vec_get_impl<T, true> {
 			constexpr static decltype(auto) go(T &&t, size_t i) {
 				return std::forward<T>(t)[i];
 			}
 		};
-		
+
 		template <typename CatT, typename T>
 		constexpr decltype(auto) vec_get(T &&t, size_t i) {
-			static_assert(is_relatively_vector<CatT, T>::value || is_relatively_scalar<CatT, T>::value, "vector cat argument is not relatively vector or scalar");
+			static_assert(
+				is_relatively_vector<CatT, T>::value || is_relatively_scalar<CatT, T>::value,
+				"vector cat argument is not relatively vector or scalar"
+				);
 			return vec_get_impl<T, is_relatively_vector<CatT, T>::value>::go(std::forward<T>(t), i);
 		}
-		
+
 		template <typename CatT, typename ArgTupT, size_t ...Js, size_t ...Ks>
 		constexpr CatT cat_impl_impl(ArgTupT &&args, std::index_sequence<Js...>, std::index_sequence<Ks...>) {
 			return CatT(detail::vec_element_ctor_tag(), vec_get<CatT>(std::get<Js>(std::forward<ArgTupT>(args)), Ks)...);
@@ -595,78 +616,91 @@ namespace cgra {
 			using argseq0 = typename cat_arg_seq<CatT, std::index_sequence_for<Ts...>, std::tuple<Ts...>>::type;
 			using valseq0 = typename cat_val_seq<CatT, std::tuple<Ts...>>::type;
 			// trim to size so that extra components are ignored
-			using argseq = seq_trim_t<argseq0, CatT::size>;
-			using valseq = seq_trim_t<valseq0, CatT::size>;
-			return cat_impl_impl<CatT>(std::forward_as_tuple(std::forward<Ts>(args)...), argseq(), valseq());
+			using argseq = seq_trim_t<argseq0, index_constant<CatT::size>>;
+			using valseq = seq_trim_t<valseq0, index_constant<CatT::size>>;
+			// calling forward_as_tuple calls tuple's defaulted move ctor
+			// this compiles fine in vs2017, but intellisense thinks it isn't constexpr
+			// so, we call tuple's ctor directly to stop it complaining
+			return cat_impl_impl<CatT>(std::tuple<Ts &&...>{std::forward<Ts>(args)...}, argseq(), valseq());
+		}
+
+		template <typename T>
+		constexpr const T & constify(const T &t) {
+			return t;
 		}
 
 
-		// A specialised vector that repeats the same element at every index up to N
 		template<typename T, size_t N>
 		class repeat_vec {
 		private:
-			T v;
+			T m_v;
+
 		public:
 			using value_t = T;
-			static constexpr size_t size = N;
+			static const size_t size = N;
 
 			constexpr repeat_vec() { }
 
-			constexpr repeat_vec(const T &_v) : v(_v) { }
+			template <typename U>
+			constexpr explicit repeat_vec(U &&u) : m_v(std::forward<U>(u)) { }
 
-			T & operator[](size_t i) {
+			constexpr T & operator[](size_t i) {
 				assert(i < N);
-				return v;
+				return m_v;
 			}
 
 			constexpr const T & operator[](size_t i) const {
 				assert(i < N);
-				return v;
+				return m_v;
 			}
 
 			inline friend std::ostream & operator<<(std::ostream &out, const repeat_vec &v) {
-				return out << '(' << v << ", ... , n=" << size << ")";
+				return out << '(' << v.m_v << ", ... , n=" << size << ")";
 			}
 		};
 	}
 
-	// N-dimensional vector class of type T
+
 	template <typename T, size_t N>
 	class basic_vec {
 	private:
-		std::array<T, N> m_data;
+		// not using std::array for better constexpr behaviour
+		T m_data[N];
 
 	public:
 		using value_t = T;
-		static constexpr size_t size = N;
+		static const size_t size = N;
 
 		// default ctor
-		constexpr basic_vec() : m_data{} { }
+		constexpr basic_vec() : basic_vec(T()) { }
 
 		// tagged ctor, used by cat
 		template <typename ...ArgTs>
-		explicit constexpr basic_vec(detail::vec_element_ctor_tag, ArgTs &&...args) : m_data{std::forward<ArgTs>(args)...} { }
-		
-		// magic ctor
-		// we don't need to enforce >= 2 args, because this is only a better match than the 1-arg ctors if they sfinae out
-		// in that case, this ctor will not compile (due to static_assert in cat)
-		// this is marked explicit mainly so that `is_relatively_*' don't determine that random things are convertible to this
-		// simple enforcement of >= 2 args results in this being used instead of the above tagged ctor
-		template <typename ...ArgTs>
-		explicit constexpr basic_vec(ArgTs &&...args) :
-			basic_vec(detail::cat_impl<basic_vec>(std::forward<ArgTs>(args)...)) { }
+		constexpr explicit basic_vec(detail::vec_element_ctor_tag, ArgTs &&...args) : m_data{ std::forward<ArgTs>(args)... } { }
 
-		// 1-arg magic vec ctor
+		// magic ctor
+		// this is marked explicit mainly so that `is_relatively_*' don't determine that random things are convertible to this
+		// enforcing >= 2 args is helpful but not strictly necessary
+		// this is only a better match for 1 arg than the 1-arg ctors if they sfinae out
+		// direct enforcement with explicit 1st and 2nd args results in this being used instead of the above tagged ctor
+		template <typename ...ArgTs, typename = std::enable_if_t<(sizeof...(ArgTs) >= 2)>>
+		constexpr explicit basic_vec(ArgTs &&...args) :
+			basic_vec(detail::cat_impl<basic_vec>(std::forward<ArgTs>(args)...))
+		{ }
+
+		// 1-arg magic ctor
 		template <typename VecT, typename = std::enable_if_t<detail::is_relatively_vector<basic_vec, VecT>::value>, typename = void>
 		constexpr basic_vec(VecT &&v) :
-			basic_vec(detail::cat_impl<basic_vec>(std::forward<VecT>(v))) { }
-		
-		// 1-arg magic scalar ctor
-		// uses repeat_vec to broadcast values to alternative ctor
-		template <typename U, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec, U>::value>>
-		explicit constexpr basic_vec(U &&u) : basic_vec(detail::repeat_vec<U, N>(u)) { }
+			basic_vec(detail::cat_impl<basic_vec>(std::forward<VecT>(v)))
+		{ }
 
-		T & operator[](size_t i) {
+		// scalar broadcast ctor
+		// the 'constify' call isn't strictly necessary, but means that intellisense doesn't (incorrectly)
+		// report errors for default initialization of basic_vec<basic_vec<>>
+		template <typename U, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec, U>::value>>
+		constexpr explicit basic_vec(U &&u) : basic_vec(detail::constify(detail::repeat_vec<std::decay_t<U>, N>(std::forward<U>(u)))) { }
+
+		constexpr T & operator[](size_t i) {
 			assert(i < N);
 			return m_data[i];
 		}
@@ -682,11 +716,14 @@ namespace cgra {
 
 		inline friend std::ostream & operator<<(std::ostream &out, const basic_vec &v) {
 			out << '(' << v[0];
-			for (size_t i = 1; i < N; ++i)
+			for (size_t i = 1; i < N; ++i) {
 				out << ", " << v[i];
-			return out << ')';
+			}
+			out << ')';
+			return out;
 		}
 	};
+
 
 
 	// 0-dimesional vector explicit template specialization
@@ -699,8 +736,9 @@ namespace cgra {
 		constexpr basic_vec() { }
 		template <typename U>
 		constexpr basic_vec(const basic_vec<U, 0> &v) { }
+		constexpr basic_vec(...) { } // discard ANY arguments
 
-		T & operator[](size_t i) {
+		constexpr T & operator[](size_t i) {
 			assert(false);
 			return reinterpret_cast<T &>(*this);
 		}
@@ -731,7 +769,8 @@ namespace cgra {
 
 		constexpr basic_vec() : x(0) { }
 
-		constexpr explicit basic_vec(detail::vec_element_ctor_tag, T s) : x(s) { }
+		template <typename U>
+		constexpr basic_vec(detail::vec_element_ctor_tag, U &&_x) : x{ static_cast<T>(std::forward<U>(_x)) } { }
 		
 		// multiple-arg magic ctor
 		template <typename ...ArgTs>
@@ -748,7 +787,7 @@ namespace cgra {
 		explicit constexpr basic_vec(U &&u) : basic_vec(detail::repeat_vec<U, size>(u)) { }
 
 
-		T & operator[](size_t i) {
+		constexpr T & operator[](size_t i) {
 			assert(i < 1);
 			return (&x)[i];
 		}
@@ -780,7 +819,10 @@ namespace cgra {
 
 		constexpr basic_vec() : x(0), y(0) { }
 
-		constexpr basic_vec(detail::vec_element_ctor_tag, T _x, T _y) : x(_x), y(_y) { }
+		template <typename U1, typename U2>
+		constexpr basic_vec(detail::vec_element_ctor_tag, U1 &&_x, U2 &&_y)
+			: x{ static_cast<T>(std::forward<U1>(_x)) }, y{ static_cast<T>(std::forward<U2>(_y)) }
+		{ }
 
 		// multiple-arg magic ctor
 		template <typename ...ArgTs>
@@ -796,7 +838,7 @@ namespace cgra {
 		template <typename U, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec, U>::value>>
 		explicit constexpr basic_vec(U &&u) : basic_vec(detail::repeat_vec<U, size>(u)) { }
 
-		T & operator[](size_t i) {
+		constexpr T & operator[](size_t i) {
 			assert(i < 2);
 			return (&x)[i];
 		}
@@ -829,7 +871,10 @@ namespace cgra {
 
 		constexpr basic_vec() : x(0), y(0), z(0) { }
 		
-		constexpr basic_vec(detail::vec_element_ctor_tag, T _x, T _y, T _z) : x(_x), y(_y), z(_z) { }
+		template <typename U1, typename U2, typename U3>
+		constexpr basic_vec(detail::vec_element_ctor_tag, U1 &&_x, U2 &&_y, U3 &&_z)
+			: x{ static_cast<T>(std::forward<U1>(_x)) }, y{ static_cast<T>(std::forward<U2>(_y)) }, z{ static_cast<T>(std::forward<U3>(_z)) }
+		{ }
 		
 		// multiple-arg magic ctor
 		template <typename ...ArgTs>
@@ -845,7 +890,7 @@ namespace cgra {
 		template <typename U, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec, U>::value>>
 		explicit constexpr basic_vec(U &&u) : basic_vec(detail::repeat_vec<U, size>(u)) { }
 
-		T & operator[](size_t i) {
+		constexpr T & operator[](size_t i) {
 			assert(i < 3);
 			return (&x)[i];
 		}
@@ -879,7 +924,10 @@ namespace cgra {
 
 		constexpr basic_vec() : x(0), y(0), z(0), w(0) { }
 		
-		constexpr basic_vec(detail::vec_element_ctor_tag, T _x, T _y, T _z, T _w) : x(_x), y(_y), z(_z), w(_w) { }
+		template <typename U1, typename U2, typename U3, typename U4>
+		constexpr basic_vec(detail::vec_element_ctor_tag, U1 &&_x, U2 &&_y, U3 &&_z, U4 &&_w)
+			: x{static_cast<T>(std::forward<U1>(_x)) }, y{ static_cast<T>(std::forward<U2>(_y)) }, z{ static_cast<T>(std::forward<U3>(_z)) }, w{ static_cast<T>(std::forward<U4>(_w)) }
+		{ }
 		
 		// multiple-arg magic ctor
 		template <typename ...ArgTs>
@@ -895,7 +943,7 @@ namespace cgra {
 		template <typename U, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec, U>::value>>
 		explicit constexpr basic_vec(U &&u) : basic_vec(detail::repeat_vec<U, size>(u)) { }
 
-		T & operator[](size_t i) {
+		constexpr T & operator[](size_t i) {
 			assert(i < 4);
 			return (&x)[i];
 		}
@@ -929,14 +977,14 @@ namespace cgra {
 		// TODO more constructors
 		constexpr basic_mat() { }
 
-		const T & operator[](size_t i) const {
-			assert(i < Cols);
-			return reinterpret_cast<const basic_vec<T, Rows> &>(m_data[Rows*i]);
-		}
-
-		T & operator[](size_t i) {
+		constexpr T & operator[](size_t i) {
 			assert(i < Cols);
 			return reinterpret_cast<basic_vec<T, Rows> &>(m_data[Rows*i]);
+		}
+
+		constexpr const T & operator[](size_t i) const {
+			assert(i < Cols);
+			return reinterpret_cast<const basic_vec<T, Rows> &>(m_data[Rows*i]);
 		}
 
 		T * data() { return &m_data[0]; }
@@ -1001,7 +1049,7 @@ namespace cgra {
 		template <typename U>
 		constexpr basic_quat(const basic_vec<U, 4> &v) : basic_vec<T, 4>(v) { }
 
-		T & operator[](size_t i) {
+		constexpr T & operator[](size_t i) {
 			assert(i < 4);
 			return (&w)[i];
 		}

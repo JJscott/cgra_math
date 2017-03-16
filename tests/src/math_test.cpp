@@ -17,7 +17,7 @@ using namespace cgra;
 using namespace test;
 
 
-int total = 1000;
+int total = 10000;
 
 template<typename T, size_t N>
 void floating_point_vec_test() {
@@ -220,4 +220,5 @@ void vector_tests() {
 // 
 void test::run_tests() {
 	vector_tests();
+	cin.get();
 }
