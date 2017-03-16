@@ -8,6 +8,29 @@ namespace test {
 	void run_tests();
 
 
+	template <typename FuncT>
+	void execute_test(FuncT func, ...) {
+		
+		unordered_map<string, unsigned> m;
+
+		// Function that adds to map for given bool (if false)
+		auto test_true  = [&](bool a, string s) {
+			if (!a) m[s] = m[s]+1;
+			return a;
+		};
+
+		for (int i = 0; i < total; ++i) {
+
+		// Print out incorrect results
+		if (!m.empty())  cout << " == basic_vec<" << typeid(T).name() << "," << N << "> == " << endl;
+		for (auto p : m) {
+			const int w_ = 4;
+			cout << setw(w_) << (100 * p.second / float (total)) << "% error : " << p.first << endl;
+		}
+
+	}
+
+
 	template<typename T>
 	typename std::enable_if_t<!std::numeric_limits<T>::is_integer, bool> almost_equal(T a, T b, int ulp = 4) {
 		if (a == b) return true;
