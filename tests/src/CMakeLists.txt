@@ -2,13 +2,8 @@
 # Source files
 SET(sources
 	"main.cpp"
-	"test_suite.hpp"
-	"test_angle_trigonometry_functions.hpp"
-	"test_common_functions.hpp"
-	"test_exponential_functions.hpp"
-	"test_geometric_functions.hpp"
-	"test_operator_overloads.hpp"
-	"test_relational_functions.hpp"
+	"math_test.hpp"
+	"math_test.cpp"
 )
 
 
