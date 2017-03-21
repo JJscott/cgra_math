@@ -1740,9 +1740,9 @@ namespace cgra {
 	}
 
 	// multiplication
-	template<typename T1, size_t M, size_t N, typename T2>
-	inline basic_mat<T1, M, N> & operator*=(basic_mat<T1, M, N> &lhs, const basic_mat<T2, M, N> &rhs) {
-		// TODO
+	template<typename T1, size_t Cols, size_t Rows, typename T2>
+	inline basic_mat<T1, Cols, Rows> & operator*=(basic_mat<T1, Cols, N> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
+		//TODO
 	}
 
 	template<typename T1, size_t Cols, size_t Rows, typename T2>
@@ -1895,18 +1895,18 @@ namespace cgra {
 	}
 
 	// multiplication
-	template<typename T1, typename T2, size_t M, size_t N>
-	inline auto operator*(const basic_mat<T1, M, N> &lhs, const basic_mat<T2, M, N> &rhs) {
+	template<typename T1, typename T2, size_t Cols, size_t Rows>
+	inline auto operator*(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
+		
+	}
+
+	template<typename T1, size_t Cols, size_t Rows, typename T2>
+	inline auto operator*(const basic_mat<T1, Cols, Rows> &lhs, const basic_vec<T2, Cols> &rhs) {
 		// TODO
 	}
 
-	template<typename T1, size_t M, size_t N, typename T2>
-	inline auto operator*(const basic_mat<T1, M, N> &lhs, const basic_vec<T2, M> &rhs) {
-		// TODO
-	}
-
-	template<typename T1, typename T2, size_t M, size_t N>
-	inline auto operator*(const basic_vec<T1, N> &lhs, const basic_mat<T2, M, N> &rhs) {
+	template<typename T1, typename T2, size_t Cols, size_t Rows>
+	inline auto operator*(const basic_vec<T1, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
 		// TODO
 	}
 

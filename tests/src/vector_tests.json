@@ -1,0 +1,302 @@
+
+
+// Val_a, Val_b, Val_c 
+// Vec_a, Vec_b, Vec_c  =  [-1,1]^n
+// Vec_nb, Vec_nb, Vec_nc   =  ||[-1, 1]^n|| = 1
+// Vec_pos, Vec_neg   =   [0,1]^n, [-1,0]^n
+// vec_t  =  vector type
+// val_t  =  vec_t::value_t
+
+{
+	"Operator Overloads" : [
+		{
+			"tag" : "equality (identity)",
+			"test" : "Vec_a == Vec_a",
+		},
+		{
+			"tag" : "inequality (non-identity)",
+			"test" : "Vec_a != Vec_b",
+		},
+		{
+			"tag" : "negation (double negation)",
+			"test" : "test_equal(-(-Vec_a), Vec_a)",
+		},
+		{
+			"tag" : "addition (commutativity)",
+			"test" : "test_equal(Vec_a+Vec_b, Vec_b+Vec_a)",
+		},
+		{
+			"tag" : "addition (associativity)",
+			"test" : "test_equal(Vec_a+(Vec_b+Vec_c), (Vec_a+Vec_b)+Vec_c)",
+		},
+		{
+			"tag" : "addition (identity)",
+			"test" : "test_equal(Vec_a+vec_t(0), Vec_a)",
+		},
+		{
+			"tag" : "subtraction (anticommutativity)",
+			"test" : "test_equal(Vec_a-Vec_b, -(Vec_b-Vec_a))",
+		},
+		{
+			"tag" : "subtraction (nonassociativity)",
+			"test" : "!test_equal(Vec_a-(Vec_b-vec_t(1)), (Vec_a-Vec_b)-vec_t(1))",
+		},
+		{
+			"tag" : "subtraction (identity)",
+			"test" : "test_equal(Vec_a-vec_t(0), Vec_a)",
+		},
+		{
+			"tag" : "subtraction (negation)",
+			"test" : "test_equal(vec_t(0)-Vec_a, -Vec_a)",
+		},
+		{
+			"tag" : "multiplication (commutativity)",
+			"test" : "test_equal(Vec_a*Vec_b, Vec_b*Vec_a)",
+		},
+		{
+			"tag" : "multiplication (associativity)",
+			"test" : "test_equal(Vec_a*(Vec_b*Vec_c), (Vec_a*Vec_b)*Vec_c)",
+		},
+		{
+			"tag" : "multiplication (distributive)",
+			"test" : "test_equal(Vec_a*(Vec_b+Vec_c), Vec_a*Vec_b+Vec_a*Vec_c)",
+		},
+		{
+			"tag" : "multiplication (identity)",
+			"test" : "test_equal(Vec_a*vec_t(1), Vec_a)",
+		},
+		{
+			"tag" : "multiplication (vec_t(0) property)",
+			"test" : "test_equal(Vec_a*vec_t(0), vec_t(0))",
+		},
+		{
+			"tag" : "multiplication (negation)",
+			"test" : "test_equal(-vec_t(1)*-vec_t(1)*Vec_a, Vec_a)",
+		},
+		{
+			"tag" : "multiplication (inverse)",
+			"test" : "test_equal(Vec_a*(vec_t(1)/Vec_a), vec_t(1))",
+		},
+
+		{
+			"tag" : "division (right distributive)",
+			"test" : "test_equal((Vec_a+Vec_b)/Vec_c, Vec_a/Vec_c + Vec_b/Vec_c)",
+		},
+		{
+			"tag" : "division (left antidistributive)",
+			"test" : "!test_equal(Vec_a/(Vec_b+Vec_c), Vec_a/Vec_b + Vec_a/Vec_c)",
+		},
+
+		// TODO
+		// += -= *= /= %= <<= >>= |= ^= &=
+		// % << >> ! || && ~ | ^ & <
+	],
+
+	"Angle and Trigonometry Functions" : [
+		{
+			"tag" : "degrees / radians",
+			"test" : "test_equal(degrees(radians(Vec_a)), Vec_a),",
+		},
+		{
+			"tag" : "radians / degrees",
+			"test" : "test_equal(radians(degrees(Vec_a)), Vec_a),",
+		},
+		//TODO angle
+
+		{
+			"tag" : "trigonometry (sin double inverse)",
+			"test" : "test_equal(asin(sin(pi * Vec_a/2)), pi * Vec_a/2)",
+		},
+		{
+			"tag" : "trigonometry (cos double inverse)",
+			"test" : "test_equal(acos(cos(pi * Vec_pos)), pi * Vec_pos)",
+		},
+		{
+			"tag" : "trigonometry (tan double inverse)",
+			"test" : "test_equal(atan(tan(Vec_a)), Vec_a),",
+		},
+
+		{
+			"tag" : "trigonometry hyperbolic (sinh double inverse)",
+			"test" : "test_equal(asinh(sinh(pi * Vec_a/2)), pi * Vec_a/2)",
+		},
+		{
+			"tag" : "trigonometry hyperbolic (cosh double inverse)",
+			"test" : "test_equal(acosh(cosh(pi * Vec_pos)), pi * Vec_pos)",
+		},
+		{
+			"tag" : "trigonometry hyperbolic (tanh double inverse)",
+			"test" : "test_equal(atanh(tanh(Vec_a)), Vec_a),",
+		},
+		{
+			"tag" : "trigonometry (quotient)",
+			"test" : "test_equal(tan(Vec_a), sin(Vec_a)/cos(Vec_a))",
+		},
+		{
+			"tag" : "trigonometry (inverse quotient)",
+			"test" : "test_equal(vec_t(1)/tan(Vec_a), (vec_t(1)/sin(Vec_a))/(vec_t(1)/cos(Vec_a)))",
+		},
+		{
+			"tag" : "trigonometry (sin-cos pythagorean)",
+			"test" : "test_equal(sin(Vec_a)*sin(Vec_a) + cos(Vec_a)*cos(Vec_a), vec_t(1))",
+		},
+		{
+			"tag" : "trigonometry (tan-sec pythagorean)",
+			"test" : "test_equal(vec_t(1)+tan(Vec_a)*tan(Vec_a), (vec_t(1)/cos(Vec_a))*(vec_t(1)/cos(Vec_a)))",
+		},
+		{
+			"tag" : "trigonometry (tan-sec pythagorean)",
+			"test" : "test_equal(vec_t(1)+(vec_t(1)/tan(Vec_a))*(vec_t(1)/tan(Vec_a)), (vec_t(1)/sin(Vec_a))*(vec_t(1)/sin(Vec_a)))",
+		},
+
+		// TODO csc, sec, cot, acsc, asec, acot
+		// TODO all h-variants
+	],
+
+	"Exponential Functions" : [
+		{
+			"tag" : "pow (double, equality)",
+			"test" : "test_equal(Vec_a*Vec_a, pow(Vec_a, vec_t(2)))",
+		},
+		{
+			"tag" : "pow (triple, equality)",
+			"test" : "test_equal(Vec_a*Vec_a*Vec_a, pow(Vec_a, vec_t(3)))",
+		},
+		{
+			"tag" : "exp / log (double inverse)",
+			"test" : "test_equal(log(exp(Vec_a)), Vec_a)",
+		},
+		{
+			"tag" : "exp / log (double inverse, reverse)",
+			"test" : "test_equal(exp(log(Vec_pos)), Vec_pos)",
+		},
+		{
+			"tag" : "exp2 / log2 (double inverse)",
+			"test" : "test_equal(log2(exp2(Vec_a)), Vec_a)",
+		},
+		{
+			"tag" : "exp2 / log2 (double inverse, reverse)",
+			"test" : "test_equal(exp2(log2(Vec_pos)), Vec_pos)",
+		},
+		{
+			"tag" : "pow / sqrt (double inverse)",
+			"test" : "test_equal(sqrt(pow(Vec_pos, vec_t(2))), Vec_pos)",
+		},
+		{
+			"tag" : "pow / sqrt (double inverse, reverse)",
+			"test" : "test_equal(pow(sqrt(Vec_pos), vec_t(2)), Vec_pos)",
+		},
+		{
+			"tag" : "sqrt / inversesqrt / abs (equality)",
+			"test" : "test_equal(1/sqrt(Vec_pos), inversesqrt(Vec_pos))",
+		},
+	],
+
+	"Common Functions" : [
+		{
+			"tag" : "abs  (absolute and negation)",
+			"test" : "test_equal(abs(Vec_a), abs(-Vec_a))",
+		},
+		{
+			"tag" : "sign (sign of vec_t(0) is vec_t(0))",
+			"test" : "test_equal(sign(vec_t(0)), vec_t(0))",
+		},
+		{
+			"tag" : "sign (sign multiplied by absolute)",
+			"test" : "test_equal(sign(Vec_a)*abs(Vec_a), Vec_a)",
+		},
+		{
+			"tag" : "floor / all / lessThanEqual (less than equal floor)",
+			"test" : "all(lessThanEqual(floor(Vec_a), Vec_a))",
+		},
+		{
+			"tag" : "floor / fract (vec_t(0) fractional component)",
+			"test" : "test_equal(fract(floor(Vec_a)), vec_t(0))",
+		},
+		{
+			"tag" : "ceil / all / greaterThanEqual (greater than equal floor)",
+			"test" : "all(greaterThanEqual(ceil(Vec_a), Vec_a))",
+		},
+		{
+			"tag" : "ceil / fract (vec_t(0) fractional component)",
+			"test" : "test_equal(fract(ceil(Vec_a)), vec_t(0))",
+		},
+
+		// TODO trunc round roundEven
+
+		{
+			"tag" : "mod scalar / fract (mod 1 fractional part)",
+			"test" : "test_equal(mod(Vec_pos+vec_t(1), so), fract(Vec_pos))",
+		},
+		{
+			"tag" : "mod vector / fract (mod 1 fractional part)",
+			"test" : "test_equal(mod(Vec_pos+vec_t(1), vec_t(1)),  fract(Vec_pos))",
+		},
+		// TODO modf
+
+		{
+			"tag" : "min scalar (less than equality)",
+			"test" : "all(lessThanEqual(min(Vec_a,sa), Vec_a)) && all(lessThanEqual(min(Vec_a,sa), vec_t(sa)))",
+		},
+		{
+			"tag" : "min vector (less than equality)",
+			"test" : "all(lessThanEqual(min(Vec_a,Vec_b), Vec_a)) && all(lessThanEqual(min(Vec_a,Vec_b), Vec_b))",
+		},
+		{
+			"tag" : "max scalar (greater than equality)",
+			"test" : "all(greaterThanEqual(max(Vec_a,sa), Vec_a)) && all(greaterThanEqual(max(Vec_a,sa), vec_t(sa)))",
+		},
+		{
+			"tag" : "max vector (greater than equality)",
+			"test" : "all(greaterThanEqual(max(Vec_a,Vec_b), Vec_a)) && all(greaterThanEqual(max(Vec_a,Vec_b), Vec_b))",
+		},
+		{
+			"tag" : "min / max scalar (summation equality)",
+			"test" : "test_equal(min(Vec_a,sa)+max(Vec_a,sa),  Vec_a+sa)",
+		},
+		{
+			"tag" : "min / max vector (summation equality)",
+			"test" : "test_equal(min(Vec_a,Vec_b)+max(Vec_a,Vec_b),  Vec_a+Vec_b)",
+		},
+		{
+			"tag" : "mix scalar (identity)",
+			"test" : "test_equal(mix(Vec_a, Vec_a, sa), Vec_a)",
+		},
+		{
+			"tag" : "mix scalar (summation equality)",
+			"test" : "test_equal(mix(Vec_a, Vec_b, sa) + mix(Vec_b, Vec_a, sa), Vec_a+Vec_b)",
+		},
+		{
+			"tag" : "mix scalar (identity)",
+			"test" : "test_equal(mix(Vec_a, Vec_a, Vec_pos), Vec_a)",
+		},
+		{
+			"tag" : "mix scalar (summation equality)",
+			"test" : "test_equal(mix(Vec_a, Vec_b, Vec_pos) + mix(Vec_b, Vec_a, Vec_pos), Vec_a+Vec_b)",
+		},
+
+		// TODO step, smoothstep, isnan, isinf
+		// TODO floatBitsToInt floatBitsToUint intBitsToFloat uintBitsToFloat
+		// TODO fma frexp ldexp
+		// TODO sum product
+	],
+
+
+	"Geometric Functions" : [
+		// TODO length distance dot normalize
+		// TODO faceforward reflect refract project reject
+	],
+
+
+	"Relational Functions" : [
+		{
+			"tag" : "all lessThan / greaterThanEqual (exclusivity)",
+			"test" : "all(notEqual(lessThan(Vec_a, Vec_b), greaterThanEqual(Vec_a, Vec_b)))",
+		},
+		{
+			"tag" : "all lessThanEqual / greaterThan (exclusivity)",
+			"test" : "all(notEqual(lessThanEqual(Vec_a, Vec_b), greaterThan(Vec_a, Vec_b)))",
+		},
+		// TODO any all equal notEqual (and another test for lessThen etc.)
+	],
+}
