@@ -441,6 +441,9 @@ namespace cgra {
 	// TODO description
 	namespace detail {
 
+		// foward decl
+		template<typename T, size_t N> class repeat_vec;
+
 		// note: msvc has some trouble with expansion of template (type) parameter packs that result in integers,
 		// so we use integral_constant-like types instead (especially for seq_repeat, make_index_sequence).
 
