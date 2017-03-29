@@ -2152,7 +2152,7 @@ namespace cgra {
 	template<typename T1, size_t Cols, size_t Rows, typename T2>
 	inline auto operator*(const basic_mat<T1, Cols, Rows> &lhs, const basic_vec<T2, Cols> &rhs) {
 		// dot(lhs.as_vec(), rhs)
-		return fold(detail::op::add(), basic_vec<T1, Rows>(0), detail::make_mat(zip_with(detail::op::mul(), lhs.as_vec(), rhs));) 
+		return fold(detail::op::add(), basic_vec<T1, Rows>(0), detail::make_mat(zip_with(detail::op::mul(), lhs.as_vec(), rhs))); 
 	}
 
 	template<typename T1, typename T2, size_t Cols, size_t Rows>
