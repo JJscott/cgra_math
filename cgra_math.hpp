@@ -798,7 +798,16 @@ namespace cgra {
 
 		constexpr basic_vec() { }
 
-		constexpr basic_vec(...) { } // discard ANY arguments
+		// magic ctor
+		template <typename ...ArgTs, typename = std::enable_if_t<(sizeof...(ArgTs) >= 2)>>
+		constexpr explicit basic_vec(ArgTs &&...) { }
+
+		// 1-arg magic ctor
+		template <typename VecT, typename = std::enable_if_t<detail::is_relatively_vector<basic_vec, VecT>::value>, typename = void>
+		constexpr basic_vec(VecT &&) { }
+
+		// scalar broadcast ctor
+		constexpr explicit basic_vec(const T &) { }
 
 		constexpr T & operator[](size_t i) {
 			assert(false);
