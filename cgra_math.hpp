@@ -862,10 +862,7 @@ namespace cgra {
 		constexpr basic_vec(VecT &&v) :	basic_vec(detail::cat_impl<basic_vec>(std::forward<VecT>(v))) { }
 
 		// scalar broadcast ctor
-		template <typename U>
-		constexpr explicit basic_vec(U &&u) : x{std::forward<U>(u)} { }
-
-
+		constexpr explicit basic_vec(const T &t) : basic_vec(detail::constify(detail::repeat_vec<const T &, 1>(t))) { }
 
 		constexpr T & operator[](size_t i) {
 			assert(i < 1);
