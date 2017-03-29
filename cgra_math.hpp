@@ -760,7 +760,7 @@ namespace cgra {
 		// scalar broadcast ctor
 		constexpr explicit basic_vec(const T &t) :
 			// constify is to help intellisense, but should have no impact on actual compilation
-			basic_vec(detail::constify(repeat_vec<const T &, N>(t)))
+			basic_vec(detail::constify(detail::repeat_vec<const T &, N>(t)))
 		{ }
 
 		constexpr T & operator[](size_t i) {
@@ -914,7 +914,7 @@ namespace cgra {
 		constexpr basic_vec(VecT &&v) :	basic_vec(detail::cat_impl<basic_vec>(std::forward<VecT>(v))) { }
 
 		// scalar broadcast ctor
-		constexpr explicit basic_vec(const T &t) : 	basic_vec(detail::constify(repeat_vec<const T &, 2>(t))) { }
+		constexpr explicit basic_vec(const T &t) : 	basic_vec(detail::constify(detail::repeat_vec<const T &, 2>(t))) { }
 
 		constexpr T & operator[](size_t i) {
 			assert(i < 2);
@@ -975,7 +975,7 @@ namespace cgra {
 		constexpr basic_vec(VecT &&v) : basic_vec(detail::cat_impl<basic_vec>(std::forward<VecT>(v))) { }
 
 		// scalar broadcast ctor
-		constexpr explicit basic_vec(const T &t) : basic_vec(detail::constify(repeat_vec<const T &, 3>(t))) { }
+		constexpr explicit basic_vec(const T &t) : basic_vec(detail::constify(detail::repeat_vec<const T &, 3>(t))) { }
 
 		constexpr T & operator[](size_t i) {
 			assert(i < 3);
@@ -1039,7 +1039,7 @@ namespace cgra {
 		constexpr basic_vec(VecT &&v) : basic_vec(detail::cat_impl<basic_vec>(std::forward<VecT>(v))) { }
 
 		// scalar broadcast ctor
-		constexpr explicit basic_vec(const T &t) : basic_vec(detail::constify(repeat_vec<const T &, 4>(t)))	{ }
+		constexpr explicit basic_vec(const T &t) : basic_vec(detail::constify(detail::repeat_vec<const T &, 4>(t)))	{ }
 
 		constexpr T & operator[](size_t i) {
 			assert(i < 4);
@@ -2003,7 +2003,7 @@ namespace cgra {
 	// multiplication
 	template<typename T1, typename T2, size_t Cols, size_t Rows>
 	inline auto operator*(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Rows, Cols> &rhs) {
-		return detail::make_mat(zip_with(detail::op::mul(), repeat_vec<lhs, rhs::cols>(), rhs.as_vec()));
+		return detail::make_mat(zip_with(detail::op::mul(), detail::repeat_vec<lhs, rhs::cols>(), rhs.as_vec()));
 	}
 
 	template<typename T1, size_t Cols, size_t Rows, typename T2>
