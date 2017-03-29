@@ -57,6 +57,7 @@
 namespace cgra {
 
 	// Forward declarations
+	template <typename T> class not_nan;
 	template <typename, size_t> class basic_vec;
 	template <typename, size_t, size_t> class basic_mat;
 	template <typename> class basic_quat;
@@ -84,6 +85,142 @@ namespace cgra {
 	inline T nan() {
 		return std::numeric_limits<T>::quiet_NaN();
 	}
+
+	// not-NaN type
+	// asserts using ctor that value is non-nan
+	template <typename T>
+	class not_nan {
+	private:
+		T m_v;
+
+		void check() const {
+			assert(m_v == m_v && "nan");
+		}
+
+	public:
+		not_nan() : m_v{} {}
+
+		not_nan(const T &t_) : m_v{ t_ } {
+			check();
+		}
+
+		not_nan(T &&t_) : m_v(std::move(t_)) {
+			check();
+		}
+
+		operator const T & () const {
+			check();
+			return m_v;
+		}
+
+		friend void swap(not_nan &a, not_nan &b) {
+			using std::swap;
+			swap(a.m_v, b.m_v);
+		}
+
+		not_nan & operator=(const T &t) {
+			m_v = t;
+			check();
+			return *this;
+		}
+
+		not_nan & operator=(T &&t) {
+			m_v = std::move(t);
+			check();
+			return *this;
+		}
+
+		not_nan & operator+=(const T &rhs) {
+			m_v += rhs;
+			check();
+			return *this;
+		}
+
+		not_nan & operator-=(const T &rhs) {
+			m_v -= rhs;
+			check();
+			return *this;
+		}
+
+		not_nan & operator*=(const T &rhs) {
+			m_v *= rhs;
+			check();
+			return *this;
+		}
+
+		not_nan & operator/=(const T &rhs) {
+			m_v /= rhs;
+			check();
+			return *this;
+		}
+
+		not_nan & operator++() {
+			m_v++;
+			return *this;
+		}
+		
+		not_nan operator++(int) {
+			T temp = m_v;
+			++*this;
+			return temp;
+		}
+  
+		not_nan & operator--() {
+			m_v--;
+			return *this;
+		}
+		
+		not_nan operator--(int) {
+			T temp = m_v;
+			--*this;
+			return temp;
+		}
+	};
+
+	template <typename T>
+	inline not_nan<T> operator+(const not_nan<T> &lhs, const T &rhs) {
+		return not_nan<T>(lhs) += rhs;
+	}
+
+	template <typename T>
+	inline not_nan<T> operator+(const T &lhs, const not_nan<T> &rhs) {
+		return not_nan<T>(lhs) += rhs;
+	}
+
+	template <typename T>
+	inline not_nan<T> operator-(const not_nan<T> &lhs, const T &rhs) {
+		return not_nan<T>(lhs) -= rhs;
+	}
+
+	template <typename T>
+	inline not_nan<T> operator-(const T &lhs, const not_nan<T> &rhs) {
+		return not_nan<T>(lhs) -= rhs;
+	}
+
+	template <typename T>
+	inline not_nan<T> operator*(const not_nan<T> &lhs, const T &rhs) {
+		return not_nan<T>(lhs) *= rhs;
+	}
+
+	template <typename T>
+	inline not_nan<T> operator*(const T &lhs, const not_nan<T> &rhs) {
+		return not_nan<T>(lhs) *= rhs;
+	}
+
+	template <typename T>
+	inline not_nan<T> operator/(const not_nan<T> &lhs, const T &rhs) {
+		return not_nan<T>(lhs) /= rhs;
+	}
+
+	template <typename T>
+	inline not_nan<T> operator/(const T &lhs, const not_nan<T> &rhs) {
+		return not_nan<T>(lhs) /= rhs;
+	}
+
+
+	using nnfloat = not_nan<float>;
+	using nndouble = not_nan<double>;
+
 
 
 
@@ -441,6 +578,9 @@ namespace cgra {
 	// TODO description
 	namespace detail {
 
+		// foward decl
+		template<typename T, size_t N> class repeat_vec;
+
 		// note: msvc has some trouble with expansion of template (type) parameter packs that result in integers,
 		// so we use integral_constant-like types instead (especially for seq_repeat, make_index_sequence).
 
@@ -757,7 +897,7 @@ namespace cgra {
 		// scalar broadcast ctor
 		constexpr explicit basic_vec(const T &t) :
 			// constify is to help intellisense, but should have no impact on actual compilation
-			basic_vec(detail::constify(repeat_vec<const T &, N>(t)))
+			basic_vec(detail::constify(detail::repeat_vec<const T &, N>(t)))
 		{ }
 
 		constexpr T & operator[](size_t i) {
@@ -795,7 +935,16 @@ namespace cgra {
 
 		constexpr basic_vec() { }
 
-		constexpr basic_vec(...) { } // discard ANY arguments
+		// magic ctor
+		template <typename ...ArgTs, typename = std::enable_if_t<(sizeof...(ArgTs) >= 2)>>
+		constexpr explicit basic_vec(ArgTs &&...) { }
+
+		// 1-arg magic ctor
+		template <typename VecT, typename = std::enable_if_t<detail::is_relatively_vector<basic_vec, VecT>::value>, typename = void>
+		constexpr basic_vec(VecT &&) { }
+
+		// scalar broadcast ctor
+		constexpr explicit basic_vec(const T &) { }
 
 		constexpr T & operator[](size_t i) {
 			assert(false);
@@ -850,10 +999,7 @@ namespace cgra {
 		constexpr basic_vec(VecT &&v) :	basic_vec(detail::cat_impl<basic_vec>(std::forward<VecT>(v))) { }
 
 		// scalar broadcast ctor
-		template <typename U>
-		constexpr explicit basic_vec(U &&u) : x{std::forward<U>(u)} { }
-
-
+		constexpr explicit basic_vec(const T &t) : basic_vec(detail::constify(detail::repeat_vec<const T &, 1>(t))) { }
 
 		constexpr T & operator[](size_t i) {
 			assert(i < 1);
@@ -911,7 +1057,7 @@ namespace cgra {
 		constexpr basic_vec(VecT &&v) :	basic_vec(detail::cat_impl<basic_vec>(std::forward<VecT>(v))) { }
 
 		// scalar broadcast ctor
-		constexpr explicit basic_vec(const T &t) : 	basic_vec(detail::constify(repeat_vec<const T &, 2>(t))) { }
+		constexpr explicit basic_vec(const T &t) : 	basic_vec(detail::constify(detail::repeat_vec<const T &, 2>(t))) { }
 
 		constexpr T & operator[](size_t i) {
 			assert(i < 2);
@@ -972,7 +1118,7 @@ namespace cgra {
 		constexpr basic_vec(VecT &&v) : basic_vec(detail::cat_impl<basic_vec>(std::forward<VecT>(v))) { }
 
 		// scalar broadcast ctor
-		constexpr explicit basic_vec(const T &t) : basic_vec(detail::constify(repeat_vec<const T &, 3>(t))) { }
+		constexpr explicit basic_vec(const T &t) : basic_vec(detail::constify(detail::repeat_vec<const T &, 3>(t))) { }
 
 		constexpr T & operator[](size_t i) {
 			assert(i < 3);
@@ -1036,7 +1182,7 @@ namespace cgra {
 		constexpr basic_vec(VecT &&v) : basic_vec(detail::cat_impl<basic_vec>(std::forward<VecT>(v))) { }
 
 		// scalar broadcast ctor
-		constexpr explicit basic_vec(const T &t) : basic_vec(detail::constify(repeat_vec<const T &, 4>(t)))	{ }
+		constexpr explicit basic_vec(const T &t) : basic_vec(detail::constify(detail::repeat_vec<const T &, 4>(t)))	{ }
 
 		constexpr T & operator[](size_t i) {
 			assert(i < 4);
@@ -2000,7 +2146,7 @@ namespace cgra {
 	// multiplication
 	template<typename T1, typename T2, size_t Cols, size_t Rows>
 	inline auto operator*(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Rows, Cols> &rhs) {
-		return detail::make_mat(zip_with(detail::op::mul(), repeat_vec<lhs, rhs::cols>(), rhs.as_vec()));
+		return detail::make_mat(zip_with(detail::op::mul(), detail::repeat_vec<lhs, rhs::cols>(), rhs.as_vec()));
 	}
 
 	template<typename T1, size_t Cols, size_t Rows, typename T2>
