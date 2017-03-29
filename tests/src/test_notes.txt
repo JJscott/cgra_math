@@ -1,0 +1,20 @@
+// TODO
+// += -= *= /= %= <<= >>= |= ^= &=
+// % << >> ! || && ~ | ^ & <
+
+// TODO angle
+
+// TODO csc, sec, cot, acsc, asec, acot
+// TODO all h-variants
+
+// TODO trunc round roundEven
+// TODO modf
+
+// TODO step, smoothstep, isnan, isinf
+// TODO floatBitsToInt floatBitsToUint intBitsToFloat uintBitsToFloat
+// TODO fma frexp ldexp
+// TODO sum product
+		// TODO length distance dot normalize
+// TODO faceforward reflect refract project reject
+
+// TODO any all equal notEqual (and another test for lessThen etc.)
