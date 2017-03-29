@@ -57,6 +57,7 @@
 namespace cgra {
 
 	// Forward declarations
+	template <typename T> class not_nan;
 	template <typename, size_t> class basic_vec;
 	template <typename, size_t, size_t> class basic_mat;
 	template <typename> class basic_quat;
@@ -84,6 +85,142 @@ namespace cgra {
 	inline T nan() {
 		return std::numeric_limits<T>::quiet_NaN();
 	}
+
+	// not-NaN type
+	// asserts using ctor that value is non-nan
+	template <typename T>
+	class not_nan {
+	private:
+		T m_v;
+
+		void check() const {
+			assert(m_v == m_v && "nan");
+		}
+
+	public:
+		not_nan() : m_v{} {}
+
+		not_nan(const T &t_) : m_v{ t_ } {
+			check();
+		}
+
+		not_nan(T &&t_) : m_v(std::move(t_)) {
+			check();
+		}
+
+		operator const T & () const {
+			check();
+			return m_v;
+		}
+
+		friend void swap(not_nan &a, not_nan &b) {
+			using std::swap;
+			swap(a.m_v, b.m_v);
+		}
+
+		not_nan & operator=(const T &t) {
+			m_v = t;
+			check();
+			return *this;
+		}
+
+		not_nan & operator=(T &&t) {
+			m_v = std::move(t);
+			check();
+			return *this;
+		}
+
+		not_nan & operator+=(const T &rhs) {
+			m_v += rhs;
+			check();
+			return *this;
+		}
+
+		not_nan & operator-=(const T &rhs) {
+			m_v -= rhs;
+			check();
+			return *this;
+		}
+
+		not_nan & operator*=(const T &rhs) {
+			m_v *= rhs;
+			check();
+			return *this;
+		}
+
+		not_nan & operator/=(const T &rhs) {
+			m_v /= rhs;
+			check();
+			return *this;
+		}
+
+		not_nan & operator++() {
+			m_v++;
+			return *this;
+		}
+		
+		not_nan operator++(int) {
+			T temp = m_v;
+			++*this;
+			return temp;
+		}
+  
+		not_nan & operator--() {
+			m_v--;
+			return *this;
+		}
+		
+		not_nan operator--(int) {
+			T temp = m_v;
+			--*this;
+			return temp;
+		}
+	};
+
+	template <typename T>
+	inline not_nan<T> operator+(const not_nan<T> &lhs, const T &rhs) {
+		return not_nan<T>(lhs) += rhs;
+	}
+
+	template <typename T>
+	inline not_nan<T> operator+(const T &lhs, const not_nan<T> &rhs) {
+		return not_nan<T>(lhs) += rhs;
+	}
+
+	template <typename T>
+	inline not_nan<T> operator-(const not_nan<T> &lhs, const T &rhs) {
+		return not_nan<T>(lhs) -= rhs;
+	}
+
+	template <typename T>
+	inline not_nan<T> operator-(const T &lhs, const not_nan<T> &rhs) {
+		return not_nan<T>(lhs) -= rhs;
+	}
+
+	template <typename T>
+	inline not_nan<T> operator*(const not_nan<T> &lhs, const T &rhs) {
+		return not_nan<T>(lhs) *= rhs;
+	}
+
+	template <typename T>
+	inline not_nan<T> operator*(const T &lhs, const not_nan<T> &rhs) {
+		return not_nan<T>(lhs) *= rhs;
+	}
+
+	template <typename T>
+	inline not_nan<T> operator/(const not_nan<T> &lhs, const T &rhs) {
+		return not_nan<T>(lhs) /= rhs;
+	}
+
+	template <typename T>
+	inline not_nan<T> operator/(const T &lhs, const not_nan<T> &rhs) {
+		return not_nan<T>(lhs) /= rhs;
+	}
+
+
+	using nnfloat = not_nan<float>;
+	using nndouble = not_nan<double>;
+
 
 
 

@@ -142,8 +142,8 @@ void vector_compile_test() {
 	v3 /= v;
 	v3 /= v3;
 
-	v3 %= v;
-	v3 %= v3;
+	iv3 %= iv;
+	iv3 %= iv3;
 
 	iv3 <<= iv;
 	iv3 <<= iv3;
@@ -151,14 +151,14 @@ void vector_compile_test() {
 	iv3 >>= iv;
 	iv3 >>= iv3;
 
-	v3 |= v;
-	v3 |= v3;
+	iv3 |= iv;
+	iv3 |= iv3;
 
-	v3 ^= v;
-	v3 ^= v3;
+	iv3 ^= iv;
+	iv3 ^= iv3;
 
-	v3 &= v;
-	v3 &= v3;
+	iv3 &= iv;
+	iv3 &= iv3;
 
 	v3 = -v3;
 
@@ -182,10 +182,9 @@ void vector_compile_test() {
 	v3 =  v3 - v;
 	v3 =   v - v3;
 
-	v3 =  v3 % v3;
-	v3 = iv3 % v3;
-	v3 =  v3 % v;
-	v3 =   v % v3;
+	iv3 = iv3 % iv3;
+	iv3 = iv3 % iv;
+	iv3 =  iv % iv3;
 
 	iv3 = iv3 << iv3;
 	iv3 = iv3 << iv;
@@ -220,8 +219,8 @@ void vector_compile_test() {
 	iv3 =  iv & iv3;
 
 	bool b = v3 == v3;
-	bool b = v3 != v3;
-	bool b = v3 < v3;
+	b = v3 != v3;
+	b = v3 < v3;
 
 
 	
