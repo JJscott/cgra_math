@@ -2151,14 +2151,14 @@ namespace cgra {
 
 	template<typename T1, size_t Cols, size_t Rows, typename T2>
 	inline auto operator*(const basic_mat<T1, Cols, Rows> &lhs, const basic_vec<T2, Cols> &rhs) {
-		// dot(lhs.as_vec(), rhs)
-		return fold(detail::op::add(), basic_vec<T1, Rows>(0), detail::make_mat(zip_with(detail::op::mul(), lhs.as_vec(), rhs))); 
+		return dot(lhs.as_vec(), rhs);
+		//return fold(detail::op::add(), basic_vec<T1, Rows>{}, zip_with(detail::op::mul(), lhs.as_vec(), rhs));
 	}
 
 	template<typename T1, typename T2, size_t Cols, size_t Rows>
 	inline auto operator*(const basic_vec<T1, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		//  dot(repeat_vec(lhs), rhs.as_vec())
-		return fold(detail::op::add(), basic_vec<T1, Rows>(0), detail::make_mat(zip_with(detail::op::mul(), detail::repeat_vec<basic_vec<T1, Cols>, Rows>(lhs), rhs.as_vec())));
+		//return dot(repeat_vec(lhs), rhs.as_vec());
+		return fold(detail::op::add(), basic_vec<T1, Rows>(0), zip_with(detail::op::mul(), detail::repeat_vec<basic_vec<T1, Cols>, Rows>(lhs), rhs.as_vec()));
 	}
 
 	template<typename T1, size_t Cols, size_t Rows, typename T2>
@@ -3276,10 +3276,10 @@ namespace cgra {
 		return length(p1-p2);
 	}
 
-	// Returns the dot product of v1 and v2, i.e., v1[0]*v1[0] + v1[1]*v2[1] + ...
+	// Returns the dot product of v1 and v2, i.e., v1[0]*v2[0] + v1[1]*v2[1] + ...
 	template <typename T1, typename T2, size_t N>
 	inline auto dot(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-		return sum(v1*v2);
+		return fold(detail::op::add(), T1{}, zip_with(detail::op::mul(), v1, v2));
 	}
 
 	// Returns a vector in the same direction as v but with a length of 1
