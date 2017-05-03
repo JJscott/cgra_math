@@ -362,11 +362,21 @@ void random_test() {
 	//cout << inverse(inverse(m)) << endl << endl;
 	//cout << inverse(m) * m << endl << endl;
 
-
-	quat q0;
-	quat q1;
+	dvec4 v{ 0,0,0,1 };
+	quat q0( v );
+	dquat q1(q0);
 
 	quat q = q0 * q1;
+	q = conjugate(q);
+	q = inverse(q);
+	
+	
+	auto qw = q * 5;
+
+	float d = dot(q, q);
+	float ilen2 = 1 / d;
+	q = conjugate(q) * ilen2;
+
 
 	cout << q << endl << endl;
 

@@ -1286,17 +1286,14 @@ namespace cgra {
 
 		constexpr basic_quat(T _x, T _y, T _z, T _w) :  basic_vec<T, 4>(_x, _y, _z, _w) { }
 
-		template <typename U> 
+		template <typename U>
 		constexpr basic_quat(const basic_quat<U>& q) : basic_vec<T, 4>(q.as_vec()) { }
 
-		template <typename U>
-		constexpr basic_quat(const basic_vec<U, 3> &v, T _w) : basic_vec<T, 4>(v, _w) { }
+		constexpr basic_quat(const basic_vec<T, 3> &v, T _w) : basic_vec<T, 4>(v, _w) { }
 
-		template <typename U1, typename U2>
-		constexpr basic_quat(const basic_vec<U1, 3> &v1, const basic_vec<U2, 1> &v2) :  basic_vec<T, 4>(v1, v2) { }
+		constexpr basic_quat(const basic_vec<T, 3> &v1, const basic_vec<T, 1> &v2) :  basic_vec<T, 4>(v1, v2) { }
 
-		template <typename U>
-		constexpr basic_quat(const basic_vec<U, 4> &v) : basic_vec<T, 4>(v) { }
+		constexpr basic_quat(const basic_vec<T, 4> &v) : basic_vec<T, 4>(v) { }
 
 		// basic_mat<U, 3, 3> converter
 		template <typename U>
@@ -2479,14 +2476,14 @@ namespace cgra {
 
 	template<typename T1, typename T2>
 	inline auto operator+(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
-		return zip_with(detail::op::add(), lhs.as_vec(), rhs.as_vec());
+		return basic_quat<T1>(zip_with(detail::op::add(), lhs.as_vec(), rhs.as_vec()));
 	}
 
 	// subtraction
 
 	template<typename T1, typename T2>
 	inline auto operator-(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
-		return zip_with(detail::op::sub(), lhs.as_vec(), rhs.as_vec());
+		return basic_quat<T1>(zip_with(detail::op::sub(), lhs.as_vec(), rhs.as_vec()));
 	}
 
 	// multiplication
@@ -2494,7 +2491,8 @@ namespace cgra {
 	template<typename T1, typename T2>
 	inline auto operator*(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
 		basic_quat<std::common_type_t<T1, T2>> r = lhs;
-		return r *= rhs;
+		r *= rhs;
+		return r;
 	}
 
 	template<typename T1, typename T2>
@@ -2507,24 +2505,24 @@ namespace cgra {
 
 	template<typename T1, typename T2>
 	inline auto operator*(const basic_quat<T1> &lhs, const T2 &rhs) {
-		return zip_with(detail::op::mul(), lhs.as_vec(), basic_vec<T2, 4>(rhs));
+		return basic_quat<std::common_type_t<T1, T2>>(zip_with(detail::op::mul(), lhs.as_vec(), detail::repeat_vec<T2, 4>(rhs)));
 	}
 
 	template<typename T1, typename T2>
 	inline auto operator*(const T1 &lhs, const basic_quat<T2> &rhs) {
-		return zip_with(detail::op::mul(), basic_vec<T1, 4>(lhs), rhs.as_vec());
+		return basic_quat<std::common_type_t<T1, T2>>(zip_with(detail::op::mul(), detail::repeat_vec<T1, 4>(lhs), rhs.as_vec()));
 	}
 
 	// division
 
 	template<typename T1, typename T2>
 	inline auto operator/(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
-		return zip_with(detail::op::div(), lhs.as_vec(), rhs.as_vec());
+		return basic_quat<std::common_type_t<T1, T2>>(zip_with(detail::op::div(), lhs.as_vec(), rhs.as_vec()));
 	}
 
 	template<typename T1, typename T2>
 	inline auto operator/(const basic_quat<T1> &lhs, const T2 &rhs) {
-		return zip_with(detail::op::div(), lhs.as_vec(), basic_vec<T2, 4>(rhs));
+		return  basic_quat<std::common_type_t<T1, T2>>(zip_with(detail::op::div(), lhs.as_vec(), detail::repeat_vec<T2, 4>(rhs)));
 	}
 
 	// equal
@@ -3879,8 +3877,8 @@ namespace cgra {
 	) {
 		static_assert(MatT::cols == 4);
 		static_assert(MatT::rows == 4);
-		// T f = T(1) / (fovy / T(2)); // lol wtf, fast approximation
-		typename MatT::value_t f = cot(fovy / T(2)); // real equation
+		// typename MatT::value_t f = typename MatT::value_t(1) / (fovy / typename MatT::value_t(2)); // lol wtf, fast approximation
+		typename MatT::value_t f = cot(fovy / typename MatT::value_t(2)); // real equation
 		MatT r{ 0 };
 		r[0][0] = f / aspect;
 		r[1][1] = f;
@@ -3953,7 +3951,7 @@ namespace cgra {
 	inline auto rotate3(const basic_quat<typename MatT::value_t> &q) {
 		static_assert(MatT::cols >= 3);
 		static_assert(MatT::rows >= 3);
-		basic_mat<T, 4, 4> rotation(q);
+		basic_mat<typename MatT::value_t, 4, 4> rotation(q);
 		MatT r{ 1 };
 
 		// copy rotation part of the quaternion matrix over
@@ -4103,7 +4101,7 @@ namespace cgra {
 	// inverse rotation
 	template <typename T>
 	inline auto conjugate(const basic_quat<T>& q) {
-		return basic_quat<T>(-q.x, -q.y, -q.z, q.w);
+		return basic_quat<T>{ -q.x, -q.y, -q.z, q.w };
 	}
 
 	// multiplicative inverse

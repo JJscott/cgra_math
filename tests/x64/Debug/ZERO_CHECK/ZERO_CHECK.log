@@ -1,0 +1,8 @@
+﻿  Checking Build System
+  CMake is re-running because E:/workspace/single_header_math/tests/build/CMakeFiles/generate.stamp is out-of-date.
+    the file 'E:/workspace/single_header_math/tests/CMakeLists.txt'
+    is newer than 'E:/workspace/single_header_math/tests/build/CMakeFiles/generate.stamp.depend'
+    result='-1'
+  -- Configuring done
+  -- Generating done
+  -- Build files have been written to: E:/workspace/single_header_math/tests/build
