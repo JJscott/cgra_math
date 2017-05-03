@@ -355,14 +355,20 @@ void random_test() {
 
 
 
-	mat4 m = rotate3y<mat4>(1.0);
+	//mat4 m = rotate3y<mat4>(1.0);
 
-	cout << m << endl << endl;
-	cout << inverse(m) << endl << endl;
-	cout << inverse(inverse(m)) << endl << endl;
-	cout << inverse(m) * m << endl << endl;
+	//cout << m << endl << endl;
+	//cout << inverse(m) << endl << endl;
+	//cout << inverse(inverse(m)) << endl << endl;
+	//cout << inverse(m) * m << endl << endl;
 
 
+	quat q0;
+	quat q1;
+
+	quat q = q0 * q1;
+
+	cout << q << endl << endl;
 
 }
 

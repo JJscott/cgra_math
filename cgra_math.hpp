@@ -1348,24 +1348,24 @@ namespace cgra {
 
 		constexpr T & operator[](size_t i) {
 			assert(i < 4);
-			return (&w)[i];
+			return (&x)[i];
 		}
 
 		constexpr const T & operator[](size_t i) const {
 			assert(i < 4);
-			return (&w)[i];
+			return (&x)[i];
 		}
 
-		T * data() { return &w; }
+		T * data() { return &x; }
 
-		constexpr const T * data() const { return &w; }
+		constexpr const T * data() const { return &x; }
 
 		basic_vec<T, 4> & as_vec() { return *this; }
 
 		constexpr const basic_vec<T, 4> & as_vec() const { return *this; }
 
 		inline friend std::ostream & operator<<(std::ostream &out, const basic_quat &v) {
-			return out << '(' << v.w << ", " << v.x << ", " << v.y << ", " << v.z << ')';
+			return out << '(' << v.x << ", " << v.y << ", " << v.z << ", " << v.w << ')';
 		}
 
 	};
@@ -2493,10 +2493,16 @@ namespace cgra {
 
 	template<typename T1, typename T2>
 	inline auto operator*(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
+		basic_quat<std::common_type_t<T1, T2>> r = lhs;
+		return r *= rhs;
+	}
+
+	template<typename T1, typename T2>
+	inline auto operator*(const basic_quat<T1> &lhs, const basic_vec<T2, 3> &rhs) {
 		using common_t = std::common_type_t<T1, T2>;
 		basic_quat<common_t> q = lhs;
-		basic_quat<common_t> p(0, rhs);
-		return vector3<common_t>(q * p * inverse(q));
+		basic_quat<common_t> p(rhs, 0);
+		return basic_vec<common_t, 3>(q * p * inverse(q));
 	}
 
 	template<typename T1, typename T2>
