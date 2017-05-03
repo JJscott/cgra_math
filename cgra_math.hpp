@@ -3955,8 +3955,8 @@ namespace cgra {
 		MatT r{ 1 };
 
 		// copy rotation part of the quaternion matrix over
-		for (int j = 0; j < MatT::cols && j < rotation::cols; ++j)
-			for (int i = 0; i < MatT::rows && i < rotation::rows; ++i)
+		for (int j = 0; j < MatT::cols && j < rotation.cols; ++j)
+			for (int i = 0; i < MatT::rows && i < rotation.rows; ++i)
 				r[j][i] = rotation[j][i];
 
 		return r;
