@@ -3009,9 +3009,9 @@ namespace cgra {
 	// The fraction 0.5 will round in a direction chosen by the
 	// implementation, presumably the direction that is fastest
 	// This includes the possibility that round(x) returns the
-	// same value as roundEven(x) for all values of x
+	// same value as round_even(x) for all values of x
 
-	//TODO roundEven
+	//TODO round_even
 	// Element-wise function for x in v
 	// Returns a value equal to the nearest integer to x
 	// A fractional part of 0.5 will round toward the nearest even integer
@@ -3239,14 +3239,14 @@ namespace cgra {
 	}
 
 	//TODO
-	// floatBitsToInt
-	// floatBitsToUint
+	// float_bits_to_int
+	// float_bits_to_uint
 	// Returns a signed or unsigned integer value representing the encoding of a float
 	// The float value's bit-level representation is preserved
 
 	//TODO
-	// intBitsToFloat
-	// uintBitsToFloat
+	// int_bits_to_float
+	// uint_bits_to_float
 	// Returns a float value corresponding to a signed or unsigned integer encoding of a float
 	// If a NaN is passed in, it will not signal, and the resulting value is unspecified.
 	// If an Inf is passed in, the resulting value is the corresponding Inf.
