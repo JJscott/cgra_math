@@ -13,27 +13,34 @@ SET_PROPERTY(GLOBAL PROPERTY USE_FOLDERS ON)
 include_directories("${PROJECT_SOURCE_DIR}/..")
 
 if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-	# Full normal warnings
-	add_compile_options(/W4)
-	# Ignore C4800: forcing X to bool (performance warning)
+	# C++ latest
+	add_compile_options(/std:c++latest)
+	# UTF-8 source and execution charsets
+	add_compile_options(/utf-8)
+	# Full normal warnings, multithreaded build
+	add_compile_options(/W4 /MP)
+	# Disable C4800: forcing X to bool (performance warning)
 	add_compile_options(/wd4800)
+	# Not debug: enable intrinsics
+	add_compile_options("$<$<NOT:$<CONFIG:Debug>>:/Oi>")
 elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
-	# C++14
-	add_compile_options(-std=c++1y)
-	# Full normal warnings
-	add_compile_options(-Wall -Wextra -pedantic)
+	# C++17, full normal warnings
+	add_compile_options(-std=c++1z -Wall -Wextra -pedantic)
+	# Threading support
+	add_compile_options(-pthread)
 	# Promote missing return to error
 	add_compile_options(-Werror=return-type)
 	# enable coloured output if gcc >= 4.9
+	# TODO remove this, use the GCC_COLORS env instead?
 	execute_process(COMMAND ${CMAKE_CXX_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
 	if (GCC_VERSION VERSION_GREATER 4.9 OR GCC_VERSION VERSION_EQUAL 4.9)
 		add_compile_options(-fdiagnostics-color)
 	endif()
 elseif("${CMAKE_CXX_COMPILER_ID}" MATCHES "^(Apple)?Clang$")
-	# C++14
-	add_compile_options(-std=c++1y)
-	# Full normal warnings
-	add_compile_options(-Wall -Wextra -pedantic)
+	# C++17, full normal warnings
+	add_compile_options(-std=c++1z -Wall -Wextra -pedantic)
+	# Threading support
+	add_compile_options(-pthread)
 	# Promote missing return to error
 	add_compile_options(-Werror=return-type)
 endif()

@@ -359,7 +359,7 @@ namespace cgra {
 			result_type r;
 			for (int j = 0; j < r.cols; ++j)
 				for (int i = 0; i < r.rows; ++i)
-					r[j][i] = m_elem_dist(g, m_elem_dist.param_type(param.min(), param.max()));
+					r[j][i] = m_elem_dist(g, typename elem_dist_type::param_type(param.a()[j][i], param.b()[j][i]));
 			return r;
 		}
 
@@ -2193,9 +2193,9 @@ namespace cgra {
 	}
 
 	// multiplication
-	template<typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator*(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Rows, Cols> &rhs) {
-		return detail::make_mat(zip_with(detail::op::mul(), detail::repeat_vec<lhs, rhs::cols>(), rhs.as_vec()));
+	template<typename T1, typename T2, size_t CommonSize, size_t Cols, size_t Rows>
+	inline auto operator*(const basic_mat<T1, CommonSize, Rows> &lhs, const basic_mat<T2, Cols, CommonSize> &rhs) {
+		return detail::make_mat(zip_with([&](auto &&rcol) { return dot(lhs.as_vec(), decltype(rcol)(rcol)); }, rhs.as_vec()));
 	}
 
 	template<typename T1, size_t Cols, size_t Rows, typename T2>
