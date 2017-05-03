@@ -19,7 +19,6 @@
 - create inputstream operators for data types to recreate from output
 - TODO implement alternitives to body-3-2-1 euler rotation
 - - http://www.geometrictools.com/Documentation/EulerAngles.pdf
-- rename functions to be consistent (no more GLSL naming scheme)
 */
 
 #pragma once
@@ -3406,28 +3405,28 @@ namespace cgra {
 	// Element-wise function for x in v1 and y in v2
 	// Returns the comparison of x < y
 	template <typename T1, typename T2, size_t N>
-	inline auto lessThan(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+	inline auto less_than(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
 		return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) < decltype(y)(y); }, v1, v2);
 	}
 
 	// Element-wise function for x in v1 and y in v2
 	// Returns the comparison of x <= y
 	template <typename T1, typename T2, size_t N>
-	inline auto lessThanEqual(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+	inline auto less_than_equal(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
 		return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) <= decltype(y)(y); }, v1, v2);
 	}
 
 	// Element-wise function for x in v1 and y in v2
 	// Returns the comparison of x > y
 	template <typename T1, typename T2, size_t N>
-	inline auto greaterThan(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+	inline auto greater_than(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
 		return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) > decltype(y)(y); }, v1, v2);
 	}
 
 	// Element-wise function for x in v1 and y in v2
 	// Returns the comparison of x >= y
 	template <typename T1, typename T2, size_t N>
-	inline auto greaterThanEqual(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+	inline auto greater_than_equal(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
 		return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) >= decltype(y)(y); }, v1, v2);
 	}
 
@@ -3441,7 +3440,7 @@ namespace cgra {
 	// Element-wise function for x in v1 and y in v2
 	// Returns the comparison of x != y
 	template <typename T1, typename T2, size_t N>
-	inline auto notEqual(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+	inline auto not_equal(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
 		return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) != decltype(y)(y); }, v1, v2);
 	}
 
