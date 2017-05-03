@@ -2000,7 +2000,7 @@ namespace cgra {
 
 	template<typename T1, typename T2, size_t N>
 	inline auto operator<(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-		return false; //TODO
+		return reinterpret_cast<const std::array<T1, N> &>(lhs) < reinterpret_cast<const std::array<T2, N> &>(rhs);
 	}
 
 
@@ -2405,7 +2405,7 @@ namespace cgra {
 
 	template<typename T1, typename T2, size_t Cols, size_t Rows>
 	inline auto operator<(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return false; //TODO
+		return reinterpret_cast<const std::array<T1, N> &>(lhs.as_vec()) < reinterpret_cast<const std::array<T2, N> &>(lhs.as_vec());
 	}
 
 
@@ -2519,6 +2519,27 @@ namespace cgra {
 	template<typename T1, typename T2>
 	inline auto operator/(const basic_quat<T1> &lhs, const T2 &rhs) {
 		return zip_with(detail::op::div(), lhs.as_vec(), basic_vec<T2, 4>(rhs));
+	}
+
+	// equal
+
+	template<typename T1, typename T2>
+	inline auto operator==(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
+		return fold(detail::op::logical_and(), true, zip_with(detail::op::equal(), lhs.as_vec(), rhs.as_vec()));
+	}
+
+	// not equal
+
+	template<typename T1, typename T2>
+	inline auto operator!=(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
+		return fold(detail::op::logical_or(), false, zip_with(detail::op::nequal(), lhs.as_vec(), rhs.as_vec()));
+	}
+
+	// less than
+
+	template<typename T1, typename T2>
+	inline auto operator<(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
+		return reinterpret_cast<const std::array<T1, 4> &>(lhs) < reinterpret_cast<const std::array<T2, 4> &>(rhs);
 	}
 
 

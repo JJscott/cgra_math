@@ -350,10 +350,18 @@ void vector_compile_test() {
 
 }
 
+
+void random_test() {
+
+
+
+}
+
+
 //Main program
 // 
 void test::run_tests() {
-	vector_compile_test();
-	//vector_tests();
+	//vector_compile_test();
+	random_test();
 	cin.get();
 }
