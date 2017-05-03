@@ -13,12 +13,12 @@
 =================
 
 - constexpr everything
-- vector/matrix/quaternion functions
-- transform functions
 - clean up common function definitions and remove duplicates
 - fix generic constructor for vectors (concat etc)
 - comments and documentation
 - create inputstream operators for data types to recreate from output
+- TODO implement alternitives to body-3-2-1 euler rotation
+- - http://www.geometrictools.com/Documentation/EulerAngles.pdf
 */
 
 #pragma once
@@ -359,7 +359,7 @@ namespace cgra {
 			result_type r;
 			for (int j = 0; j < r.cols; ++j)
 				for (int i = 0; i < r.rows; ++i)
-					r[j][i] = m_elem_dist(g, m_elem_dist.param_type(param.min(), param.max()));
+					r[j][i] = m_elem_dist(g, typename elem_dist_type::param_type(param.a()[j][i], param.b()[j][i]));
 			return r;
 		}
 
@@ -1203,6 +1203,7 @@ namespace cgra {
 		}
 	};
 
+
 	// [Cols, Rows]-dimensional matrix class of type T
 	template <typename T, size_t Cols, size_t Rows>
 	class basic_mat {
@@ -1297,26 +1298,74 @@ namespace cgra {
 		template <typename U>
 		constexpr basic_quat(const basic_vec<U, 4> &v) : basic_vec<T, 4>(v) { }
 
+		// basic_mat<U, 3, 3> converter
+		template <typename U>
+		explicit operator basic_mat<U, 3, 3>() const {
+			basic_mat<U, 3, 3> m;
+
+			m[0][0] = w * w + x * x - y * y - z * z;
+			m[0][1] = 2 * x * y + 2 * w * z;
+			m[0][2] = 2 * x * z - 2 * w * y;
+
+			m[1][0] = 2 * x * y - 2 * w * z;
+			m[1][1] = w * w - x * x + y * y - z * z;
+			m[1][2] = 2 * y * z + 2 * w * x;
+
+			m[2][0] = 2 * x * z + 2 * w * y;
+			m[2][1] = 2 * y * z - 2 * w * x;
+			m[2][2] = w * w - x * x - y * y + z * z;
+
+			return m;
+		}
+
+		// basic_mat<U, 4, 4> converter
+		template <typename U>
+		explicit operator basic_mat<U, 4, 4>() const {
+			basic_mat<U, 4, 4> m;
+
+			m[0][0] = w * w + x * x - y * y - z * z;
+			m[0][1] = 2 * x * y + 2 * w * z;
+			m[0][2] = 2 * x * z - 2 * w * y;
+			m[0][3] = 0;
+
+			m[1][0] = 2 * x * y - 2 * w * z;
+			m[1][1] = w * w - x * x + y * y - z * z;
+			m[1][2] = 2 * y * z + 2 * w * x;
+			m[1][3] = 0;
+
+			m[2][0] = 2 * x * z + 2 * w * y;
+			m[2][1] = 2 * y * z - 2 * w * x;
+			m[2][2] = w * w - x * x - y * y + z * z;
+			m[2][3] = 0;
+
+			m[3][0] = 0;
+			m[3][1] = 0;
+			m[3][2] = 0;
+			m[3][3] = w * w + x * x + y * y + z * z;
+
+			return m;
+		}
+
 		constexpr T & operator[](size_t i) {
 			assert(i < 4);
-			return (&w)[i];
+			return (&x)[i];
 		}
 
 		constexpr const T & operator[](size_t i) const {
 			assert(i < 4);
-			return (&w)[i];
+			return (&x)[i];
 		}
 
-		T * data() { return &w; }
+		T * data() { return &x; }
 
-		constexpr const T * data() const { return &w; }
+		constexpr const T * data() const { return &x; }
 
 		basic_vec<T, 4> & as_vec() { return *this; }
 
 		constexpr const basic_vec<T, 4> & as_vec() const { return *this; }
 
 		inline friend std::ostream & operator<<(std::ostream &out, const basic_quat &v) {
-			return out << '(' << v.w << ", " << v.x << ", " << v.y << ", " << v.z << ')';
+			return out << '(' << v.x << ", " << v.y << ", " << v.z << ", " << v.w << ')';
 		}
 
 	};
@@ -1951,7 +2000,7 @@ namespace cgra {
 
 	template<typename T1, typename T2, size_t N>
 	inline auto operator<(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-		return false; //TODO
+		return reinterpret_cast<const std::array<T1, N> &>(lhs) < reinterpret_cast<const std::array<T2, N> &>(rhs);
 	}
 
 
@@ -2144,21 +2193,21 @@ namespace cgra {
 	}
 
 	// multiplication
-	template<typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator*(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Rows, Cols> &rhs) {
-		return detail::make_mat(zip_with(detail::op::mul(), detail::repeat_vec<lhs, rhs::cols>(), rhs.as_vec()));
+	template<typename T1, typename T2, size_t CommonSize, size_t Cols, size_t Rows>
+	inline auto operator*(const basic_mat<T1, CommonSize, Rows> &lhs, const basic_mat<T2, Cols, CommonSize> &rhs) {
+		return detail::make_mat(zip_with([&](auto &&rcol) { return dot(lhs.as_vec(), decltype(rcol)(rcol)); }, rhs.as_vec()));
 	}
 
 	template<typename T1, size_t Cols, size_t Rows, typename T2>
 	inline auto operator*(const basic_mat<T1, Cols, Rows> &lhs, const basic_vec<T2, Cols> &rhs) {
-		// dot(lhs.as_vec(), rhs)
-		return fold(detail::op::add(), basic_vec<T1, Rows>(0), detail::make_mat(zip_with(detail::op::mul(), lhs.as_vec(), rhs));) 
+		return dot(lhs.as_vec(), rhs);
+		//return fold(detail::op::add(), basic_vec<T1, Rows>{}, zip_with(detail::op::mul(), lhs.as_vec(), rhs));
 	}
 
 	template<typename T1, typename T2, size_t Cols, size_t Rows>
 	inline auto operator*(const basic_vec<T1, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		//  dot(repeat_vec(lhs), rhs.as_vec())
-		return fold(detail::op::add(), basic_vec<T1, Rows>(0), detail::make_mat(zip_with(detail::op::mul(), detail::repeat_vec<basic_vec<T1, Cols>, Rows>(lhs), rhs.as_vec())));
+		//return dot(repeat_vec(lhs), rhs.as_vec());
+		return fold(detail::op::add(), basic_vec<T1, Rows>(0), zip_with(detail::op::mul(), detail::repeat_vec<basic_vec<T1, Cols>, Rows>(lhs), rhs.as_vec()));
 	}
 
 	template<typename T1, size_t Cols, size_t Rows, typename T2>
@@ -2356,7 +2405,7 @@ namespace cgra {
 
 	template<typename T1, typename T2, size_t Cols, size_t Rows>
 	inline auto operator<(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return false; //TODO
+		return reinterpret_cast<const std::array<T1, N> &>(lhs.as_vec()) < reinterpret_cast<const std::array<T2, N> &>(lhs.as_vec());
 	}
 
 
@@ -2423,7 +2472,7 @@ namespace cgra {
 
 	template<typename T>
 	inline auto operator-(const basic_quat<T> &rhs) {
-		return zip_with(detail::op::neg(), rhs.as_vec());
+		return conjugate(rhs);
 	}
 
 	// addition
@@ -2444,7 +2493,16 @@ namespace cgra {
 
 	template<typename T1, typename T2>
 	inline auto operator*(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
-		return lhs;// TODO
+		basic_quat<std::common_type_t<T1, T2>> r = lhs;
+		return r *= rhs;
+	}
+
+	template<typename T1, typename T2>
+	inline auto operator*(const basic_quat<T1> &lhs, const basic_vec<T2, 3> &rhs) {
+		using common_t = std::common_type_t<T1, T2>;
+		basic_quat<common_t> q = lhs;
+		basic_quat<common_t> p(rhs, 0);
+		return basic_vec<common_t, 3>(q * p * inverse(q));
 	}
 
 	template<typename T1, typename T2>
@@ -2467,6 +2525,27 @@ namespace cgra {
 	template<typename T1, typename T2>
 	inline auto operator/(const basic_quat<T1> &lhs, const T2 &rhs) {
 		return zip_with(detail::op::div(), lhs.as_vec(), basic_vec<T2, 4>(rhs));
+	}
+
+	// equal
+
+	template<typename T1, typename T2>
+	inline auto operator==(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
+		return fold(detail::op::logical_and(), true, zip_with(detail::op::equal(), lhs.as_vec(), rhs.as_vec()));
+	}
+
+	// not equal
+
+	template<typename T1, typename T2>
+	inline auto operator!=(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
+		return fold(detail::op::logical_or(), false, zip_with(detail::op::nequal(), lhs.as_vec(), rhs.as_vec()));
+	}
+
+	// less than
+
+	template<typename T1, typename T2>
+	inline auto operator<(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
+		return reinterpret_cast<const std::array<T1, 4> &>(lhs) < reinterpret_cast<const std::array<T2, 4> &>(rhs);
 	}
 
 
@@ -2936,9 +3015,9 @@ namespace cgra {
 	// The fraction 0.5 will round in a direction chosen by the
 	// implementation, presumably the direction that is fastest
 	// This includes the possibility that round(x) returns the
-	// same value as roundEven(x) for all values of x
+	// same value as round_even(x) for all values of x
 
-	//TODO roundEven
+	//TODO round_even
 	// Element-wise function for x in v
 	// Returns a value equal to the nearest integer to x
 	// A fractional part of 0.5 will round toward the nearest even integer
@@ -3166,14 +3245,14 @@ namespace cgra {
 	}
 
 	//TODO
-	// floatBitsToInt
-	// floatBitsToUint
+	// float_bits_to_int
+	// float_bits_to_uint
 	// Returns a signed or unsigned integer value representing the encoding of a float
 	// The float value's bit-level representation is preserved
 
 	//TODO
-	// intBitsToFloat
-	// uintBitsToFloat
+	// int_bits_to_float
+	// uint_bits_to_float
 	// Returns a float value corresponding to a signed or unsigned integer encoding of a float
 	// If a NaN is passed in, it will not signal, and the resulting value is unspecified.
 	// If an Inf is passed in, the resulting value is the corresponding Inf.
@@ -3276,10 +3355,10 @@ namespace cgra {
 		return length(p1-p2);
 	}
 
-	// Returns the dot product of v1 and v2, i.e., v1[0]*v1[0] + v1[1]*v2[1] + ...
+	// Returns the dot product of v1 and v2, i.e., v1[0]*v2[0] + v1[1]*v2[1] + ...
 	template <typename T1, typename T2, size_t N>
 	inline auto dot(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-		return sum(v1*v2);
+		return fold(detail::op::add(), T1{}, zip_with(detail::op::mul(), v1, v2));
 	}
 
 	// Returns a vector in the same direction as v but with a length of 1
@@ -3353,28 +3432,28 @@ namespace cgra {
 	// Element-wise function for x in v1 and y in v2
 	// Returns the comparison of x < y
 	template <typename T1, typename T2, size_t N>
-	inline auto lessThan(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+	inline auto less_than(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
 		return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) < decltype(y)(y); }, v1, v2);
 	}
 
 	// Element-wise function for x in v1 and y in v2
 	// Returns the comparison of x <= y
 	template <typename T1, typename T2, size_t N>
-	inline auto lessThanEqual(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+	inline auto less_than_equal(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
 		return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) <= decltype(y)(y); }, v1, v2);
 	}
 
 	// Element-wise function for x in v1 and y in v2
 	// Returns the comparison of x > y
 	template <typename T1, typename T2, size_t N>
-	inline auto greaterThan(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+	inline auto greater_than(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
 		return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) > decltype(y)(y); }, v1, v2);
 	}
 
 	// Element-wise function for x in v1 and y in v2
 	// Returns the comparison of x >= y
 	template <typename T1, typename T2, size_t N>
-	inline auto greaterThanEqual(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+	inline auto greater_than_equal(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
 		return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) >= decltype(y)(y); }, v1, v2);
 	}
 
@@ -3388,7 +3467,7 @@ namespace cgra {
 	// Element-wise function for x in v1 and y in v2
 	// Returns the comparison of x != y
 	template <typename T1, typename T2, size_t N>
-	inline auto notEqual(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+	inline auto not_equal(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
 		return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) != decltype(y)(y); }, v1, v2);
 	}
 
@@ -3666,6 +3745,296 @@ namespace cgra {
 	//============================================================================================================================================================================================================//
 
 
+	// general transformations
+	//
+
+	template<typename MatT>
+	inline auto identity() {
+		return MatT{1};
+	}
+
+	template <typename MatT>
+	inline auto shear(int t_dim, int s_dim, typename MatT::value_t f) {
+		MatT m{ 1 };
+		m[t_dim][s_dim] = f;
+		return m;
+	}
+
+
+	// Functions for constructing 2d transformations
+	//
+
+	template <typename MatT>
+	inline auto rotate2(typename MatT::value_t v) {
+		static_assert(MatT::cols >= 2);
+		static_assert(MatT::rows >= 2);
+		MatT r{ 1 };
+		typename MatT::value_t cos_v = cos(v);
+		typename MatT::value_t sin_v = sin(v);
+		r[0][0] = cos_v;
+		r[1][0] = -sin_v;
+		r[1][1] = cos_v;
+		r[0][1] = sin_v;
+		return r;
+	}
+
+	template <typename MatT>
+	inline auto scale2(typename MatT::value_t v) {
+		static_assert(MatT::cols >= 2);
+		static_assert(MatT::rows >= 2);
+		MatT r{ 1 };
+		r[0][0] = v;
+		r[1][1] = v;
+		return r;
+	}
+
+
+	template <typename MatT>
+	inline auto scale2(const basic_vec<typename MatT::value_t, 2> &v) {
+		static_assert(MatT::cols >= 2);
+		static_assert(MatT::rows >= 2);
+		MatT r{ 1 };
+		r[0][0] = v[0];
+		r[1][1] = v[1];
+		return r;
+	}
+
+	template <typename MatT>
+	inline auto translate2(typename MatT::value_t v) {
+		static_assert(MatT::cols >= 3);
+		static_assert(MatT::rows >= 2);
+		MatT r{ 1 };
+		r[3][0] = v;
+		r[3][1] = v;
+		return r;
+	}
+
+	template <typename MatT>
+	inline auto translate2(typename MatT::value_t vx, typename MatT::value_t vy) {
+		static_assert(MatT::cols >= 3);
+		static_assert(MatT::rows >= 2);
+		MatT r{ 1 };
+		r[3][0] = vx;
+		r[3][1] = vy;
+		return r;
+	}
+
+	template <typename MatT>
+	inline auto translate2(const basic_vec<typename MatT::value_t, 2> &v) {
+		static_assert(MatT::cols >= 3);
+		static_assert(MatT::rows >= 2);
+		MatT r{ 1 };
+		r[3][0] = v[0];
+		r[3][1] = v[1];
+		return r;
+	}
+
+
+
+
+
+	// Functions for constructing 3d transformations
+	//
+
+	// TODO Nan check
+	template <typename MatT>
+	inline auto look_at(
+		const basic_vec<typename MatT::value_t, 3> &eye,
+		const basic_vec<typename MatT::value_t, 3> &lookAt,
+		const basic_vec<typename MatT::value_t, 3> &up
+	) {
+		static_assert(MatT::cols == 4);
+		static_assert(MatT::rows == 4);
+		basic_vec<typename MatT::value_t, 3> vz = normalize(eye - lookAt);
+		basic_vec<typename MatT::value_t, 3> vx = normalize(cross(up, vz));
+		basic_vec<typename MatT::value_t, 3> vy = normalize(cross(vz, vx));
+		MatT m{
+			vector4<T>(vx, 0),
+			vector4<T>(vy, 0),
+			vector4<T>(vz, 0),
+			vector4<T>(eye, 1) };
+		return inverse(m);
+	}
+
+	template <typename MatT>
+	inline auto look_at(
+		typename MatT::value_t ex, typename MatT::value_t ey, typename MatT::value_t ez,
+		typename MatT::value_t lx, typename MatT::value_t ly, typename MatT::value_t lz,
+		typename MatT::value_t ux, typename MatT::value_t uy, typename MatT::value_t uz
+	) {
+		static_assert(MatT::cols == 4);
+		static_assert(MatT::rows == 4);
+		return look_at( { ex, ey, ez }, { lx, ly, lz }, { ux, uy, uz } );
+	}
+
+	// fovy in radians veritical feild of view as an angle
+	// aspect is w/h
+	// TODO Nan check
+	template <typename MatT>
+	inline auto perspective(
+		typename MatT::value_t fovy,
+		typename MatT::value_t aspect,
+		typename MatT::value_t zNear,
+		typename MatT::value_t zFar
+	) {
+		static_assert(MatT::cols == 4);
+		static_assert(MatT::rows == 4);
+		// T f = T(1) / (fovy / T(2)); // lol wtf, fast approximation
+		typename MatT::value_t f = cot(fovy / T(2)); // real equation
+		MatT r{ 0 };
+		r[0][0] = f / aspect;
+		r[1][1] = f;
+		r[2][2] = (zFar + zNear) / (zNear - zFar);
+		r[3][2] = (2 * zFar * zNear) / (zNear - zFar);
+		r[2][3] = -1;
+		return r;
+	}
+
+	// TODO Nan check
+	template <typename MatT>
+	inline auto orthographic(
+		typename MatT::value_t left, 
+		typename MatT::value_t right, 
+		typename MatT::value_t bottom, 
+		typename MatT::value_t top, 
+		typename MatT::value_t nearVal, 
+		typename MatT::value_t farVal
+	) {
+		static_assert(MatT::cols == 4);
+		static_assert(MatT::rows == 4);
+		MatT r{ 0 };
+		r[0][0] = typename MatT::value_t(2) / (right - left);
+		r[3][0] = (right + left) / (right - left);
+		r[1][1] = typename MatT::value_t(2) / (top - bottom);
+		r[3][1] = (top + bottom) / (top - bottom);
+		r[2][2] = -typename MatT::value_t(2) / (farVal - nearVal);
+		r[3][2] = (farVal + nearVal) / (farVal - nearVal);
+		r[3][3] = typename MatT::value_t(1);
+		return m;
+	}
+
+	template <typename MatT>
+	inline auto rotate3x(typename MatT::value_t angle) {
+		static_assert(MatT::cols >= 3);
+		static_assert(MatT::rows >= 3);
+		MatT r{ 1 };
+		r[1][1] = cos(angle);
+		r[2][1] = -sin(angle);
+		r[1][2] = sin(angle);
+		r[2][2] = cos(angle);
+		return r;
+	}
+
+	template <typename MatT>
+	inline auto rotate3y(typename MatT::value_t angle) {
+		static_assert(MatT::cols >= 3);
+		static_assert(MatT::rows >= 3);
+		MatT r{ 1 };
+		r[0][0] = cos(angle);
+		r[2][0] = sin(angle);
+		r[0][2] = -sin(angle);
+		r[2][2] = cos(angle);
+		return r;
+	}
+
+	template <typename MatT>
+	inline auto rotate3z(typename MatT::value_t angle) {
+		static_assert(MatT::cols >= 3);
+		static_assert(MatT::rows >= 3);
+		MatT r{ 1 };
+		r[0][0] = cos(angle);
+		r[1][0] = -sin(angle);
+		r[0][1] = sin(angle);
+		r[1][1] = cos(angle);
+		return r;
+	}
+
+	template <typename MatT>
+	inline auto rotate3(const basic_quat<typename MatT::value_t> &q) {
+		static_assert(MatT::cols >= 3);
+		static_assert(MatT::rows >= 3);
+		basic_mat<T, 4, 4> rotation(q);
+		MatT r{ 1 };
+
+		// copy rotation part of the quaternion matrix over
+		for (int j = 0; j < MatT::cols && j < rotation::cols; ++j)
+			for (int i = 0; i < MatT::rows && i < rotation::rows; ++i)
+				r[j][i] = rotation[j][i];
+
+		return r;
+	}
+
+
+	template <typename MatT>
+	inline auto scale3(typename MatT::value_t v) {
+		static_assert(MatT::cols >= 3);
+		static_assert(MatT::rows >= 3);
+		MatT r{ 1 };
+		r[0][0] = v;
+		r[1][1] = v;
+		r[2][2] = v;
+		return r;
+	}
+
+	template <typename MatT>
+	inline auto scale3(typename MatT::value_t vx, typename MatT::value_t vy, typename MatT::value_t vz) {
+		static_assert(MatT::cols >= 3);
+		static_assert(MatT::rows >= 3);
+		MatT r{ 1 };
+		r[0][0] = vx;
+		r[1][1] = vy;
+		r[2][2] = vz;
+		return r;
+	}
+
+
+	template <typename MatT>
+	inline auto scale3(const basic_vec<typename MatT::value_t, 3> &v) {
+		static_assert(MatT::cols >= 3);
+		static_assert(MatT::rows >= 3);
+		MatT r{ 1 };
+		r[0][0] = v[0];
+		r[1][1] = v[1];
+		r[2][2] = v[2];
+		return r;
+	}
+
+	template <typename MatT>
+	inline auto translate3(typename MatT::value_t v) {
+		static_assert(MatT::cols >= 4);
+		static_assert(MatT::rows >= 3);
+		MatT r{ 1 };
+		r[3][0] = v;
+		r[3][1] = v;
+		r[3][2] = v;
+		return r;
+	}
+
+	template <typename MatT>
+	inline auto translate3(typename MatT::value_t vx, typename MatT::value_t vy, typename MatT::value_t vz) {
+		static_assert(MatT::cols >= 4);
+		static_assert(MatT::rows >= 3);
+		MatT r{ 1 };
+		r[3][0] = vx;
+		r[3][1] = vy;
+		r[3][2] = vz;
+		return r;
+	}
+
+
+	template <typename MatT>
+	inline auto translate3(const basic_vec<typename MatT::value_t, 3> &v) {
+		static_assert(MatT::cols >= 4);
+		static_assert(MatT::rows >= 3);
+		MatT r{ 1 };
+		r[3][0] = v[0];
+		r[3][1] = v[1];
+		r[3][2] = v[2];
+		return r;
+	}
+
+
+
 
 
 	//    ______      __    __       ___   .___________. _______ .______      .__   __.  __    ______   .__   __.     _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
@@ -3677,7 +4046,170 @@ namespace cgra {
 	//                                                                                                                                                                                                            //
 	//============================================================================================================================================================================================================//
 
-	//TODO
+	// Euler angle constuctor
+	// body-3-2-1 euler rotation
+	// TODO nan checking
+	template <typename QuatT>
+	inline auto euler(typename QuatT::value_t rx, typename QuatT::value_t ry, typename QuatT::value_t rz) {
+
+		basic_vec<typename QuatT::value_t, 4> rotx(sin(rx / 2), 0, 0, cos(rx / 2));
+		basic_vec<typename QuatT::value_t, 4> roty(0, sin(ry / 2), 0, cos(ry / 2));
+		basic_vec<typename QuatT::value_t, 4> rotz(0, 0, sin(rz / 2), cos(rz / 2));
+
+		QuatT q(rotx * outerProduct(roty, rotz));
+
+		return q;
+	}
+
+	// rotation around a given axis
+	// normalizes the axis for you
+	// TODO nan checking
+	template <typename QuatT, typename U>
+	inline auto axisangle(const basic_vec<U, 3> &axis, typename QuatT::value_t angle) {
+		basic_vec<typename QuatT::value_t, 3> a = normalize(axis);
+		typename QuatT::value_t s = sin(angle / 2);
+
+		return QuatT(s * a, cos(angle / 2));
+	}
+
+	// rotation around a given axis using axis's magnitude as angle
+	// TODO nan checking
+	template <typename QuatT, typename U>
+	inline auto axisangle(const basic_vec<U, 3>& axis) {
+		typename QuatT::value_t angle = length(axis);
+		typename QuatT::value_t s = sin(angle / 2);
+		basic_vec<typename QuatT::value_t, 3> a = axis / angle; // normalize
+
+		return QuatT(s * a, cos(angle / 2));
+	}
+
+	// rotation between 2 vectors
+	// TODO nan checking
+	template <typename QuatT, typename U1, typename U2>
+	inline auto fromto(const basic_vec<U1, 3> &from, const basic_vec<U2, 3> &to) {
+		typename QuatT::value_t angle = acos(dot(normalize(from), normalize(to)));
+		typename QuatT::value_t s = sin(angle / 2);
+		basic_vec<typename QuatT::value_t, 3> a = normalize(cross(from, to));
+
+		return QuatT(s * a, cos(angle / 2));
+	}
+
+	// dot product
+	template <typename T1, typename T2>
+	inline auto dot(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
+		return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z + lhs.w * rhs.w;
+	}
+
+	// inverse rotation
+	template <typename T>
+	inline auto conjugate(const basic_quat<T>& q) {
+		return basic_quat<T>(-q.x, -q.y, -q.z, q.w);
+	}
+
+	// multiplicative inverse
+	template <typename T>
+	inline auto inverse(const basic_quat<T>& q) {
+		T ilen2 = 1 / dot(q, q);
+		return conjugate(q) * ilen2;
+	}
+
+	template <typename T>
+	inline auto pow(const basic_quat<T> &q, T power) {
+		T qm = length(q);
+		T theta = acos(q.w / qm);
+		T ivm = 1 / sqrt(q.x * q.x + q.y * q.y + q.z * q.z);
+
+		if (isinf(ivm)) return basic_quat<T>() * pow(qm, power);
+
+		T ivm_power_theta = ivm * power * theta;
+		basic_quat<T> p(0, q.x * ivm_power_theta, q.y * ivm_power_theta, q.z * ivm_power_theta);
+		return exp(p) * pow(qm, power);
+	}
+
+
+	template <typename T>
+	inline auto exp(const basic_quat<T> &q) {
+		T expw = exp(q.w);
+		T vm = sqrt(q.x * q.x + q.y * q.y + q.z * q.z);
+		T ivm = 1 / vm;
+
+		if (isinf(ivm)) return basic_quat<T>(expw * cos(vm), 0, 0, 0);
+
+		T vf = expw * sin(vm) * ivm;
+		return basic_quat<T>(expw * cos(vm), q.x * vf, q.y * vf, q.z * vf);
+	}
+
+	template <typename T>
+	inline auto log(const basic_quat<T> &q) {
+		T qm = length(q);
+		T ivm = 1 / sqrt(q.x * q.x + q.y * q.y + q.z * q.z);
+
+		if (isinf(ivm)) return basic_quat<T>(log(qm), 0, 0, 0);
+
+		T vf = acos(q.w / qm) * ivm;
+		return basic_quat<T>(log(qm), q.x * vf, q.y * vf, q.z * vf);
+	}
+
+	// length/magnitude of vector from quaternion
+	template <typename T>
+	inline T length(const basic_quat<T> &q) {
+		return sqrt(dot(q, q));
+	}
+
+	// returns unit quaternion
+	template <typename T>
+	inline auto normalize(const basic_quat<T> &q) {
+		return q / length(q);
+	}
+
+	// normalized linear interpolation
+	// linear blend of quaternions : x*(1-a) + y*a
+	template <typename T1, typename T2, typename T3>
+	inline auto mix(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs, T3 a) {
+		using common_t = std::common_type_t<T1, T2, T3>;
+		return lhs*(common_t(1) - a) + rhs*a;
+	}
+
+	// spherical linear interpolation
+	template <typename T1, typename T2, typename T3>
+	inline auto slerp(const basic_quat<T1>& lhs, const basic_quat<T2>& rhs, T3 a) {
+		using common_t = std::common_type_t<T1, T2, T3>;
+		basic_quat<common_t> q = normalize(lhs);
+		basic_quat<common_t> p = normalize(rhs);
+		common_t epsilon = 0.0001;
+		if (dot(p, q) < common_t(0)) {
+			q = q * common_t(-1);
+		}
+		common_t dpq = dot(p, q);
+
+		if ((common_t(1) - dpq) > epsilon) {
+			common_t w = acos(dpq);
+			return ((sin((common_t(1) - a) * w) * p) + (sin(a * w) * q)) / sin(w);
+		}
+
+		return (common_t(1) - a) * p + a * q;
+	}
+
+
+	// returns the rotation (in radians) of the quaternion around a given axis
+	template <typename T1, typename T2>
+	inline auto project(const basic_quat<T1> &q, const basic_vec<T2, 3> &v) {
+		using common_t = std::common_type_t<T1, T2>;
+
+		basic_vec<common_t, 3> nv = normalize(v);
+
+		// find the the tangent to nv
+		basic_vec<common_t, 3> tangent{ 1, 0, 0 };
+		if (abs(dot(tangent, nv)) > 0.7331) // anti-leet
+			tangent = basic_vec<common_t, 3> { 0, 1, 0 };
+		tangent = normalize(cross(nv, tangent));
+
+		// transform, reject and dot values to get angle
+		basic_vec<common_t, 3> transformed = q * tangent;
+		basic_vec<common_t, 3> projection = normalize(reject(transformed, nv));
+
+		return angle(tangent, projection);
+	}
 
 
 
