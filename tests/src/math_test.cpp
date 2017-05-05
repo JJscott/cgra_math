@@ -354,32 +354,6 @@ void vector_compile_test() {
 void random_test() {
 
 
-
-	//mat4 m = rotate3y<mat4>(1.0);
-
-	//cout << m << endl << endl;
-	//cout << inverse(m) << endl << endl;
-	//cout << inverse(inverse(m)) << endl << endl;
-	//cout << inverse(m) * m << endl << endl;
-
-	dvec4 v{ 0,0,0,1 };
-	quat q0( v );
-	dquat q1(q0);
-
-	quat q = q0 * q1;
-	q = conjugate(q);
-	q = inverse(q);
-	
-	
-	auto qw = q * 5;
-
-	float d = dot(q, q);
-	float ilen2 = 1 / d;
-	q = conjugate(q) * ilen2;
-
-
-	cout << q << endl << endl;
-
 }
 
 

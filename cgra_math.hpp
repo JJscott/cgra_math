@@ -1224,8 +1224,8 @@ namespace cgra {
 		constexpr explicit basic_mat(ArgTs &&...args) : m_data{ std::forward<ArgTs>(args)... } {}
 
 		// 1-arg magic ctor
-		template <typename VecT, typename = std::enable_if_t<detail::is_relatively_vector<basic_mat, VecT>::value>, typename = void>
-		constexpr explicit basic_mat(VecT &&v) : m_data{ std::forward<VecT>(v) } {}
+		template <typename MatT, typename = std::enable_if_t<detail::is_relatively_vector<basic_mat, MatT>::value>, typename = void>
+		constexpr basic_mat(MatT &&v) : m_data{ std::forward<MatT>(v) } {}
 
 		// identity ctor
 		constexpr explicit basic_mat(const value_t &v_) {
