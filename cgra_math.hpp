@@ -3416,6 +3416,17 @@ namespace cgra {
 		return v1 - project(v1, v2);
 	}
 
+	// TODO description
+	// Returns the cross product of 2 vectors
+	template <typename T1, typename T2>
+	inline auto cross(const basic_vec<T1, 3> &v1, const basic_vec<T2, 3> &v2) {
+		return basic_vec<std::common_type_t<T1, T2>, 3>(
+			v1[1] * v2[2] - v1[2] * v2[1],
+			v1[2] * v2[0] - v1[0] * v2[2],
+			v1[0] * v2[1] - v1[1] * v2[0]
+		);
+	}
+
 
 
 	//  .______       _______  __          ___   .___________. __    ______   .__   __.      ___       __          _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
