@@ -3778,8 +3778,8 @@ namespace cgra {
 
 	template <typename MatT>
 	inline auto rotate2(typename MatT::value_t v) {
-		static_assert(MatT::cols >= 2);
-		static_assert(MatT::rows >= 2);
+		static_assert(MatT::cols >= 2, "Matrix type must have 2 or more columns");
+		static_assert(MatT::rows >= 2, "Matrix type must have 2 or more rows");
 		MatT r{ 1 };
 		typename MatT::value_t cos_v = cos(v);
 		typename MatT::value_t sin_v = sin(v);
@@ -3792,8 +3792,8 @@ namespace cgra {
 
 	template <typename MatT>
 	inline auto scale2(typename MatT::value_t v) {
-		static_assert(MatT::cols >= 2);
-		static_assert(MatT::rows >= 2);
+		static_assert(MatT::cols >= 2, "Matrix type must have 2 or more columns");
+		static_assert(MatT::rows >= 2, "Matrix type must have 2 or more rows");
 		MatT r{ 1 };
 		r[0][0] = v;
 		r[1][1] = v;
@@ -3803,8 +3803,8 @@ namespace cgra {
 
 	template <typename MatT>
 	inline auto scale2(const basic_vec<typename MatT::value_t, 2> &v) {
-		static_assert(MatT::cols >= 2);
-		static_assert(MatT::rows >= 2);
+		static_assert(MatT::cols >= 2, "Matrix type must have 2 or more columns");
+		static_assert(MatT::rows >= 2, "Matrix type must have 2 or more rows");
 		MatT r{ 1 };
 		r[0][0] = v[0];
 		r[1][1] = v[1];
@@ -3813,8 +3813,8 @@ namespace cgra {
 
 	template <typename MatT>
 	inline auto translate2(typename MatT::value_t v) {
-		static_assert(MatT::cols >= 3);
-		static_assert(MatT::rows >= 2);
+		static_assert(MatT::cols >= 3, "Matrix type must have 3 or more columns");
+		static_assert(MatT::rows >= 2, "Matrix type must have 2 or more rows");
 		MatT r{ 1 };
 		r[3][0] = v;
 		r[3][1] = v;
@@ -3823,8 +3823,8 @@ namespace cgra {
 
 	template <typename MatT>
 	inline auto translate2(typename MatT::value_t vx, typename MatT::value_t vy) {
-		static_assert(MatT::cols >= 3);
-		static_assert(MatT::rows >= 2);
+		static_assert(MatT::cols >= 3, "Matrix type must have 3 or more columns");
+		static_assert(MatT::rows >= 2, "Matrix type must have 2 or more rows");
 		MatT r{ 1 };
 		r[3][0] = vx;
 		r[3][1] = vy;
@@ -3833,8 +3833,8 @@ namespace cgra {
 
 	template <typename MatT>
 	inline auto translate2(const basic_vec<typename MatT::value_t, 2> &v) {
-		static_assert(MatT::cols >= 3);
-		static_assert(MatT::rows >= 2);
+		static_assert(MatT::cols >= 3, "Matrix type must have 3 or more columns");
+		static_assert(MatT::rows >= 2, "Matrix type must have 2 or more rows");
 		MatT r{ 1 };
 		r[3][0] = v[0];
 		r[3][1] = v[1];
@@ -3855,8 +3855,8 @@ namespace cgra {
 		const basic_vec<typename MatT::value_t, 3> &lookAt,
 		const basic_vec<typename MatT::value_t, 3> &up
 	) {
-		static_assert(MatT::cols == 4);
-		static_assert(MatT::rows == 4);
+		static_assert(MatT::cols == 4, "Matrix type must have exactly 4 columns");
+		static_assert(MatT::rows == 4, "Matrix type must have exactly 4 rows");
 		basic_vec<typename MatT::value_t, 3> vz = normalize(eye - lookAt);
 		basic_vec<typename MatT::value_t, 3> vx = normalize(cross(up, vz));
 		basic_vec<typename MatT::value_t, 3> vy = normalize(cross(vz, vx));
@@ -3874,8 +3874,8 @@ namespace cgra {
 		typename MatT::value_t lx, typename MatT::value_t ly, typename MatT::value_t lz,
 		typename MatT::value_t ux, typename MatT::value_t uy, typename MatT::value_t uz
 	) {
-		static_assert(MatT::cols == 4);
-		static_assert(MatT::rows == 4);
+		static_assert(MatT::cols == 4, "Matrix type must have exactly 4 columns");
+		static_assert(MatT::rows == 4, "Matrix type must have exactly 4 rows");
 		return look_at( { ex, ey, ez }, { lx, ly, lz }, { ux, uy, uz } );
 	}
 
@@ -3889,8 +3889,8 @@ namespace cgra {
 		typename MatT::value_t zNear,
 		typename MatT::value_t zFar
 	) {
-		static_assert(MatT::cols == 4);
-		static_assert(MatT::rows == 4);
+		static_assert(MatT::cols == 4, "Matrix type must have exactly 4 columns");
+		static_assert(MatT::rows == 4, "Matrix type must have exactly 4 rows");
 		// typename MatT::value_t f = typename MatT::value_t(1) / (fovy / typename MatT::value_t(2)); // lol wtf, fast approximation
 		typename MatT::value_t f = cot(fovy / typename MatT::value_t(2)); // real equation
 		MatT r{ 0 };
@@ -3912,8 +3912,8 @@ namespace cgra {
 		typename MatT::value_t nearVal, 
 		typename MatT::value_t farVal
 	) {
-		static_assert(MatT::cols == 4);
-		static_assert(MatT::rows == 4);
+		static_assert(MatT::cols == 4, "Matrix type must have exactly 4 columns");
+		static_assert(MatT::rows == 4, "Matrix type must have exactly 4 rows");
 		MatT r{ 0 };
 		r[0][0] = typename MatT::value_t(2) / (right - left);
 		r[3][0] = (right + left) / (right - left);
@@ -3927,8 +3927,8 @@ namespace cgra {
 
 	template <typename MatT>
 	inline auto rotate3x(typename MatT::value_t angle) {
-		static_assert(MatT::cols >= 3);
-		static_assert(MatT::rows >= 3);
+		static_assert(MatT::cols >= 3, "Matrix type must have 3 or more columns");
+		static_assert(MatT::rows >= 3, "Matrix type must have 3 or more rows");
 		MatT r{ 1 };
 		r[1][1] = cos(angle);
 		r[2][1] = -sin(angle);
@@ -3939,8 +3939,8 @@ namespace cgra {
 
 	template <typename MatT>
 	inline auto rotate3y(typename MatT::value_t angle) {
-		static_assert(MatT::cols >= 3);
-		static_assert(MatT::rows >= 3);
+		static_assert(MatT::cols >= 3, "Matrix type must have 3 or more columns");
+		static_assert(MatT::rows >= 3, "Matrix type must have 3 or more rows");
 		MatT r{ 1 };
 		r[0][0] = cos(angle);
 		r[2][0] = sin(angle);
@@ -3951,8 +3951,8 @@ namespace cgra {
 
 	template <typename MatT>
 	inline auto rotate3z(typename MatT::value_t angle) {
-		static_assert(MatT::cols >= 3);
-		static_assert(MatT::rows >= 3);
+		static_assert(MatT::cols >= 3, "Matrix type must have 3 or more columns");
+		static_assert(MatT::rows >= 3, "Matrix type must have 3 or more rows");
 		MatT r{ 1 };
 		r[0][0] = cos(angle);
 		r[1][0] = -sin(angle);
@@ -3963,8 +3963,8 @@ namespace cgra {
 
 	template <typename MatT>
 	inline auto rotate3(const basic_quat<typename MatT::value_t> &q) {
-		static_assert(MatT::cols >= 3);
-		static_assert(MatT::rows >= 3);
+		static_assert(MatT::cols >= 3, "Matrix type must have 3 or more columns");
+		static_assert(MatT::rows >= 3, "Matrix type must have 3 or more rows");
 		basic_mat<typename MatT::value_t, 4, 4> rotation(q);
 		MatT r{ 1 };
 
@@ -3979,8 +3979,8 @@ namespace cgra {
 
 	template <typename MatT>
 	inline auto scale3(typename MatT::value_t v) {
-		static_assert(MatT::cols >= 3);
-		static_assert(MatT::rows >= 3);
+		static_assert(MatT::cols >= 3, "Matrix type must have 3 or more columns");
+		static_assert(MatT::rows >= 3, "Matrix type must have 3 or more rows");
 		MatT r{ 1 };
 		r[0][0] = v;
 		r[1][1] = v;
@@ -3990,8 +3990,8 @@ namespace cgra {
 
 	template <typename MatT>
 	inline auto scale3(typename MatT::value_t vx, typename MatT::value_t vy, typename MatT::value_t vz) {
-		static_assert(MatT::cols >= 3);
-		static_assert(MatT::rows >= 3);
+		static_assert(MatT::cols >= 3, "Matrix type must have 3 or more columns");
+		static_assert(MatT::rows >= 3, "Matrix type must have 3 or more rows");
 		MatT r{ 1 };
 		r[0][0] = vx;
 		r[1][1] = vy;
@@ -4002,8 +4002,8 @@ namespace cgra {
 
 	template <typename MatT>
 	inline auto scale3(const basic_vec<typename MatT::value_t, 3> &v) {
-		static_assert(MatT::cols >= 3);
-		static_assert(MatT::rows >= 3);
+		static_assert(MatT::cols >= 3, "Matrix type must have 3 or more columns");
+		static_assert(MatT::rows >= 3, "Matrix type must have 3 or more rows");
 		MatT r{ 1 };
 		r[0][0] = v[0];
 		r[1][1] = v[1];
@@ -4013,8 +4013,8 @@ namespace cgra {
 
 	template <typename MatT>
 	inline auto translate3(typename MatT::value_t v) {
-		static_assert(MatT::cols >= 4);
-		static_assert(MatT::rows >= 3);
+		static_assert(MatT::cols >= 4, "Matrix type must have 4 or more columns");
+		static_assert(MatT::rows >= 3, "Matrix type must have 3 or more rows");
 		MatT r{ 1 };
 		r[3][0] = v;
 		r[3][1] = v;
@@ -4024,8 +4024,8 @@ namespace cgra {
 
 	template <typename MatT>
 	inline auto translate3(typename MatT::value_t vx, typename MatT::value_t vy, typename MatT::value_t vz) {
-		static_assert(MatT::cols >= 4);
-		static_assert(MatT::rows >= 3);
+		static_assert(MatT::cols >= 4, "Matrix type must have 4 or more columns");
+		static_assert(MatT::rows >= 3, "Matrix type must have 3 or more rows");
 		MatT r{ 1 };
 		r[3][0] = vx;
 		r[3][1] = vy;
@@ -4036,8 +4036,8 @@ namespace cgra {
 
 	template <typename MatT>
 	inline auto translate3(const basic_vec<typename MatT::value_t, 3> &v) {
-		static_assert(MatT::cols >= 4);
-		static_assert(MatT::rows >= 3);
+		static_assert(MatT::cols >= 4, "Matrix type must have 4 or more columns");
+		static_assert(MatT::rows >= 3, "Matrix type must have 3 or more rows");
 		MatT r{ 1 };
 		r[3][0] = v[0];
 		r[3][1] = v[1];
