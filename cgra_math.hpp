@@ -3857,14 +3857,16 @@ namespace cgra {
 	) {
 		static_assert(MatT::cols == 4, "Matrix type must have exactly 4 columns");
 		static_assert(MatT::rows == 4, "Matrix type must have exactly 4 rows");
-		basic_vec<typename MatT::value_t, 3> vz = normalize(eye - lookAt);
-		basic_vec<typename MatT::value_t, 3> vx = normalize(cross(up, vz));
-		basic_vec<typename MatT::value_t, 3> vy = normalize(cross(vz, vx));
+		using vec3_t = basic_vec<typename MatT::value_t, 3>;
+		using vec4_t = basic_vec<typename MatT::value_t, 4>;
+		vec3_t vz = normalize(eye - lookAt);
+		vec3_t vx = normalize(cross(up, vz));
+		vec3_t vy = normalize(cross(vz, vx));
 		MatT m{
-			basic_vec<T, 4>(vx, 0),
-			basic_vec<T, 4>(vy, 0),
-			basic_vec<T, 4>(vz, 0),
-			basic_vec<T, 4>(eye, 1) };
+			vec4_t(vx, 0),
+			vec4_t(vy, 0),
+			vec4_t(vz, 0),
+			vec4_t(eye, 1) };
 		return inverse(m);
 	}
 
@@ -4290,7 +4292,7 @@ namespace cgra {
 		template <size_t N>
 		struct fold_impl<N, N> {
 			template <typename F, typename T1, typename ArgT>
-			static CGRA_CONSTEXPR_FUNCTION decltype(auto) apply(F f, T1 &&t1, ArgT &&) {
+			static CGRA_CONSTEXPR_FUNCTION decltype(auto) apply(F, T1 &&t1, ArgT &&) {
 				return std::forward<T1>(t1);
 			}
 		};
