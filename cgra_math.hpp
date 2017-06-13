@@ -2405,7 +2405,7 @@ namespace cgra {
 
 	template<typename T1, typename T2, size_t Cols, size_t Rows>
 	inline auto operator<(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return reinterpret_cast<const std::array<T1, N> &>(lhs.as_vec()) < reinterpret_cast<const std::array<T2, N> &>(lhs.as_vec());
+		return lhs.as_vec() < rhs.as_vec();
 	}
 
 
@@ -2546,7 +2546,7 @@ namespace cgra {
 
 	template<typename T1, typename T2>
 	inline auto operator<(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
-		return reinterpret_cast<const std::array<T1, 4> &>(lhs) < reinterpret_cast<const std::array<T2, 4> &>(rhs);
+		return lhs.as_vec() < rhs.as_vec();
 	}
 
 
@@ -3861,10 +3861,10 @@ namespace cgra {
 		basic_vec<typename MatT::value_t, 3> vx = normalize(cross(up, vz));
 		basic_vec<typename MatT::value_t, 3> vy = normalize(cross(vz, vx));
 		MatT m{
-			vector4<T>(vx, 0),
-			vector4<T>(vy, 0),
-			vector4<T>(vz, 0),
-			vector4<T>(eye, 1) };
+			basic_vec<T, 4>(vx, 0),
+			basic_vec<T, 4>(vy, 0),
+			basic_vec<T, 4>(vz, 0),
+			basic_vec<T, 4>(eye, 1) };
 		return inverse(m);
 	}
 
@@ -3922,7 +3922,7 @@ namespace cgra {
 		r[2][2] = -typename MatT::value_t(2) / (farVal - nearVal);
 		r[3][2] = (farVal + nearVal) / (farVal - nearVal);
 		r[3][3] = typename MatT::value_t(1);
-		return m;
+		return r;
 	}
 
 	template <typename MatT>
