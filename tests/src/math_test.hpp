@@ -3,7 +3,12 @@
 #include <cgra_math.hpp>
 
 namespace test {
-	void run_tests();
+	
+	void run_vec_tests();
+	// void run_mat_tests();
+	// void run_quat_tests();
+
+
 
 	// Integer values
 	template<typename T>

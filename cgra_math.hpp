@@ -263,6 +263,8 @@ namespace cgra {
 			result_type m_b;
 
 		public:
+			using distribution_type = uniform_vec_distribution;
+
 			param_type(const result_type &a = result_type(0), const result_type &b = result_type(1)) : m_a(a), m_b(b) { }
 
 			result_type const a() { return m_a; }
@@ -322,6 +324,8 @@ namespace cgra {
 			result_type m_b;
 
 		public:
+			using distribution_type = uniform_mat_distribution;
+
 			param_type(const result_type &a = result_type(0), const result_type &b = result_type(1)) : m_a(a), m_b(b) { }
 
 			result_type const a() { return m_a; }
@@ -372,7 +376,64 @@ namespace cgra {
 
 	template <typename T>
 	class uniform_quat_distribution {
+		public:
+		using result_type = basic_quat<T>;
+		using elem_dist_type = detail::distribution_t<T>;
 
+		class param_type {
+		private:
+			T m_a;
+			T m_b;
+
+		public:
+			using distribution_type = uniform_quat_distribution;
+
+			param_type(const T &a = T(0), const T &b = T(pi)) : m_a(a), m_b(b) { }
+
+			T const a() { return m_a; }
+			T const b() { return m_b; }
+
+			friend bool operator==(const param_type &p1, const param_type &p2) {
+				return p1.m_a == p2.m_a && p1.m_b == p2.m_b;
+			}
+		};
+
+	private:
+		param_type m_param;
+		elem_dist_type m_elem_dist;
+
+	public: 
+		uniform_quat_distribution(const T &a = T(0), const T &b = T(pi)) : m_param(a, b) { }
+		uniform_quat_distribution(const param_type& param) : m_param(param) { }
+
+		T const a() { return m_param.a(); }
+		T const b() { return m_param.b(); }
+
+		void reset() { }
+
+		param_type const param() { return m_param; }
+		
+		void param(const param_type &param) { m_param = param; }
+
+		// These methods can not be implemented sensibly due to the nature of quaternions
+		result_type const min() { assert(false); return basic_quat<T>(); }
+		result_type const max() { assert(false); return basic_quat<T>(); }
+
+		template <typename Generator>
+		result_type operator()(Generator& g) {
+			return (*this)(g, this->param());
+		}
+
+		template <typename Generator>
+		result_type operator()(Generator& g, param_type param) {
+			result_type r;
+			// TODO make this true uniformally random
+			r = axisangle<basic_quat<T>>(normalize(random<basic_vec<T, 3>>(basic_vec<T, 3>(-1), basic_vec<T, 3>(1))), random<T>(param.a(), param.b()));
+			return r;
+		}
+
+		//TODO 
+		// == != << >>
 	};
 
 
@@ -413,22 +474,34 @@ namespace cgra {
 		struct distribution<basic_quat<T>> {
 			using type = uniform_quat_distribution<T>;
 		};
+
+		// singleton for random engine
+		inline auto & random_engine() {
+			static thread_local std::default_random_engine re { std::random_device()() };
+			return re;
+		}
 	}
 
 	// return a random value of T in range [lower, upper)
-	template <typename T>
-	inline T random(T lower, T upper) {
-		// create a distrubution object based on the type T
+	template <typename T, typename P>
+	inline T random(P lower, P upper) {
 		using dist_t = detail::distribution_t<T>;
-		static thread_local std::default_random_engine re { std::random_device()() };
 		dist_t dist(lower, upper);
-		return dist(re);
+		return dist(detail::random_engine());
 	}
 
 	// return a random value of T in range [0, upper)
+	template <typename T, typename P>
+	inline T random(P upper) {
+		return random<T, P>(std::decay_t<P>(0), upper);
+	}
+
+	// return a random value of T in the range defined by associated uniform distribution
 	template <typename T>
-	inline T random(T upper = T(1)) {
-		return random<T>(T(0), upper);
+	inline T random() {
+		using dist_t = detail::distribution_t<T>;
+		dist_t dist;
+		return dist(detail::random_engine());
 	}
 
 
