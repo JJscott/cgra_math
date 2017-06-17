@@ -241,7 +241,7 @@
 			"test" : "test_equal(mix(vec_a, vec_a, sa), vec_a)"
 		},
 		{
-			"tag" : "mix_scalar_summation_equality)",
+			"tag" : "mix_scalar_summation_equality",
 			"test" : "test_equal(mix(vec_a, vec_b, sa) + mix(vec_b, vec_a, sa), vec_a+vec_b)"
 		},
 		{

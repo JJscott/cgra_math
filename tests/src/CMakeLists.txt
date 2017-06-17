@@ -5,6 +5,7 @@ set(sources
 	"main.cpp"
 	"math_test.hpp"
 	"math_test.cpp"
+	"math_basic_vec_test.cpp"
 )
 
 

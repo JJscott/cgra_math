@@ -1,12 +1,18 @@
-
+#pragma once
 
 #include <cgra_math.hpp>
 
 namespace test {
-	
-	void run_vec_tests();
+	void run_basic_vec_tests();
 	// void run_mat_tests();
 	// void run_quat_tests();
+
+
+	inline void ouput_test(const std::string &name, float fail_fract) {
+		if (fail_fract > 0.1) {
+			std::cout << name << " has failed" << std::endl;
+		}
+	}
 
 
 
