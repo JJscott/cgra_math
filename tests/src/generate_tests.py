@@ -11,8 +11,8 @@ variable_name_dict = {
 'mat_a':'mat_t val_a = random<mat_t>(val_t(-1), val_t(1));',
 'mat_b':'mat_t val_b = random<mat_t>(val_t(-1), val_t(1));',
 'mat_c':'mat_t val_c = random<mat_t>(val_t(-1), val_t(1));',
-'vec_pos':'vec_t vec_pos = random<vec_t>(val_t(0), val_t(1));',
-'vec_neg':'vec_t vec_neg = random<vec_t>(val_t(-1), val_t(0));'
+'vec_pos':'vec_t vec_pos = random<vec_t>(vec_t(0), vec_t(1));',
+'vec_neg':'vec_t vec_neg = random<vec_t>(vec_t(-1), vec_t(0));'
 }
 
 
@@ -21,7 +21,7 @@ template <typename T, size_t N>
 float {test_name}() {{
 	using namespace cgra;
 	using vec_t = basic_vec<T, N>;
-	using val_t = vec_t::value_t; // same as T
+	using val_t = typename vec_t::value_t;
 	int fail_count = 0;
 	for (int i = 0; i < max_iter; ++i) {{
 		{initialization}
@@ -47,7 +47,7 @@ constexpr int max_iter = 1000;
 {function_list}
 
 
-void run_{type_name}_tests() {{
+void test::run_{type_name}_tests() {{
 	{function_call_list}
 }}
 
@@ -56,7 +56,7 @@ void run_{type_name}_tests() {{
 """
 
 
-run_vector_test_str = """ouput_test("{function_name}", {function_name}<{type}, {N}>());"""
+run_vector_test_str = """ouput_test("{function_name}<{type}, {N}>", {function_name}<{type}, {N}>());"""
 
 
 

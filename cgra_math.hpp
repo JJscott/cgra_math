@@ -251,6 +251,7 @@ namespace cgra {
 
 	}
 
+
 	template <typename T, size_t N>
 	class uniform_vec_distribution {
 	public:
@@ -308,9 +309,18 @@ namespace cgra {
 			return r;
 		}
 
+		friend bool operator==(const uniform_vec_distribution &d1, const uniform_vec_distribution &d2) {
+			return d1.param() == d1.param();
+		}
+
+		friend bool operator!=(const uniform_vec_distribution &d1, const uniform_vec_distribution &d2) {
+			return !(d1 == d2);
+		}
+
 		//TODO 
-		// == != << >>
+		// << >>
 	};
+
 
 	template <typename T, size_t Cols, size_t Rows>
 	class uniform_mat_distribution {
@@ -370,15 +380,25 @@ namespace cgra {
 			return r;
 		}
 
+		friend bool operator==(const uniform_mat_distribution &d1, const uniform_mat_distribution &d2) {
+			return d1.param() == d1.param();
+		}
+
+		friend bool operator!=(const uniform_mat_distribution &d1, const uniform_mat_distribution &d2) {
+			return !(d1 == d2);
+		}
+
 		//TODO 
-		// == != << >>
+		// << >>
 	};
+
 
 	template <typename T>
 	class uniform_quat_distribution {
 		public:
 		using result_type = basic_quat<T>;
 		using elem_dist_type = detail::distribution_t<T>;
+		using vec_dist_type = detail::distribution_t<basic_vec<T, 3>>;
 
 		class param_type {
 		private:
@@ -401,6 +421,7 @@ namespace cgra {
 	private:
 		param_type m_param;
 		elem_dist_type m_elem_dist;
+		vec_dist_type m_vec_dist;
 
 	public: 
 		uniform_quat_distribution(const T &a = T(0), const T &b = T(pi)) : m_param(a, b) { }
@@ -428,12 +449,22 @@ namespace cgra {
 		result_type operator()(Generator& g, param_type param) {
 			result_type r;
 			// TODO make this true uniformally random
-			r = axisangle<basic_quat<T>>(normalize(random<basic_vec<T, 3>>(basic_vec<T, 3>(-1), basic_vec<T, 3>(1))), random<T>(param.a(), param.b()));
+			T angle = m_elem_dist(g, elem_dist_type::param_type(param.a(), param.b()));
+			basic_vec<T, 3> axis = normalize(m_vec_dist(g, vec_dist_type::param_type(basic_vec<T, 3>(-1), basic_vec<T, 3>(1))));
+			r = axisangle<basic_quat<T>>(normalize(axis), angle);
 			return r;
 		}
 
+		friend bool operator==(const uniform_quat_distribution &d1, const uniform_quat_distribution &d2) {
+			return d1.param() == d1.param();
+		}
+
+		friend bool operator!=(const uniform_quat_distribution &d1, const uniform_quat_distribution &d2) {
+			return !(d1 == d2);
+		}
+
 		//TODO 
-		// == != << >>
+		// << >>
 	};
 
 

@@ -58,7 +58,7 @@
 			"test" : "test_equal(vec_a*vec_t(1), vec_a)"
 		},
 		{
-			"tag" : "multiplication_vec_t(0) property",
+			"tag" : "multiplication_zero_property",
 			"test" : "test_equal(vec_a*vec_t(0), vec_t(0))"
 		},
 		{
@@ -71,11 +71,11 @@
 		},
 
 		{
-			"tag" : "division_right distributive",
+			"tag" : "division_right_distributive",
 			"test" : "test_equal((vec_a+vec_b)/vec_c, vec_a/vec_c + vec_b/vec_c)"
 		},
 		{
-			"tag" : "division_left antidistributive",
+			"tag" : "division_left_antidistributive",
 			"test" : "!test_equal(vec_a/(vec_b+vec_c), vec_a/vec_b + vec_a/vec_c)"
 		}
 
@@ -84,11 +84,11 @@
 	"Angle and Trigonometry Functions" : [
 		{
 			"tag" : "degrees_radians",
-			"test" : "test_equal(degrees(radians(vec_a)), vec_a),"
+			"test" : "test_equal(degrees(radians(vec_a)), vec_a)"
 		},
 		{
 			"tag" : "radians_degrees",
-			"test" : "test_equal(radians(degrees(vec_a)), vec_a),"
+			"test" : "test_equal(radians(degrees(vec_a)), vec_a)"
 		},
 		{
 			"tag" : "trigonometry_sin_double_inverse",
@@ -100,7 +100,7 @@
 		},
 		{
 			"tag" : "trigonometry_tan_double_inverse",
-			"test" : "test_equal(atan(tan(vec_a)), vec_a),"
+			"test" : "test_equal(atan(tan(vec_a)), vec_a)"
 		},
 		{
 			"tag" : "trigonometry_hyperbolic_sinh_double_inverse",
@@ -112,7 +112,7 @@
 		},
 		{
 			"tag" : "trigonometry_hyperbolic_tanh_double_inverse",
-			"test" : "test_equal(atanh(tanh(vec_a)), vec_a),"
+			"test" : "test_equal(atanh(tanh(vec_a)), vec_a)"
 		},
 		{
 			"tag" : "trigonometry_quotient",
@@ -206,7 +206,7 @@
 		},
 		{
 			"tag" : "mod_scalar_fract",
-			"test" : "test_equal(mod(vec_pos+vec_t(1), so), fract(vec_pos))"
+			"test" : "test_equal(mod(vec_pos+vec_t(1), val_t(1)), fract(vec_pos))"
 		},
 		{
 			"tag" : "mod_vector_fract",
@@ -214,7 +214,7 @@
 		},
 		{
 			"tag" : "min_scalar_greater_than_equal",
-			"test" : "all(less_than_equal(min(vec_a,sa), vec_a)) && all(less_than_equal(min(vec_a,sa), vec_t(sa)))"
+			"test" : "all(less_than_equal(min(vec_a,val_a), vec_a)) && all(less_than_equal(min(vec_a,val_a), vec_t(val_a)))"
 		},
 		{
 			"tag" : "min_vector_greater_than_equal",
@@ -222,7 +222,7 @@
 		},
 		{
 			"tag" : "max_scalar_greater_than_equal",
-			"test" : "all(greater_than_equal(max(vec_a,sa), vec_a)) && all(greater_than_equal(max(vec_a,sa), vec_t(sa)))"
+			"test" : "all(greater_than_equal(max(vec_a,val_a), vec_a)) && all(greater_than_equal(max(vec_a,val_a), vec_t(val_a)))"
 		},
 		{
 			"tag" : "max_vector_greater_than_equal",
@@ -230,7 +230,7 @@
 		},
 		{
 			"tag" : "min_max_scalar_summation_equality",
-			"test" : "test_equal(min(vec_a,sa)+max(vec_a,sa),  vec_a+sa)"
+			"test" : "test_equal(min(vec_a,val_a)+max(vec_a,val_a),  vec_a+val_a)"
 		},
 		{
 			"tag" : "min_max_vector_summation_equality",
@@ -238,11 +238,11 @@
 		},
 		{
 			"tag" : "mix_scalar_identity",
-			"test" : "test_equal(mix(vec_a, vec_a, sa), vec_a)"
+			"test" : "test_equal(mix(vec_a, vec_a, val_a), vec_a)"
 		},
 		{
 			"tag" : "mix_scalar_summation_equality",
-			"test" : "test_equal(mix(vec_a, vec_b, sa) + mix(vec_b, vec_a, sa), vec_a+vec_b)"
+			"test" : "test_equal(mix(vec_a, vec_b, val_a) + mix(vec_b, vec_a, val_a), vec_a+vec_b)"
 		},
 		{
 			"tag" : "mix_vector_identity",
