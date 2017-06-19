@@ -266,6 +266,7 @@ namespace cgra {
 		public:
 			using distribution_type = uniform_vec_distribution;
 
+			param_type(const T &a = T(0), const T &b = T(1)) : m_a(a), m_b(b) { }
 			param_type(const result_type &a = result_type(0), const result_type &b = result_type(1)) : m_a(a), m_b(b) { }
 
 			result_type const a() { return m_a; }
@@ -281,7 +282,7 @@ namespace cgra {
 		elem_dist_type m_elem_dist;
 
 	public: 
-		uniform_vec_distribution(const result_type &a = result_type(0), const result_type &b = result_type(1)) : m_param(a, b) { }
+		uniform_vec_distribution() : m_param(result_type(0), result_type(1)) { }
 		uniform_vec_distribution(const param_type& param) : m_param(param) { }
 
 		result_type const a() { return m_param.a(); }
@@ -336,6 +337,7 @@ namespace cgra {
 		public:
 			using distribution_type = uniform_mat_distribution;
 
+			param_type(const T &a = T(0), const T &b = T(1)) : m_a(a), m_b(b) { }
 			param_type(const result_type &a = result_type(0), const result_type &b = result_type(1)) : m_a(a), m_b(b) { }
 
 			result_type const a() { return m_a; }
@@ -351,7 +353,7 @@ namespace cgra {
 		elem_dist_type m_elem_dist;
 
 	public: 
-		uniform_mat_distribution(const result_type &a = result_type(0), const result_type &b = result_type(1)) : m_param(a, b) { }
+		uniform_mat_distribution() : m_param(result_type(0), result_type(1)) { }
 		uniform_mat_distribution(const param_type& param) : m_param(param) { }
 
 		result_type const a() { return m_param.a(); }
@@ -424,7 +426,7 @@ namespace cgra {
 		vec_dist_type m_vec_dist;
 
 	public: 
-		uniform_quat_distribution(const T &a = T(0), const T &b = T(pi)) : m_param(a, b) { }
+		uniform_quat_distribution() : m_param(T(0), T(pi)) { }
 		uniform_quat_distribution(const param_type& param) : m_param(param) { }
 
 		T const a() { return m_param.a(); }
@@ -517,7 +519,7 @@ namespace cgra {
 	template <typename T, typename P>
 	inline T random(P lower, P upper) {
 		using dist_t = detail::distribution_t<T>;
-		dist_t dist(lower, upper);
+		dist_t dist(typename dist_t::param_type(lower, upper));
 		return dist(detail::random_engine());
 	}
 
@@ -3651,6 +3653,17 @@ namespace cgra {
 			d -= e02 * e11 * e20;
 			return d;
 		}
+	}
+
+	// returns a matrix with all values set to the given argument
+	// TODO description
+	template <typename MatT>
+	inline MatT fill(MatT::val_t v) {
+		MatT m;
+		for (size_t j = 0; j < MatT::cols; ++j)
+			for (size_t i = 0; i < MatT::row; ++i)
+				m[j][i] = v;
+		return m;
 	}
 
 	// inverse of matrix (error if not invertible)
