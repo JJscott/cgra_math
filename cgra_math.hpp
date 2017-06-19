@@ -3427,6 +3427,31 @@ namespace cgra {
 	}
 
 
+	namespace detail {
+		template <typename VecT, typename T, typename = void>
+		struct fill_impl {
+			constexpr static VecT go(const T &t) {
+				using val_t = typename detail::vec_traits<VecT>::value_t;
+				return VecT{ detail::repeat_vec<val_t, detail::vec_traits<VecT>::size>(fill<val_t>(t)) };
+			}
+		};
+
+		template <typename VecT, typename T>
+		struct fill_impl<VecT, T, std::enable_if_t<detail::is_relatively_vector<VecT, T>::value>> {
+			constexpr static VecT go(const T &t) {
+				return VecT(t);
+			}
+		};
+	}
+
+	template <typename VecT, typename T>
+	constexpr inline VecT fill(const T &t) {
+		return detail::fill_impl<VecT, T>::go(t);
+	}
+
+
+
+
 
 	//  .______      ___       ______  __  ___  __  .__   __.   _______     _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
 	//  |   _  \    /   \     /      ||  |/  / |  | |  \ |  |  /  _____|   |   ____||  |  |  | |  \ |  |  /      ||           ||  |  /  __  \  |  \ |  |     /       |  //
@@ -3655,16 +3680,6 @@ namespace cgra {
 		}
 	}
 
-	// returns a matrix with all values set to the given argument
-	// TODO description
-	template <typename MatT>
-	inline MatT fill(typename MatT::value_t v) {
-		MatT m;
-		for (size_t j = 0; j < MatT::cols; ++j)
-			for (size_t i = 0; i < MatT::rows; ++i)
-				m[j][i] = v;
-		return m;
-	}
 
 	// inverse of matrix (error if not invertible)
 	// generic case
