@@ -8,5 +8,7 @@ using namespace cgra;
 int main() {
 	test::run_basic_vec_tests();
 
+
+
 	cin.get();
 }

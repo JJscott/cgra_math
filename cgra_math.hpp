@@ -3658,10 +3658,10 @@ namespace cgra {
 	// returns a matrix with all values set to the given argument
 	// TODO description
 	template <typename MatT>
-	inline MatT fill(MatT::val_t v) {
+	inline MatT fill(typename MatT::value_t v) {
 		MatT m;
 		for (size_t j = 0; j < MatT::cols; ++j)
-			for (size_t i = 0; i < MatT::row; ++i)
+			for (size_t i = 0; i < MatT::rows; ++i)
 				m[j][i] = v;
 		return m;
 	}

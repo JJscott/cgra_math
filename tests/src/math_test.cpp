@@ -354,6 +354,30 @@ void vector_compile_test() {
 void random_test() {
 
 
+	vec3 v;
+
+	v = random<vec3>(); cout << v << endl;
+	v = random<vec3>(1); cout << v << endl;
+	v = random<vec3>(0, 1); cout << v << endl;
+	v = random<vec3>(vec3(1)); cout << v << endl;
+	v = random<vec3>(vec3(0), vec3(1)); cout << v << endl;
+
+	mat3 m;
+
+	m = random<mat3>(); cout << m << endl;
+	m = random<mat3>(1); cout << m << endl;
+	m = random<mat3>(0, 1); cout << m << endl;
+	m = random<mat3>(mat3(1)); cout << m << endl;
+	m = random<mat3>(mat3(0), mat3(1)); cout << m << endl;
+	m = random<mat3>(fill<mat3>(0), fill<mat3>(1)); cout << m << endl;
+
+
+	quat q;
+
+	q = random<quat>(); cout << q << endl;
+	q = random<quat>(pi); cout << q << endl;
+	q = random<quat>(0.0, pi); cout << q << endl;
+
 }
 
 
