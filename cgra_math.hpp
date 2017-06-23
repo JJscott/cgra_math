@@ -724,7 +724,7 @@ namespace cgra {
 			static const size_t size = Cols;
 
 			template <size_t I, typename VecT>
-			constexpr static decltype(auto) get(VecT &&v) {
+			CGRA_CONSTEXPR_FUNCTION static decltype(auto) get(VecT &&v) {
 				return std::forward<VecT>(v)[I];
 			}
 		};
@@ -872,7 +872,7 @@ namespace cgra {
 
 		template <size_t I, typename T>
 		struct vec_get_impl<I, T, true> {
-			constexpr static decltype(auto) go(T &&t) {
+			CGRA_CONSTEXPR_FUNCTION static decltype(auto) go(T &&t) {
 				return vec_traits<std::decay_t<T>>::template get<I>(std::forward<T>(t));
 			}
 		};
@@ -882,7 +882,7 @@ namespace cgra {
 			static_assert(
 				is_relatively_vector<CatT, T>::value || is_relatively_scalar<CatT, T>::value,
 				"vector cat argument is not relatively vector or scalar"
-				);
+			);
 			return vec_get_impl<I, T, is_relatively_vector<CatT, T>::value>::go(std::forward<T>(t));
 		}
 
@@ -3426,11 +3426,10 @@ namespace cgra {
 		return fold(detail::op::mul(), T(1), v);
 	}
 
-
 	namespace detail {
 		template <typename VecT, typename T, typename = void>
 		struct fill_impl {
-			constexpr static VecT go(const T &t) {
+			CGRA_CONSTEXPR_FUNCTION static VecT go(const T &t) {
 				using val_t = typename detail::vec_traits<VecT>::value_t;
 				return VecT{ detail::repeat_vec<val_t, detail::vec_traits<VecT>::size>(fill<val_t>(t)) };
 			}
@@ -3438,14 +3437,15 @@ namespace cgra {
 
 		template <typename VecT, typename T>
 		struct fill_impl<VecT, T, std::enable_if_t<detail::is_relatively_vector<VecT, T>::value>> {
-			constexpr static VecT go(const T &t) {
+			CGRA_CONSTEXPR_FUNCTION static VecT go(const T &t) {
 				return VecT(t);
 			}
 		};
 	}
 
+	// fill a vector-like type VecT with copies of a scalar-like value of type T
 	template <typename VecT, typename T>
-	constexpr inline VecT fill(const T &t) {
+	CGRA_CONSTEXPR_FUNCTION inline VecT fill(const T &t) {
 		return detail::fill_impl<VecT, T>::go(t);
 	}
 
