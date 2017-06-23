@@ -978,7 +978,7 @@ namespace cgra {
 		// tagged ctor, used by cat
 		template <typename ...ArgTs>
 		CGRA_CONSTEXPR_FUNCTION explicit basic_vec(detail::vec_element_ctor_tag, ArgTs &&...args) :
-#ifdef __EDG__
+#ifdef __INTELLISENSE__
 			// intellisense needs a hand here
 			m_data{ detail::constify(detail::forward_or_cast<T>(std::forward<ArgTs>(args)))... }
 #else
@@ -1090,7 +1090,7 @@ namespace cgra {
 		// tagged ctor, used by cat
 		template <typename U1>
 		CGRA_CONSTEXPR_FUNCTION explicit basic_vec(detail::vec_element_ctor_tag, U1 &&x_) :
-#ifdef __EDG__
+#ifdef __INTELLISENSE__
 			// intellisense needs a hand here
 			x{ detail::constify(detail::forward_or_cast<T>(std::forward<U1>(x_))) }
 #else
@@ -1146,7 +1146,7 @@ namespace cgra {
 		// tagged ctor, used by cat
 		template <typename U1, typename U2>
 		CGRA_CONSTEXPR_FUNCTION explicit basic_vec(detail::vec_element_ctor_tag, U1 &&x_, U2 &&y_) :
-#ifdef __EDG__
+#ifdef __INTELLISENSE__
 			// intellisense needs a hand here
 			x{ detail::constify(detail::forward_or_cast<T>(std::forward<U1>(x_))) },
 			y{ detail::constify(detail::forward_or_cast<T>(std::forward<U2>(y_))) }
@@ -1205,7 +1205,7 @@ namespace cgra {
 		// tagged ctor, used by cat
 		template <typename U1, typename U2, typename U3>
 		CGRA_CONSTEXPR_FUNCTION explicit basic_vec(detail::vec_element_ctor_tag, U1 &&x_, U2 &&y_, U3 &&z_) :
-#ifdef __EDG__
+#ifdef __INTELLISENSE__
 			// intellisense needs a hand here
 			x{ detail::constify(detail::forward_or_cast<T>(std::forward<U1>(x_))) },
 			y{ detail::constify(detail::forward_or_cast<T>(std::forward<U2>(y_))) },
@@ -1267,7 +1267,7 @@ namespace cgra {
 		// tagged ctor, used by cat
 		template <typename U1, typename U2, typename U3, typename U4>
 		CGRA_CONSTEXPR_FUNCTION explicit basic_vec(detail::vec_element_ctor_tag, U1 &&x_, U2 &&y_, U3 &&z_, U4 &&w_) :
-#ifdef __EDG__
+#ifdef __INTELLISENSE__
 			// intellisense needs a hand here
 			x{ detail::constify(detail::forward_or_cast<T>(std::forward<U1>(x_))) },
 			y{ detail::constify(detail::forward_or_cast<T>(std::forward<U2>(y_))) },
