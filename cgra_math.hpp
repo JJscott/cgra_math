@@ -17,6 +17,7 @@
 - restrict arg element count with implicit magic ctors
 - test is_vector_compatible / is_scalar_compatible with static asserts
 - enable_if_vector_compatible_t etc
+- make magic ctors pad with default if not enough elements
 - move random section to bottom of file
 - move zip_with and friends to top
 - constexpr everything
@@ -24,8 +25,9 @@
 - implement generic cat functions
 - comments and documentation
 - create inputstream operators for data types to recreate from output
-- TODO implement alternitives to body-3-2-1 euler rotation
-- - http://www.geometrictools.com/Documentation/EulerAngles.pdf
+- implement alternatives to body-3-2-1 euler rotation
+	http://www.geometrictools.com/Documentation/EulerAngles.pdf
+- noexceptness
 */
 
 #pragma once
@@ -46,8 +48,18 @@
 #include <exception>
 #include <stdexcept>
 
+// MSVC and GCC-likes (including Clang) support anonymous structs which
+// we use for vector members while still allowing constexpr operator[]
+#ifndef CGRA_NO_ANONYMOUS_STRUCT
+#if defined(_MSC_VER) || defined(__GNUC__)
+#define CGRA_HAVE_ANONYMOUS_STRUCT
+#else
+// otherwise, we have to disable constexprness for functions
+#define CGRA_CONSTEXPR_FUNCTION
+#endif
+#endif
 
-// Visual Studio prior to 2017 doesn't support constexpr well enough for our types
+// MSVC prior to vs2017 doesn't support constexpr well enough for our types
 #if defined(_MSC_VER) && _MSC_VER < 1910
 #define CGRA_CONSTEXPR_FUNCTION
 #endif
@@ -1077,7 +1089,158 @@ namespace cgra {
 			CGRA_CONSTEXPR_FUNCTION const T * data() const { return nullptr; }
 		};
 
-		// FIXME vec data specializations for 1-4
+#ifdef CGRA_HAVE_ANONYMOUS_STRUCT
+		// we turn off some warnings around these specializations
+		// because otherwise we get warnings about our anonymous structs
+#ifdef __GNUC__
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wpedantic"
+#endif
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable: 4201)
+#endif
+
+		template <typename T>
+		class basic_vec_data<T, 1> {
+		protected:
+			union {
+				T m_data[1];
+				struct { T x; };
+				struct { T r; };
+				struct { T s; };
+			};
+
+		public:
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data() : m_data{} {}
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(vec_dead_ctor_tag) : m_data{} {}
+
+			template <typename ...ArgTs>
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(ArgTs &&...args) : m_data{std::forward<ArgTs>(args)...} {}
+
+			CGRA_CONSTEXPR_FUNCTION T & operator[](size_t i) {
+				assert(i < 1);
+				return m_data[i];
+			}
+
+			CGRA_CONSTEXPR_FUNCTION const T & operator[](size_t i) const {
+				assert(i < 1);
+				return m_data[i];
+			}
+
+			CGRA_CONSTEXPR_FUNCTION T * data() { return &m_data[0]; }
+
+			CGRA_CONSTEXPR_FUNCTION const T * data() const { return &m_data[0]; }
+		};
+
+		template <typename T>
+		class basic_vec_data<T, 2> {
+		protected:
+			union {
+				T m_data[2];
+				struct { T x; T y; };
+				struct { T r; T g; };
+				struct { T s; T t; };
+			};
+
+		public:
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data() : m_data{} {}
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(vec_dead_ctor_tag) : m_data{} {}
+
+			template <typename ...ArgTs>
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(ArgTs &&...args) : m_data{std::forward<ArgTs>(args)...} {}
+
+			CGRA_CONSTEXPR_FUNCTION T & operator[](size_t i) {
+				assert(i < 2);
+				return m_data[i];
+			}
+
+			CGRA_CONSTEXPR_FUNCTION const T & operator[](size_t i) const {
+				assert(i < 2);
+				return m_data[i];
+			}
+
+			CGRA_CONSTEXPR_FUNCTION T * data() { return &m_data[0]; }
+
+			CGRA_CONSTEXPR_FUNCTION const T * data() const { return &m_data[0]; }
+		};
+
+		template <typename T>
+		class basic_vec_data<T, 3> {
+		protected:
+			union {
+				T m_data[3];
+				struct { T x; T y; T z; };
+				struct { T r; T g; T b; };
+				struct { T s; T t; T p; };
+			};
+
+		public:
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data() : m_data{} {}
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(vec_dead_ctor_tag) : m_data{} {}
+
+			template <typename ...ArgTs>
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(ArgTs &&...args) : m_data{std::forward<ArgTs>(args)...} {}
+
+			CGRA_CONSTEXPR_FUNCTION T & operator[](size_t i) {
+				assert(i < 3);
+				return m_data[i];
+			}
+
+			CGRA_CONSTEXPR_FUNCTION const T & operator[](size_t i) const {
+				assert(i < 3);
+				return m_data[i];
+			}
+
+			CGRA_CONSTEXPR_FUNCTION T * data() { return &m_data[0]; }
+
+			CGRA_CONSTEXPR_FUNCTION const T * data() const { return &m_data[0]; }
+		};
+
+		template <typename T>
+		class basic_vec_data<T, 4> {
+		protected:
+			union {
+				T m_data[4];
+				struct { T x; T y; T z; T w; };
+				struct { T r; T g; T b; T a; };
+				struct { T s; T t; T p; T q; };
+			};
+
+		public:
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data() : m_data{} {}
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(vec_dead_ctor_tag) : m_data{} {}
+
+			template <typename ...ArgTs>
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(ArgTs &&...args) : m_data{std::forward<ArgTs>(args)...} {}
+
+			CGRA_CONSTEXPR_FUNCTION T & operator[](size_t i) {
+				assert(i < 4);
+				return m_data[i];
+			}
+
+			CGRA_CONSTEXPR_FUNCTION const T & operator[](size_t i) const {
+				assert(i < 4);
+				return m_data[i];
+			}
+
+			CGRA_CONSTEXPR_FUNCTION T * data() { return &m_data[0]; }
+
+			CGRA_CONSTEXPR_FUNCTION const T * data() const { return &m_data[0]; }
+		};
+
+#ifdef __GNUC__
+#pragma GCC diagnostic pop
+#endif
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
+
+#else // CGRA_HAVE_ANONYMOUS_STRUCT
+		
+		// FIXME basic_vec_data specializations without anonymous structs
+		
+#endif
 
 		template <typename T, size_t N, typename ArgTupT>
 		class basic_vec_ctor_proxy {};
@@ -1179,15 +1342,27 @@ namespace cgra {
 			// constify is to help intellisense, but should have no impact on actual codegen
 			ctor_proxy_t{detail::constify(detail::repeat_vec<const T &, N>(t))} {}
 
-		inline friend std::ostream & operator<<(std::ostream &out, const basic_vec &v) {
-			// TODO extract this function
-			out << '(' << v[0];
-			for (size_t i = 1; i < N; ++i) {
-				out << ", " << v[i];
-			}
-			out << ')';
-			return out;
-		}
+	};
+
+	template <typename T>
+	class basic_vec<T, 0> : protected detail::basic_vec_ctor_proxy<T, 0, detail::vec_exarg_tup_t<T, 0>> {
+	private:
+		using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 0, detail::vec_exarg_tup_t<T, 0>>;
+
+	public:
+		using value_t = T;
+		static constexpr size_t size = 0;
+
+		using ctor_proxy_t::ctor_proxy_t;
+		using ctor_proxy_t::operator[];
+		using ctor_proxy_t::data;
+
+		// default ctor
+		CGRA_CONSTEXPR_FUNCTION basic_vec() = default;
+
+		// scalar broadcast ctor
+		CGRA_CONSTEXPR_FUNCTION explicit basic_vec(const T &) {}
+
 	};
 
 	template <typename T>
@@ -1199,6 +1374,10 @@ namespace cgra {
 		using value_t = T;
 		static constexpr size_t size = 1;
 
+		using detail::basic_vec_data<T, 1>::x;
+		using detail::basic_vec_data<T, 1>::r;
+		using detail::basic_vec_data<T, 1>::s;
+
 		using ctor_proxy_t::ctor_proxy_t;
 		using ctor_proxy_t::operator[];
 		using ctor_proxy_t::data;
@@ -1208,13 +1387,116 @@ namespace cgra {
 
 		// vec1 has no scalar broadcast ctor to avoid conflict with the explicit arg ctor
 
-		inline friend std::ostream & operator<<(std::ostream &out, const basic_vec &v) {
-			out << '(' << v[0] << ')';
-			return out;
-		}
 	};
 
+	template <typename T>
+	class basic_vec<T, 2> : protected detail::basic_vec_ctor_proxy<T, 2, detail::vec_exarg_tup_t<T, 2>> {
+	private:
+		using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 2, detail::vec_exarg_tup_t<T, 2>>;
 
+	public:
+		using value_t = T;
+		static constexpr size_t size = 2;
+
+		using detail::basic_vec_data<T, 2>::x;
+		using detail::basic_vec_data<T, 2>::r;
+		using detail::basic_vec_data<T, 2>::s;
+		using detail::basic_vec_data<T, 2>::y;
+		using detail::basic_vec_data<T, 2>::g;
+		using detail::basic_vec_data<T, 2>::t;
+
+		using ctor_proxy_t::ctor_proxy_t;
+		using ctor_proxy_t::operator[];
+		using ctor_proxy_t::data;
+
+		// default ctor
+		CGRA_CONSTEXPR_FUNCTION basic_vec() = default;
+
+		// scalar broadcast ctor
+		CGRA_CONSTEXPR_FUNCTION explicit basic_vec(const T &t) :
+			ctor_proxy_t{detail::constify(detail::repeat_vec<const T &, 2>(t))} {}
+
+	};
+
+	template <typename T>
+	class basic_vec<T, 3> : protected detail::basic_vec_ctor_proxy<T, 3, detail::vec_exarg_tup_t<T, 3>> {
+	private:
+		using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 3, detail::vec_exarg_tup_t<T, 3>>;
+
+	public:
+		using value_t = T;
+		static constexpr size_t size = 3;
+
+		using detail::basic_vec_data<T, 3>::x;
+		using detail::basic_vec_data<T, 3>::r;
+		using detail::basic_vec_data<T, 3>::s;
+		using detail::basic_vec_data<T, 3>::y;
+		using detail::basic_vec_data<T, 3>::g;
+		using detail::basic_vec_data<T, 3>::t;
+		using detail::basic_vec_data<T, 3>::z;
+		using detail::basic_vec_data<T, 3>::b;
+		using detail::basic_vec_data<T, 3>::p;
+
+		using ctor_proxy_t::ctor_proxy_t;
+		using ctor_proxy_t::operator[];
+		using ctor_proxy_t::data;
+
+		// default ctor
+		CGRA_CONSTEXPR_FUNCTION basic_vec() = default;
+
+		// scalar broadcast ctor
+		CGRA_CONSTEXPR_FUNCTION explicit basic_vec(const T &t) :
+			ctor_proxy_t{detail::constify(detail::repeat_vec<const T &, 3>(t))} {}
+
+	};
+
+	template <typename T>
+	class basic_vec<T, 4> : protected detail::basic_vec_ctor_proxy<T, 4, detail::vec_exarg_tup_t<T, 4>> {
+	private:
+		using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 4, detail::vec_exarg_tup_t<T, 4>>;
+
+	public:
+		using value_t = T;
+		static constexpr size_t size = 4;
+
+		using detail::basic_vec_data<T, 4>::x;
+		using detail::basic_vec_data<T, 4>::r;
+		using detail::basic_vec_data<T, 4>::s;
+		using detail::basic_vec_data<T, 4>::y;
+		using detail::basic_vec_data<T, 4>::g;
+		using detail::basic_vec_data<T, 4>::t;
+		using detail::basic_vec_data<T, 4>::z;
+		using detail::basic_vec_data<T, 4>::b;
+		using detail::basic_vec_data<T, 4>::p;
+		using detail::basic_vec_data<T, 4>::w;
+		using detail::basic_vec_data<T, 4>::a;
+		using detail::basic_vec_data<T, 4>::q;
+
+		using ctor_proxy_t::ctor_proxy_t;
+		using ctor_proxy_t::operator[];
+		using ctor_proxy_t::data;
+
+		// default ctor
+		CGRA_CONSTEXPR_FUNCTION basic_vec() = default;
+
+		// scalar broadcast ctor
+		CGRA_CONSTEXPR_FUNCTION explicit basic_vec(const T &t) :
+			ctor_proxy_t{detail::constify(detail::repeat_vec<const T &, 4>(t))} {}
+
+	};
+
+	template <typename T, size_t N>
+	inline std::ostream & operator<<(std::ostream &out, const basic_vec<T, N> &v) {
+		out << '(';
+		if (N > 0) out << v[0];
+		for (size_t i = 1; i < N; ++i) {
+			out << ", " << v[i];
+		}
+		out << ')';
+		return out;
+	}
+
+	// FIXME basic_mat in terms of new basic_vec stuff
 	// [Cols, Rows]-dimensional matrix class of type T
 	template <typename T, size_t Cols, size_t Rows>
 	class basic_mat {

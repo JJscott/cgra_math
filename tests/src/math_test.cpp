@@ -83,28 +83,28 @@ void vector_compile_test() {
 
 
 
-	//// array, static and data access operator
-	////
+	// array, static and data access operator
+	//
 	float v = 1;
-	//v = v1[0];
-	//v = v1.x;
-	//v = v2[0] + v2[1];
-	//v = v2.x + v2.y;
-	//v = v3[0] + v3[1] + v3[2];
-	//v = v3.x + v3.y + v3.z;
-	//v = v4[0] + v4[1] + v4[2] + v4[3];
-	//v = v4.x + v4.y + v4.z + v4.w;
-	//v = v5[0] + v5[1] + v5[2] + v5[3] + v5[4];
+	v = v1[0];
+	v = v1.x;
+	v = v2[0] + v2[1];
+	v = v2.x + v2.y;
+	v = v3[0] + v3[1] + v3[2];
+	v = v3.x + v3.y + v3.z;
+	v = v4[0] + v4[1] + v4[2] + v4[3];
+	v = v4.x + v4.y + v4.z + v4.w;
+	v = v5[0] + v5[1] + v5[2] + v5[3] + v5[4];
 
-	//v1[0] = v;
-	//v1.x = v;
-	//v2[0] = v2[1] = v;
-	//v2.x = v2.y = v;
-	//v3[0] = v3[1] = v3[2] = v;
-	//v3.x = v3.y = v3.z = v;
-	//v4[0] = v4[1] = v4[2] = v4[3] = v;
-	//v4.x = v4.y = v4.z = v4.w = v;
-	//v5[0] = v5[1] = v5[2] = v5[3] = v5[4] = v;
+	v1[0] = v;
+	v1.x = v;
+	v2[0] = v2[1] = v;
+	v2.x = v2.y = v;
+	v3[0] = v3[1] = v3[2] = v;
+	v3.x = v3.y = v3.z = v;
+	v4[0] = v4[1] = v4[2] = v4[3] = v;
+	v4.x = v4.y = v4.z = v4.w = v;
+	v5[0] = v5[1] = v5[2] = v5[3] = v5[4] = v;
 
 	float *vp;
 	vp = v0.data();

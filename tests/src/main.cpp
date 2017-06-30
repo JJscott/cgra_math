@@ -14,6 +14,7 @@ int main() {
 	vec2x3 v2{{1, 2, 3}, {4, 5, 6}};
 
 	auto v3 = vec3(vec4(7));
+	v3.y = 4;
 
 	cout << v1 << endl;
 	cout << v2 << endl;
