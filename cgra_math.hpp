@@ -15,8 +15,10 @@
 - FIXME unbreak vec0
 - FIXME unbreak vec constexpr
 - restrict arg element count with implicit magic ctors
-- test is_mutually_vector / is_relatively_scalar with static asserts
+- test is_vector_compatible / is_scalar_compatible with static asserts
+- enable_if_vector_compatible_t etc
 - move random section to bottom of file
+- move zip_with and friends to top
 - constexpr everything
 - clean up common function definitions and remove duplicates
 - implement generic cat functions
@@ -707,11 +709,11 @@ namespace cgra {
 		template <size_t X>
 		using index_constant = std::integral_constant<size_t, X>;
 
-		struct vec_element_ctor_tag { };
-		struct vec_dead_ctor_tag { };
+		struct vec_element_ctor_tag {};
+		struct vec_dead_ctor_tag {};
 
 		template <typename VecT>
-		struct vec_traits { };
+		struct vec_traits {};
 
 		template <typename T, size_t N>
 		struct vec_traits<basic_vec<T, N>> {
@@ -725,10 +727,10 @@ namespace cgra {
 		};
 
 		template <typename T, size_t N>
-		struct vec_traits<repeat_vec<T, N>> : vec_traits<basic_vec<T, N>> { };
+		struct vec_traits<repeat_vec<T, N>> : vec_traits<basic_vec<T, N>> {};
 
 		template <typename T, size_t N, typename ExArgTupT>
-		struct vec_traits<basic_vec_ctor_proxy<T, N, ExArgTupT>> : vec_traits<basic_vec<T, N>> { };
+		struct vec_traits<basic_vec_ctor_proxy<T, N, ExArgTupT>> : vec_traits<basic_vec<T, N>> {};
 
 		template <typename T, size_t Cols, size_t Rows>
 		struct vec_traits<basic_mat<T, Cols, Rows>> {
@@ -747,7 +749,7 @@ namespace cgra {
 		using vec_value_t = typename vec_traits<std::decay_t<VecT>>::value_t;
 
 		template <typename VecT>
-		struct vec_size : std::integral_constant<size_t, vec_traits<std::decay_t<VecT>>::size> {};
+		struct vec_size : index_constant<vec_traits<std::decay_t<VecT>>::size> {};
 
 		template <typename T1, typename T2>
 		struct is_mutually_convertible :
@@ -757,34 +759,50 @@ namespace cgra {
 		struct is_mutually_constructible :
 			std::integral_constant<bool, std::is_constructible<T1, T2>::value && std::is_constructible<T2, T1>::value> {};
 
+		// is T a compatible scalar type for vector VecT?
 		template <typename VecT, typename T, typename = void>
-		struct is_relatively_scalar : std::false_type {};
+		struct is_scalar_compatible : std::false_type {};
 
 		template <typename VecT, typename T>
-		struct is_relatively_scalar<VecT, T, void_t<vec_value_t<VecT>>> :
+		struct is_scalar_compatible<VecT, T, void_t<vec_value_t<VecT>>> :
 			is_mutually_convertible<vec_value_t<VecT>, T> {};
 
+		// are the element types of these vectors compatible?
 		template <typename VecT0, typename VecT1, bool Explicit = false, typename = void, typename = void>
-		struct is_mutually_vector : std::true_type {};
-
-		template <typename VecT0, typename VecT1, bool Explicit, typename X>
-		struct is_mutually_vector<VecT0, VecT1, Explicit, void_t<vec_value_t<VecT0>>, X> : std::false_type {};
-
-		template <typename VecT0, typename VecT1, bool Explicit, typename X>
-		struct is_mutually_vector<VecT0, VecT1, Explicit, X, void_t<vec_value_t<VecT1>>> : std::false_type {};
+		struct is_element_compatible : std::false_type {};
 
 		template <typename VecT0, typename VecT1>
-		struct is_mutually_vector<VecT0, VecT1, false, void_t<vec_value_t<VecT0>>, void_t<vec_value_t<VecT1>>> :
+		struct is_element_compatible<VecT0, VecT1, false, void_t<vec_value_t<VecT0>>, void_t<vec_value_t<VecT1>>> :
+			std::integral_constant<bool, is_mutually_convertible<vec_value_t<VecT0>, vec_value_t<VecT1>>::value> {};
+
+		template <typename VecT0, typename VecT1>
+		struct is_element_compatible<VecT0, VecT1, true, void_t<vec_value_t<VecT0>>, void_t<vec_value_t<VecT1>>> :
+			// we still need the 2-way check to avoid scalar broadcast problems etc.
+			std::integral_constant<bool, is_mutually_constructible<vec_value_t<VecT0>, vec_value_t<VecT1>>::value> {};
+
+		// are these vectors of the same size and are they element-compatible?
+		template <typename VecT0, typename VecT1, bool Explicit = false, typename = void, typename = void>
+		struct is_vector_compatible : std::true_type {};
+
+		template <typename VecT0, typename VecT1, bool Explicit, typename X>
+		struct is_vector_compatible<VecT0, VecT1, Explicit, void_t<vec_value_t<VecT0>>, X> : std::false_type {};
+
+		template <typename VecT0, typename VecT1, bool Explicit, typename X>
+		struct is_vector_compatible<VecT0, VecT1, Explicit, X, void_t<vec_value_t<VecT1>>> : std::false_type {};
+
+		template <typename VecT0, typename VecT1>
+		struct is_vector_compatible<VecT0, VecT1, false, void_t<vec_value_t<VecT0>>, void_t<vec_value_t<VecT1>>> :
 			std::integral_constant<bool,
-				is_mutually_convertible<vec_value_t<VecT0>, vec_value_t<VecT1>>::value
+				is_element_compatible<VecT0, VecT1>::value
 				&& vec_size<VecT0>::value == vec_size<VecT1>::value
 			>
 		{};
 
 		template <typename VecT0, typename VecT1>
-		struct is_mutually_vector<VecT0, VecT1, true, void_t<vec_value_t<VecT0>>, void_t<vec_value_t<VecT1>>> :
+		struct is_vector_compatible<VecT0, VecT1, true, void_t<vec_value_t<VecT0>>, void_t<vec_value_t<VecT1>>> :
 			std::integral_constant<bool,
-				is_mutually_constructible<vec_value_t<VecT0>, vec_value_t<VecT1>>::value
+				is_element_compatible<VecT0, VecT1>::value
+				&& vec_size<VecT0>::value == vec_size<VecT1>::value
 			>
 		{};
 
@@ -815,7 +833,7 @@ namespace cgra {
 		};
 
 		template <typename ...Seqs>
-		struct seq_cat { };
+		struct seq_cat {};
 
 		template <typename ...Seqs>
 		using seq_cat_t = typename seq_cat<Seqs...>::type;
@@ -889,16 +907,16 @@ namespace cgra {
 		using seq_trim_t = typename seq_trim<Seq, N>::type;
 
 		template <typename T, bool IsVec>
-		struct cat_arg_vec_size_impl : index_constant<1> { };
+		struct cat_arg_vec_size_impl : index_constant<1> {};
 
 		template <typename T>
-		struct cat_arg_vec_size_impl<T, true> : index_constant<vec_traits<std::decay_t<T>>::size> { };
+		struct cat_arg_vec_size_impl<T, true> : index_constant<vec_traits<std::decay_t<T>>::size> {};
 
 		template <typename CatT, typename T>
-		struct cat_arg_vec_size : cat_arg_vec_size_impl<T, is_mutually_vector<CatT, T, true>::value> { };
+		struct cat_arg_vec_size : cat_arg_vec_size_impl<T, is_element_compatible<CatT, T, true>::value> {};
 
 		template <typename CatT, typename Seq, typename Tup>
-		struct cat_arg_seq { };
+		struct cat_arg_seq {};
 
 		template <typename CatT, size_t ...Is, typename ...Ts>
 		struct cat_arg_seq<CatT, std::index_sequence<Is...>, std::tuple<Ts...>> {
@@ -914,7 +932,7 @@ namespace cgra {
 		using make_index_sequence_t = typename make_index_sequence<N>::type;
 
 		template <typename CatT, typename Tup>
-		struct cat_val_seq { };
+		struct cat_val_seq {};
 
 		template <typename CatT, typename ...Ts>
 		struct cat_val_seq<CatT, std::tuple<Ts...>> {
@@ -938,10 +956,10 @@ namespace cgra {
 		template <typename CatT, size_t I, typename T>
 		CGRA_CONSTEXPR_FUNCTION decltype(auto) vec_get(T &&t) {
 			static_assert(
-				is_mutually_vector<CatT, T, true>::value || is_relatively_scalar<CatT, T>::value,
-				"vector cat argument is not mutually vector or relatively scalar"
+				is_element_compatible<CatT, T, true>::value || is_scalar_compatible<CatT, T>::value,
+				"vector cat argument is not element-compatible or scalar-compatible"
 			);
-			return vec_get_impl<I, T, is_mutually_vector<CatT, T, true>::value>::go(std::forward<T>(t));
+			return vec_get_impl<I, T, is_element_compatible<CatT, T, true>::value>::go(std::forward<T>(t));
 		}
 
 		template <typename CatT, typename ArgTupT, size_t ...Js, size_t ...Ks>
@@ -1100,7 +1118,7 @@ namespace cgra {
 			// enforcing >= 2 args is necessary to prevent unwanted implicit conversions
 			// direct enforcement with explicit 1st and 2nd args results in this being used instead of the above tagged ctor
 			// this cannot be marked explicit as it needs to be callable from within nested braced init lists
-			// FIXME for implicit use, check correct number of elements
+			// FIXME for implicit use, check correct number of elements and conversions
 			template <typename ...ArgTs, typename = std::enable_if_t<(sizeof...(ArgTs) >= 2)>>
 			CGRA_CONSTEXPR_FUNCTION basic_vec_ctor_proxy(ArgTs &&...args) :
 				// note that cat_impl constructs a basic_vec_ctor_proxy, not a basic_vec
@@ -1111,10 +1129,10 @@ namespace cgra {
 			// 1-arg magic ctor (implicit)
 			// this is separate from the general magic ctor to restrict a single args to only vectors
 			// ie, it disables implicit conversion of scalars to vectors with the magic ctors
-			// is_mutually_vector checks that the element types are implicitly convertible and the vector sizes are the same
+			// is_vector_compatible checks that the element types are implicitly convertible and the vector sizes are the same
 			template <
 				typename VecT,
-				typename = std::enable_if_t<is_mutually_vector<basic_vec_ctor_proxy, VecT, false>::value>,
+				typename = std::enable_if_t<is_vector_compatible<basic_vec_ctor_proxy, VecT, false>::value>,
 				typename = void
 			>
 			CGRA_CONSTEXPR_FUNCTION basic_vec_ctor_proxy(VecT &&v) :
@@ -1126,9 +1144,9 @@ namespace cgra {
 			template <
 				typename VecT,
 				typename = std::enable_if_t<
-					is_mutually_vector<basic_vec_ctor_proxy, VecT, true>::value
+					is_element_compatible<basic_vec_ctor_proxy, VecT, true>::value
 					// second condition needed to not conflict with other 1-arg magic ctor
-					&& !is_mutually_vector<basic_vec_ctor_proxy, VecT, false>::value
+					&& !is_vector_compatible<basic_vec_ctor_proxy, VecT, false>::value
 				>,
 				typename = void,
 				typename = void
@@ -1217,7 +1235,7 @@ namespace cgra {
 		CGRA_CONSTEXPR_FUNCTION explicit basic_mat(ArgTs &&...args) : m_data{ std::forward<ArgTs>(args)... } {}
 
 		// 1-arg magic ctor
-		template <typename MatT, typename = std::enable_if_t<detail::is_mutually_vector<basic_mat, MatT>::value>, typename = void>
+		template <typename MatT, typename = std::enable_if_t<detail::is_vector_compatible<basic_mat, MatT>::value>, typename = void>
 		CGRA_CONSTEXPR_FUNCTION basic_mat(MatT &&v) : m_data{ std::forward<MatT>(v) } {}
 
 		// identity ctor
@@ -1372,7 +1390,7 @@ namespace cgra {
 	//========================================================================================================================================================================================================//
 
 	namespace detail {
-		struct nothing { };
+		struct nothing {};
 
 		namespace op {
 			struct neg {
@@ -1756,119 +1774,119 @@ namespace cgra {
 
 	// addition
 
-	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_mutually_vector<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
+	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_vector_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
 	inline auto operator+(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
 		return zip_with(detail::op::add(), lhs, rhs);
 	}
 
-	template<typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec<T1, N>, T2>::value>>
+	template<typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_scalar_compatible<basic_vec<T1, N>, T2>::value>>
 	inline auto operator+(const basic_vec<T1, N> &lhs, const T2 &rhs) {
 		return zip_with(detail::op::add(), lhs, basic_vec<T2, N>(rhs));
 	}
 
-	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec<T2, N>, T1>::value>>
+	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_scalar_compatible<basic_vec<T2, N>, T1>::value>>
 	inline auto operator+(const T1 &lhs, const basic_vec<T2, N> &rhs) {
 		return zip_with(detail::op::add(), basic_vec<T1, N>(lhs), rhs);
 	}
 
 	// subtraction
 
-	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_mutually_vector<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
+	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_vector_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
 	inline auto operator-(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
 		return zip_with(detail::op::sub(), lhs, rhs);
 	}
 
-	template<typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec<T1, N>, T2>::value>>
+	template<typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_scalar_compatible<basic_vec<T1, N>, T2>::value>>
 	inline auto operator-(const basic_vec<T1, N> &lhs, const T2 &rhs) {
 		return zip_with(detail::op::sub(), lhs, basic_vec<T2, N>(rhs));
 	}
 
-	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec<T2, N>, T1>::value>>
+	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_scalar_compatible<basic_vec<T2, N>, T1>::value>>
 	inline auto operator-(const T1 &lhs, const basic_vec<T2, N> &rhs) {
 		return zip_with(detail::op::sub(), basic_vec<T1, N>(lhs), rhs);
 	}
 
 	// multiplication
 
-	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_mutually_vector<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
+	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_vector_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
 	inline auto operator*(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
 		return zip_with(detail::op::mul(), lhs, rhs);
 	}
 
-	template<typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec<T1, N>, T2>::value>>
+	template<typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_scalar_compatible<basic_vec<T1, N>, T2>::value>>
 	inline auto operator*(const basic_vec<T1, N> &lhs, const T2 &rhs) {
 		return zip_with(detail::op::mul(), lhs, basic_vec<T2, N>(rhs));
 	}
 
-	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec<T2, N>, T1>::value>>
+	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_scalar_compatible<basic_vec<T2, N>, T1>::value>>
 	inline auto operator*(const T1 &lhs, const basic_vec<T2, N> &rhs) {
 		return zip_with(detail::op::mul(), basic_vec<T1, N>(lhs), rhs);
 	}
 
 	// division
 
-	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_mutually_vector<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
+	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_vector_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
 	inline auto operator/(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
 		return zip_with(detail::op::div(), lhs, rhs);
 	}
 
-	template<typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec<T1, N>, T2>::value>>
+	template<typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_scalar_compatible<basic_vec<T1, N>, T2>::value>>
 	inline auto operator/(const basic_vec<T1, N> &lhs, const T2 &rhs) {
 		return zip_with(detail::op::div(), lhs, basic_vec<T2, N>(rhs));
 	}
 
-	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec<T2, N>, T1>::value>>
+	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_scalar_compatible<basic_vec<T2, N>, T1>::value>>
 	inline auto operator/(const T1 &lhs, const basic_vec<T2, N> &rhs) {
 		return zip_with(detail::op::div(), basic_vec<T1, N>(lhs), rhs);
 	}
 
 	// remainder (mod)
 
-	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_mutually_vector<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
+	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_vector_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
 	inline auto operator%(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
 		return zip_with(detail::op::mod(), lhs, rhs);
 	}
 
-	template<typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec<T1, N>, T2>::value>>
+	template<typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_scalar_compatible<basic_vec<T1, N>, T2>::value>>
 	inline auto operator%(const basic_vec<T1, N> &lhs, const T2 &rhs) {
 		return zip_with(detail::op::mod(), lhs, basic_vec<T2, N>(rhs));
 	}
 
-	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec<T2, N>, T1>::value>>
+	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_scalar_compatible<basic_vec<T2, N>, T1>::value>>
 	inline auto operator%(const T1 &lhs, const basic_vec<T2, N> &rhs) {
 		return zip_with(detail::op::mod(), basic_vec<T1, N>(lhs), rhs);
 	}
 
 	// left-shift
 
-	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_mutually_vector<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
+	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_vector_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
 	inline auto operator<<(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
 		return zip_with(detail::op::lshift(), lhs, rhs);
 	}
 
-	template<typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec<T1, N>, T2>::value>>
+	template<typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_scalar_compatible<basic_vec<T1, N>, T2>::value>>
 	inline auto operator<<(const basic_vec<T1, N> &lhs, const T2 &rhs) {
 		return zip_with(detail::op::lshift(), lhs, basic_vec<T2, N>(rhs));
 	}
 
-	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec<T2, N>, T1>::value>>
+	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_scalar_compatible<basic_vec<T2, N>, T1>::value>>
 	inline auto operator<<(const T1 &lhs, const basic_vec<T2, N> &rhs) {
 		return zip_with(detail::op::lshift(), basic_vec<T1, N>(lhs), rhs);
 	}
 
 	// right-shift
 
-	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_mutually_vector<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
+	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_vector_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
 	inline auto operator>>(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
 		return zip_with(detail::op::rshift(), lhs, rhs);
 	}
 
-	template<typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec<T1, N>, T2>::value>>
+	template<typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_scalar_compatible<basic_vec<T1, N>, T2>::value>>
 	inline auto operator>>(const basic_vec<T1, N> &lhs, const T2 &rhs) {
 		return zip_with(detail::op::rshift(), lhs, basic_vec<T2, N>(rhs));
 	}
 
-	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec<T2, N>, T1>::value>>
+	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_scalar_compatible<basic_vec<T2, N>, T1>::value>>
 	inline auto operator>>(const T1 &lhs, const basic_vec<T2, N> &rhs) {
 		return zip_with(detail::op::rshift(), basic_vec<T1, N>(lhs), rhs);
 	}
@@ -1882,34 +1900,34 @@ namespace cgra {
 
 	// logical or
 
-	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_mutually_vector<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
+	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_vector_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
 	inline auto operator||(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
 		return zip_with(detail::op::logical_or(), lhs, rhs);
 	}
 
-	template<typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec<T1, N>, T2>::value>>
+	template<typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_scalar_compatible<basic_vec<T1, N>, T2>::value>>
 	inline auto operator||(const basic_vec<T1, N> &lhs, const T2 &rhs) {
 		return zip_with(detail::op::logical_or(), lhs, basic_vec<T2, N>(rhs));
 	}
 
-	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec<T2, N>, T1>::value>>
+	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_scalar_compatible<basic_vec<T2, N>, T1>::value>>
 	inline auto operator||(const T1 &lhs, const basic_vec<T2, N> &rhs) {
 		return zip_with(detail::op::logical_or(), basic_vec<T1, N>(lhs), rhs);
 	}
 
 	// logical and
 
-	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_mutually_vector<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
+	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_vector_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
 	inline auto operator&&(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
 		return zip_with(detail::op::logical_and(), lhs, rhs);
 	}
 
-	template<typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec<T1, N>, T2>::value>>
+	template<typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_scalar_compatible<basic_vec<T1, N>, T2>::value>>
 	inline auto operator&&(const basic_vec<T1, N> &lhs, const T2 &rhs) {
 		return zip_with(detail::op::logical_and(), lhs, basic_vec<T2, N>(rhs));
 	}
 
-	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec<T2, N>, T1>::value>>
+	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_scalar_compatible<basic_vec<T2, N>, T1>::value>>
 	inline auto operator&&(const T1 &lhs, const basic_vec<T2, N> &rhs) {
 		return zip_with(detail::op::logical_and(), basic_vec<T1, N>(lhs), rhs);
 	}
@@ -1923,51 +1941,51 @@ namespace cgra {
 
 	// bitwise or
 
-	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_mutually_vector<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
+	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_vector_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
 	inline auto operator|(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
 		return zip_with(detail::op::bitwise_or(), lhs, rhs);
 	}
 
-	template<typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec<T1, N>, T2>::value>>
+	template<typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_scalar_compatible<basic_vec<T1, N>, T2>::value>>
 	inline auto operator|(const basic_vec<T1, N> &lhs, const T2 &rhs) {
 		return zip_with(detail::op::bitwise_or(), lhs, basic_vec<T2, N>(rhs));
 	}
 
-	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec<T2, N>, T1>::value>>
+	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_scalar_compatible<basic_vec<T2, N>, T1>::value>>
 	inline auto operator|(const T1 &lhs, const basic_vec<T2, N> &rhs) {
 		return zip_with(detail::op::bitwise_or(), basic_vec<T1, N>(lhs), rhs);
 	}
 
 	// bitwise xor
 
-	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_mutually_vector<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
+	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_vector_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
 	inline auto operator^(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
 		return zip_with(detail::op::bitwise_xor(), lhs, rhs);
 	}
 
-	template<typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec<T1, N>, T2>::value>>
+	template<typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_scalar_compatible<basic_vec<T1, N>, T2>::value>>
 	inline auto operator^(const basic_vec<T1, N> &lhs, const T2 &rhs) {
 		return zip_with(detail::op::bitwise_xor(), lhs, basic_vec<T2, N>(rhs));
 	}
 
-	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec<T2, N>, T1>::value>>
+	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_scalar_compatible<basic_vec<T2, N>, T1>::value>>
 	inline auto operator^(const T1 &lhs, const basic_vec<T2, N> &rhs) {
 		return zip_with(detail::op::bitwise_xor(), basic_vec<T1, N>(lhs), rhs);
 	}
 
 	// bitwise and
 
-	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_mutually_vector<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
+	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_vector_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
 	inline auto operator&(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
 		return zip_with(detail::op::bitwise_and(), lhs, rhs);
 	}
 
-	template<typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec<T1, N>, T2>::value>>
+	template<typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_scalar_compatible<basic_vec<T1, N>, T2>::value>>
 	inline auto operator&(const basic_vec<T1, N> &lhs, const T2 &rhs) {
 		return zip_with(detail::op::bitwise_and(), lhs, basic_vec<T2, N>(rhs));
 	}
 
-	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_relatively_scalar<basic_vec<T2, N>, T1>::value>>
+	template<typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_scalar_compatible<basic_vec<T2, N>, T1>::value>>
 	inline auto operator&(const T1 &lhs, const basic_vec<T2, N> &rhs) {
 		return zip_with(detail::op::bitwise_and(), basic_vec<T1, N>(lhs), rhs);
 	}
@@ -3323,7 +3341,7 @@ namespace cgra {
 		};
 
 		template <typename VecT, typename T>
-		struct fill_impl<VecT, T, std::enable_if_t<detail::is_mutually_vector<VecT, T>::value>> {
+		struct fill_impl<VecT, T, std::enable_if_t<detail::is_vector_compatible<VecT, T>::value>> {
 			CGRA_CONSTEXPR_FUNCTION static VecT go(const T &t) {
 				return VecT(t);
 			}
@@ -4257,10 +4275,10 @@ namespace cgra {
 	//================================================================================================================================================//
 
 	template <typename ...VecTs>
-	struct min_size { };
+	struct min_size {};
 
 	template <typename VecT>
-	struct min_size<VecT> : std::integral_constant<size_t, VecT::size> { };
+	struct min_size<VecT> : std::integral_constant<size_t, VecT::size> {};
 
 	// A meta struct with an integral_constant value equal to the minimum size of its template arguments
 	template <typename VecT1, typename VecT2, typename ...VecTs>
@@ -4270,7 +4288,7 @@ namespace cgra {
 			(min_size<VecT1>::value < min_size<VecT2>::value) ?
 			min_size<VecT1, VecTs...>::value : min_size<VecT2, VecTs...>::value
 		>
-	{ };
+	{};
 
 
 

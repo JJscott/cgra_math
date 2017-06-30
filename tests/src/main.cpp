@@ -13,10 +13,12 @@ int main() {
 	auto v1 = vec3(ivec2(3), ivec4(2));
 	vec2x3 v2{{1, 2, 3}, {4, 5, 6}};
 
-	v1 = vec3(vec4(3));
+	auto v3 = vec3(vec4(7));
 
 	cout << v1 << endl;
 	cout << v2 << endl;
+	cout << v3 << endl;
+
 
 	cin.get();
 }
