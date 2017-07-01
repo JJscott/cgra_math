@@ -14,7 +14,7 @@
 
 - FIXME unbreak vec0
 - FIXME unbreak vec constexpr
-- vec_traits -> array_traits (also: is_array_compatible, is_vector_compatible, is_matrix_compatible ?)
+- vec_traits -> array_traits? (also: is_array_compatible, is_vector_compatible, is_matrix_compatible ?)
 - restrict arg element count with implicit magic ctors
 - test is_vector_compatible / is_scalar_compatible with static asserts
 - enable_if_vector_compatible_t etc
@@ -1560,102 +1560,90 @@ namespace cgra {
 		return out << oss.str();
 	}
 
-	//// Quaternion class of type T
-	//template <typename T>
-	//class basic_quat : private basic_vec<T, 4> {
-	//public:
-	//	using value_t = T;
-	//	static constexpr size_t size = 4;
+	// Quaternion of type T
+	template <typename T>
+	class basic_quat : protected basic_vec<T, 4> {
+	private:
+		using vec_t = basic_vec<T, 4>;
 
-	//	using basic_vec<T, 4>::x;
-	//	using basic_vec<T, 4>::y;
-	//	using basic_vec<T, 4>::z;
-	//	using basic_vec<T, 4>::w;
+	public:
+		using value_t = T;
+		static constexpr size_t size = 4;
 
-	//	CGRA_CONSTEXPR_FUNCTION basic_quat() : basic_vec<T, 4>(0, 0, 0, 1) { }
+		using basic_vec<T, 4>::x;
+		using basic_vec<T, 4>::y;
+		using basic_vec<T, 4>::z;
+		using basic_vec<T, 4>::w;
 
-	//	CGRA_CONSTEXPR_FUNCTION basic_quat(T _x, T _y, T _z, T _w) :  basic_vec<T, 4>(_x, _y, _z, _w) { }
+		// make inherited magic ctor etc visible
+		using vec_t::vec_t;
+		using vec_t::operator[];
 
-	//	template <typename U>
-	//	CGRA_CONSTEXPR_FUNCTION basic_quat(const basic_quat<U>& q) : basic_vec<T, 4>(q.as_vec()) { }
+		// default ctor: the 'one' quaternion
+		CGRA_CONSTEXPR_FUNCTION basic_quat() : vec_t{0, 0, 0, 1} {}
 
-	//	CGRA_CONSTEXPR_FUNCTION basic_quat(const basic_vec<T, 3> &v, T _w) : basic_vec<T, 4>(v, _w) { }
+		// delete the inherited scalar broadcast ctor
+		CGRA_CONSTEXPR_FUNCTION explicit basic_quat(const T &) = delete;
 
-	//	CGRA_CONSTEXPR_FUNCTION basic_quat(const basic_vec<T, 3> &v1, const basic_vec<T, 1> &v2) :  basic_vec<T, 4>(v1, v2) { }
+		// basic_mat<U, 3, 3> converter
+		template <typename U>
+		CGRA_CONSTEXPR_FUNCTION explicit operator basic_mat<U, 3, 3>() const {
+			basic_mat<U, 3, 3> m;
 
-	//	CGRA_CONSTEXPR_FUNCTION basic_quat(const basic_vec<T, 4> &v) : basic_vec<T, 4>(v) { }
+			m[0][0] = w * w + x * x - y * y - z * z;
+			m[0][1] = 2 * x * y + 2 * w * z;
+			m[0][2] = 2 * x * z - 2 * w * y;
 
-	//	// basic_mat<U, 3, 3> converter
-	//	template <typename U>
-	//	explicit operator basic_mat<U, 3, 3>() const {
-	//		basic_mat<U, 3, 3> m;
+			m[1][0] = 2 * x * y - 2 * w * z;
+			m[1][1] = w * w - x * x + y * y - z * z;
+			m[1][2] = 2 * y * z + 2 * w * x;
 
-	//		m[0][0] = w * w + x * x - y * y - z * z;
-	//		m[0][1] = 2 * x * y + 2 * w * z;
-	//		m[0][2] = 2 * x * z - 2 * w * y;
+			m[2][0] = 2 * x * z + 2 * w * y;
+			m[2][1] = 2 * y * z - 2 * w * x;
+			m[2][2] = w * w - x * x - y * y + z * z;
 
-	//		m[1][0] = 2 * x * y - 2 * w * z;
-	//		m[1][1] = w * w - x * x + y * y - z * z;
-	//		m[1][2] = 2 * y * z + 2 * w * x;
+			return m;
+		}
 
-	//		m[2][0] = 2 * x * z + 2 * w * y;
-	//		m[2][1] = 2 * y * z - 2 * w * x;
-	//		m[2][2] = w * w - x * x - y * y + z * z;
+		// basic_mat<U, 4, 4> converter
+		template <typename U>
+		CGRA_CONSTEXPR_FUNCTION explicit operator basic_mat<U, 4, 4>() const {
+			basic_mat<U, 4, 4> m;
 
-	//		return m;
-	//	}
+			m[0][0] = w * w + x * x - y * y - z * z;
+			m[0][1] = 2 * x * y + 2 * w * z;
+			m[0][2] = 2 * x * z - 2 * w * y;
+			m[0][3] = 0;
 
-	//	// basic_mat<U, 4, 4> converter
-	//	template <typename U>
-	//	explicit operator basic_mat<U, 4, 4>() const {
-	//		basic_mat<U, 4, 4> m;
+			m[1][0] = 2 * x * y - 2 * w * z;
+			m[1][1] = w * w - x * x + y * y - z * z;
+			m[1][2] = 2 * y * z + 2 * w * x;
+			m[1][3] = 0;
 
-	//		m[0][0] = w * w + x * x - y * y - z * z;
-	//		m[0][1] = 2 * x * y + 2 * w * z;
-	//		m[0][2] = 2 * x * z - 2 * w * y;
-	//		m[0][3] = 0;
+			m[2][0] = 2 * x * z + 2 * w * y;
+			m[2][1] = 2 * y * z - 2 * w * x;
+			m[2][2] = w * w - x * x - y * y + z * z;
+			m[2][3] = 0;
 
-	//		m[1][0] = 2 * x * y - 2 * w * z;
-	//		m[1][1] = w * w - x * x + y * y - z * z;
-	//		m[1][2] = 2 * y * z + 2 * w * x;
-	//		m[1][3] = 0;
+			m[3][0] = 0;
+			m[3][1] = 0;
+			m[3][2] = 0;
+			m[3][3] = w * w + x * x + y * y + z * z;
 
-	//		m[2][0] = 2 * x * z + 2 * w * y;
-	//		m[2][1] = 2 * y * z - 2 * w * x;
-	//		m[2][2] = w * w - x * x - y * y + z * z;
-	//		m[2][3] = 0;
+			return m;
+		}
 
-	//		m[3][0] = 0;
-	//		m[3][1] = 0;
-	//		m[3][2] = 0;
-	//		m[3][3] = w * w + x * x + y * y + z * z;
+		CGRA_CONSTEXPR_FUNCTION vec_t & as_vec() { return *this; }
 
-	//		return m;
-	//	}
+		CGRA_CONSTEXPR_FUNCTION const vec_t & as_vec() const { return *this; }
 
-	//	CGRA_CONSTEXPR_FUNCTION T & operator[](size_t i) {
-	//		assert(i < 4);
-	//		return (&x)[i];
-	//	}
+	};
 
-	//	CGRA_CONSTEXPR_FUNCTION const T & operator[](size_t i) const {
-	//		assert(i < 4);
-	//		return (&x)[i];
-	//	}
+	template <typename T>
+	inline std::ostream & operator<<(std::ostream &out, const basic_quat<T> &v) {
+		return out << '(' << v.x << ", " << v.y << ", " << v.z << ", " << v.w << ')';
+	}
 
-	//	T * data() { return &x; }
-
-	//	CGRA_CONSTEXPR_FUNCTION const T * data() const { return &x; }
-
-	//	basic_vec<T, 4> & as_vec() { return *this; }
-
-	//	CGRA_CONSTEXPR_FUNCTION const basic_vec<T, 4> & as_vec() const { return *this; }
-
-	//	inline friend std::ostream & operator<<(std::ostream &out, const basic_quat &v) {
-	//		return out << '(' << v.x << ", " << v.y << ", " << v.z << ", " << v.w << ')';
-	//	}
-
-	//};
 
 
 

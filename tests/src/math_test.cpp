@@ -372,11 +372,11 @@ void random_test() {
 	m = random<mat3>(fill<mat3>(0), fill<mat3>(1)); cout << m << endl;
 
 
-	//quat q;
+	quat q;
 
-	//q = random<quat>(); cout << q << endl;
-	//q = random<quat>(pi); cout << q << endl;
-	//q = random<quat>(0.0, pi); cout << q << endl;
+	q = random<quat>(); cout << q << endl;
+	q = random<quat>(pi); cout << q << endl;
+	q = random<quat>(0.0, pi); cout << q << endl;
 
 }
 

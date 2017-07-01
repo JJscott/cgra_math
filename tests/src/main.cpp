@@ -26,5 +26,9 @@ int main() {
 	cout << m1 << endl;
 	cout << m2 << endl;
 
+	quat q1;
+
+	cout << q1 << endl;
+
 	cin.get();
 }
