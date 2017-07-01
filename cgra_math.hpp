@@ -1331,6 +1331,7 @@ namespace cgra {
 		using value_t = T;
 		static constexpr size_t size = N;
 
+		// make inherited magic ctor etc visible
 		using ctor_proxy_t::ctor_proxy_t;
 		using ctor_proxy_t::operator[];
 		using ctor_proxy_t::data;
@@ -1354,6 +1355,7 @@ namespace cgra {
 		using value_t = T;
 		static constexpr size_t size = 0;
 
+		// make inherited magic ctor etc visible
 		using ctor_proxy_t::ctor_proxy_t;
 		using ctor_proxy_t::operator[];
 		using ctor_proxy_t::data;
@@ -1379,6 +1381,7 @@ namespace cgra {
 		using detail::basic_vec_data<T, 1>::r;
 		using detail::basic_vec_data<T, 1>::s;
 
+		// make inherited magic ctor etc visible
 		using ctor_proxy_t::ctor_proxy_t;
 		using ctor_proxy_t::operator[];
 		using ctor_proxy_t::data;
@@ -1406,6 +1409,7 @@ namespace cgra {
 		using detail::basic_vec_data<T, 2>::g;
 		using detail::basic_vec_data<T, 2>::t;
 
+		// make inherited magic ctor etc visible
 		using ctor_proxy_t::ctor_proxy_t;
 		using ctor_proxy_t::operator[];
 		using ctor_proxy_t::data;
@@ -1438,6 +1442,7 @@ namespace cgra {
 		using detail::basic_vec_data<T, 3>::b;
 		using detail::basic_vec_data<T, 3>::p;
 
+		// make inherited magic ctor etc visible
 		using ctor_proxy_t::ctor_proxy_t;
 		using ctor_proxy_t::operator[];
 		using ctor_proxy_t::data;
@@ -1473,6 +1478,7 @@ namespace cgra {
 		using detail::basic_vec_data<T, 4>::a;
 		using detail::basic_vec_data<T, 4>::q;
 
+		// make inherited magic ctor etc visible
 		using ctor_proxy_t::ctor_proxy_t;
 		using ctor_proxy_t::operator[];
 		using ctor_proxy_t::data;
@@ -1497,72 +1503,62 @@ namespace cgra {
 		return out;
 	}
 
-	// FIXME basic_mat in terms of new basic_vec stuff
-	// [Cols, Rows]-dimensional matrix class of type T
+	// [Cols, Rows]-dimensional matrix of type T
 	template <typename T, size_t Cols, size_t Rows>
-	class basic_mat {
+	class basic_mat : protected basic_vec<basic_vec<T, Rows>, Cols> {
 	private:
-		basic_vec<basic_vec<T, Rows>, Cols> m_data; // avoids reinterpret_cast
+		using vec_t = basic_vec<basic_vec<T, Rows>, Cols>;
 
 	public:
 		using value_t = T;
 		static constexpr size_t cols = Cols;
 		static constexpr size_t rows = Rows;
+
+		// TODO should this member exist? is it useful? could be confusing vs. basic_vec::size
 		static constexpr size_t size = Cols * Rows;
 
+		// make inherited magic ctor etc visible
+		using vec_t::vec_t;
+		using vec_t::operator[];
+
 		// default ctor
-		CGRA_CONSTEXPR_FUNCTION basic_mat() { }
-
-		// magic ctor
-		template <typename ...ArgTs, typename = std::enable_if_t<(sizeof...(ArgTs) >= 2)>>
-		CGRA_CONSTEXPR_FUNCTION explicit basic_mat(ArgTs &&...args) : m_data{ std::forward<ArgTs>(args)... } {}
-
-		// 1-arg magic ctor
-		template <typename MatT, typename = std::enable_if_t<detail::is_vector_compatible<basic_mat, MatT>::value>, typename = void>
-		CGRA_CONSTEXPR_FUNCTION basic_mat(MatT &&v) : m_data{ std::forward<MatT>(v) } {}
+		CGRA_CONSTEXPR_FUNCTION basic_mat() = default;
 
 		// identity ctor
-		CGRA_CONSTEXPR_FUNCTION explicit basic_mat(const value_t &v_) {
+		// this does not hide the inherited scalar broadcast ctor
+		// (that takes a vec<T>, this takes a T)
+		CGRA_CONSTEXPR_FUNCTION explicit basic_mat(const T &t) {
 			for (size_t i = 0; i < std::min(Cols, Rows); i++) {
-				(*this)[i][i] = v_;
+				(*this)[i][i] = t;
 			}
 		}
-
-		CGRA_CONSTEXPR_FUNCTION auto & operator[](size_t i) {
-			assert(i < Cols);
-			return m_data[i];
-		}
-
-		CGRA_CONSTEXPR_FUNCTION const auto & operator[](size_t i) const {
-			assert(i < Cols);
-			return m_data[i];
-		}
-
-		CGRA_CONSTEXPR_FUNCTION T * data() { return &m_data[0][0]; }
-
-		CGRA_CONSTEXPR_FUNCTION const T * data() const { return &m_data[0][0]; }
 		
-		CGRA_CONSTEXPR_FUNCTION auto & as_vec() { return m_data; }
+		CGRA_CONSTEXPR_FUNCTION T * data() { return &(*this)[0][0]; }
 
-		CGRA_CONSTEXPR_FUNCTION const auto & as_vec() const { return m_data; }
+		CGRA_CONSTEXPR_FUNCTION const T * data() const { return &(*this)[0][0]; }
+		
+		CGRA_CONSTEXPR_FUNCTION vec_t & as_vec() { return *this; }
 
-		// stream insertion
-		inline friend std::ostream & operator<<(std::ostream &out, const basic_mat &m) {
-			const size_t field_width = 10;
-			std::ostringstream oss;
-			oss << std::setprecision(4);
-			for (size_t r = 0; r < Rows; ++r) {
-				oss << '[' << std::setw(field_width) << m[0][r];
-				for (size_t c = 1; c < Cols; ++c)
-					oss << ", " << std::setw(field_width) << m[c][r];
-				oss << ']';
-				if (r < Rows-1)
-					oss << std::endl;
-			}
-			return out << oss.str();
-		}
+		CGRA_CONSTEXPR_FUNCTION const vec_t & as_vec() const { return *this; }
+
 	};
 
+	template <typename T, size_t Cols, size_t Rows>
+	inline std::ostream & operator<<(std::ostream &out, const basic_mat<T, Cols, Rows> &m) {
+		// TODO make mat stream insertion prettier
+		const size_t field_width = 10;
+		std::ostringstream oss;
+		oss << std::setprecision(4);
+		for (size_t r = 0; r < Rows; ++r) {
+			oss << '[' << std::setw(field_width) << m[0][r];
+			for (size_t c = 1; c < Cols; ++c)
+				oss << ", " << std::setw(field_width) << m[c][r];
+			oss << ']';
+			if (r < Rows - 1)
+				oss << std::endl;
+		}
+		return out << oss.str();
+	}
 
 	//// Quaternion class of type T
 	//template <typename T>
