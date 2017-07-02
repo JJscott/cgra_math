@@ -16,9 +16,12 @@ int main() {
 	auto v3 = vec3(vec4(7));
 	v3.y = 4;
 
+	vec4 v4{vec0(), vec4(5), vec0(), vec4()};
+
 	cout << v1 << endl;
 	cout << v2 << endl;
 	cout << v3 << endl;
+	cout << v4 << endl;
 
 	mat3 m1{mat4(2)};
 	mat3 m2{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};

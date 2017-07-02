@@ -12,8 +12,8 @@
 	  TODO
 =================
 
-- FIXME unbreak vec0
 - FIXME unbreak vec constexpr
+- fix up min_size
 - vec_traits -> array_traits? (also: is_array_compatible, is_vector_compatible, is_matrix_compatible ?)
 - restrict arg element count with implicit magic ctors
 - test is_vector_compatible / is_scalar_compatible with static asserts
@@ -705,8 +705,7 @@ namespace cgra {
 
 #endif
 
-	// Constructor magics
-	// TODO description
+	// constructor magic
 	namespace detail {
 
 		// foward decl
@@ -715,6 +714,8 @@ namespace cgra {
 
 		// note: msvc has some trouble with expansion of template (type) parameter packs that result in integers,
 		// so we use integral_constant-like types instead (especially for seq_repeat, make_index_sequence).
+		// however, this breaks specialization for specific values in the context of inheritance,
+		// so we use the _t alias to unpack the value from the type before specialization.
 
 		template <typename ...Ts>
 		using void_t = void;
@@ -822,26 +823,26 @@ namespace cgra {
 		template <typename ...Tups>
 		using tup_cat_t = decltype(std::tuple_cat(std::declval<Tups>()...));
 
-		template <typename Tup, typename N>
+		template <typename Tup, size_t N>
 		struct tup_repeat {
-			using type = tup_cat_t<Tup, typename tup_repeat<Tup, index_constant<N::value - 1>>::type>;
+			using type = tup_cat_t<Tup, typename tup_repeat<Tup, N - 1>::type>;
 		};
 
 		template <typename Tup, typename N>
-		using tup_repeat_t = typename tup_repeat<Tup, N>::type;
+		using tup_repeat_t = typename tup_repeat<Tup, N::value>::type;
 
 		template <typename Tup>
-		struct tup_repeat<Tup, index_constant<0>> {
+		struct tup_repeat<Tup, 0> {
 			using type = std::tuple<>;
 		};
 
 		template <typename Tup>
-		struct tup_repeat<Tup, index_constant<1>> {
+		struct tup_repeat<Tup, 1> {
 			using type = Tup;
 		};
 
 		template <typename Tup>
-		struct tup_repeat<Tup, index_constant<2>> {
+		struct tup_repeat<Tup, 2> {
 			using type = tup_cat_t<Tup, Tup>;
 		};
 
@@ -866,54 +867,54 @@ namespace cgra {
 			using type = std::integer_sequence<T, Is..., Js...>;
 		};
 
-		template <typename Seq, typename N>
+		template <typename Seq, size_t N>
 		struct seq_repeat {
-			using type = seq_cat_t<Seq, typename seq_repeat<Seq, index_constant<N::value - 1>>::type>;
+			using type = seq_cat_t<Seq, typename seq_repeat<Seq, N - 1>::type>;
 		};
 
 		template <typename Seq, typename N>
-		using seq_repeat_t = typename seq_repeat<Seq, N>::type;
+		using seq_repeat_t = typename seq_repeat<Seq, N::value>::type;
 
 		template <typename Seq>
-		struct seq_repeat<Seq, index_constant<0>> {
+		struct seq_repeat<Seq, 0> {
 			using type = std::integer_sequence<typename Seq::value_type>;
 		};
 
 		template <typename Seq>
-		struct seq_repeat<Seq, index_constant<1>> {
+		struct seq_repeat<Seq, 1> {
 			using type = Seq;
 		};
 
 		template <typename Seq>
-		struct seq_repeat<Seq, index_constant<2>> {
+		struct seq_repeat<Seq, 2> {
 			using type = seq_cat_t<Seq, Seq>;
 		};
 
-		template <typename SeqR, typename Seq0, typename N, typename = void>
+		template <typename SeqR, typename Seq0, size_t N, typename = void>
 		struct seq_trim_impl {};
 
 		template <typename SeqR, typename Seq0>
-		struct seq_trim_impl<SeqR, Seq0, index_constant<0>> {
+		struct seq_trim_impl<SeqR, Seq0, 0> {
 			using type = SeqR;
 		};
 
-		template <typename T, T ...Rs, T I0, T ...Is, typename N>
+		template <typename T, T ...Rs, T I0, T ...Is, size_t N>
 		struct seq_trim_impl<
 			std::integer_sequence<T, Rs...>,
 			std::integer_sequence<T, I0, Is...>,
-			N, std::enable_if_t<(N::value > 0)>
+			N, std::enable_if_t<(N > 0)>
 		> {
 			using type = typename seq_trim_impl<
 				std::integer_sequence<T, Rs..., I0>,
 				std::integer_sequence<T, Is...>,
-				index_constant<N::value - 1>
+				N - 1
 			>::type;
 		};
 
 		template <typename Seq, typename N>
 		struct seq_trim {
 			static_assert(N::value <= Seq::size(), "sequence too small");
-			using type = typename seq_trim_impl<std::integer_sequence<typename Seq::value_type>, Seq, N>::type;
+			using type = typename seq_trim_impl<std::integer_sequence<typename Seq::value_type>, Seq, N::value>::type;
 		};
 
 		template <typename Seq, typename N>
@@ -1080,7 +1081,7 @@ namespace cgra {
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data() {}
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data(vec_dead_ctor_tag) {}
 
-			CGRA_CONSTEXPR_FUNCTION T operator[](size_t i) const {
+			CGRA_CONSTEXPR_FUNCTION T operator[](size_t) const {
 				throw std::logic_error("0-size basic_vec has no elements");
 				return T();
 			}

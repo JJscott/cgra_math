@@ -52,7 +52,7 @@ void vector_compile_test() {
 
 
 	// 1 arg scalar broadcast args
-	//v0 = basic_vec<float, 0>(1);
+	v0 = basic_vec<float, 0>(1);
 	v1 = basic_vec<float, 1>(1);
 	v2 = basic_vec<float, 2>(1);
 	v3 = basic_vec<float, 3>(1);
@@ -60,7 +60,7 @@ void vector_compile_test() {
 	v5 = basic_vec<float, 5>(1);
 
 	// 1 arg vector args
-	//v0 = basic_vec<float, 0>(basic_vec<int, 0>());
+	v0 = basic_vec<float, 0>(basic_vec<int, 0>());
 	v1 = basic_vec<float, 1>(basic_vec<int, 1>());
 	v2 = basic_vec<float, 2>(basic_vec<int, 2>());
 	v3 = basic_vec<float, 3>(basic_vec<int, 3>());
@@ -68,12 +68,12 @@ void vector_compile_test() {
 	v5 = basic_vec<float, 5>(basic_vec<int, 5>());
 
 	// magic ctors (this is where the fun is)
-	//v0 = basic_vec<float, 0>(1, v0);
-	//v0 = basic_vec<float, 0>(v0, 1, v0);
-	//v1 = basic_vec<float, 1>(1, v0);
-	//v1 = basic_vec<float, 1>(v0, 1, v0);
-	//v2 = basic_vec<float, 2>(1, v1);
-	//v2 = basic_vec<float, 2>(v0, 1, v1);
+	v0 = basic_vec<float, 0>(1, v0);
+	v0 = basic_vec<float, 0>(v0, 1, v0);
+	v1 = basic_vec<float, 1>(1, v0);
+	v1 = basic_vec<float, 1>(v0, 1, v0);
+	v2 = basic_vec<float, 2>(1, v1);
+	v2 = basic_vec<float, 2>(v0, 1, v1);
 	v3 = basic_vec<float, 3>(1, v2);
 	v3 = basic_vec<float, 3>(v1, 1, v2);
 	v4 = basic_vec<float, 4>(1, v3);
