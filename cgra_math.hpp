@@ -13,14 +13,13 @@
 =================
 
 - FIXME unbreak vec constexpr
-- fix up min_size
-- vec_traits -> array_traits? (also: is_array_compatible, is_vector_compatible, is_matrix_compatible ?)
-- restrict arg element count with implicit magic ctors
-- test is_vector_compatible / is_scalar_compatible with static asserts
+- vec_traits -> array_traits? (also: is_array_compatible, is_vector_compatible, is_matrix_compatible, is_*_scalar_compatible ?)
+- test is_vector_compatible etc with static asserts
 - enable_if_vector_compatible_t etc
-- make magic ctors pad with default if not enough elements
+- make magic ctors pad with default if not enough elements???
 - move random section to bottom of file
 - move zip_with and friends to top
+- make mat inverse error by exception
 - constexpr everything
 - clean up common function definitions and remove duplicates
 - implement generic cat functions
@@ -35,6 +34,7 @@
 
 #include <cassert>
 #include <cmath>
+#include <climits>
 
 #include <algorithm>
 #include <array>
@@ -723,6 +723,9 @@ namespace cgra {
 		template <size_t X>
 		using index_constant = std::integral_constant<size_t, X>;
 
+		template <bool X>
+		using bool_constant = std::integral_constant<bool, X>;
+
 		struct vec_element_ctor_tag {};
 		struct vec_dead_ctor_tag {};
 
@@ -759,27 +762,78 @@ namespace cgra {
 
 		// TODO vec traits for std::array, std::tuple
 
+		template <template <typename T1, typename T2> class F>
+		struct meta_quote2 {
+			template <typename T1, typename T2>
+			struct apply {
+				using type = typename F<T1, T2>::type;
+			};
+		};
+
+		template <typename F, typename T1, typename Tup>
+		struct meta_fold {};
+
+		template <typename F, typename T1, typename Tup>
+		using meta_fold_t = typename meta_fold<F, T1, Tup>::type;
+
+		template <typename F, typename T1>
+		struct meta_fold<F, T1, std::tuple<>> {
+			using type = T1;
+		};
+
+		template <typename F, typename T1, typename T2>
+		struct meta_fold<F, T1, std::tuple<T2>> {
+			using type = typename F::template apply<T1, T2>::type;
+		};
+
+		template <typename F, typename T1, typename T2, typename T3, typename ...Ts>
+		struct meta_fold<F, T1, std::tuple<T2, T3, Ts...>> {
+			using type = typename meta_fold<F, typename F::template apply<T1, T2>::type, std::tuple<T3, Ts...>>::type;
+		};
+
+		template <typename N1, typename N2>
+		struct meta_min {
+			using type = index_constant<(N1::value < N2::value) ? N1::value : N2::value>;
+		};
+
+		template <typename N1, typename N2>
+		struct meta_add {
+			using type = index_constant<(N1::value + N2::value)>;
+		};
+
+		template <typename N1, typename N2>
+		struct meta_and {
+			using type = bool_constant<(N1::value && N2::value)>;
+		};
+
 		template <typename VecT>
 		using vec_value_t = typename vec_traits<std::decay_t<VecT>>::value_t;
 
 		template <typename VecT>
 		struct vec_size : index_constant<vec_traits<std::decay_t<VecT>>::size> {};
-
+		
+		template <typename ...VecTs>
+		struct vec_min_size : meta_fold_t<meta_quote2<meta_min>, index_constant<SIZE_MAX>, std::tuple<vec_size<VecTs>...>> {};
+		
 		template <typename T1, typename T2>
 		struct is_mutually_convertible :
-			std::integral_constant<bool, std::is_convertible<T1, T2>::value && std::is_convertible<T2, T1>::value> {};
+			bool_constant<std::is_convertible<T1, T2>::value && std::is_convertible<T2, T1>::value> {};
 
 		template <typename T1, typename T2>
 		struct is_mutually_constructible :
-			std::integral_constant<bool, std::is_constructible<T1, T2>::value && std::is_constructible<T2, T1>::value> {};
+			bool_constant<std::is_constructible<T1, T2>::value && std::is_constructible<T2, T1>::value> {};
 
 		// is T a compatible scalar type for vector VecT?
-		template <typename VecT, typename T, typename = void>
+		template <typename VecT, typename T, bool Explicit = false, typename = void>
 		struct is_scalar_compatible : std::false_type {};
 
 		template <typename VecT, typename T>
-		struct is_scalar_compatible<VecT, T, void_t<vec_value_t<VecT>>> :
+		struct is_scalar_compatible<VecT, T, false, void_t<vec_value_t<VecT>>> :
 			is_mutually_convertible<vec_value_t<VecT>, T> {};
+
+		template <typename VecT, typename T>
+		struct is_scalar_compatible<VecT, T, true, void_t<vec_value_t<VecT>>> :
+			is_mutually_constructible<vec_value_t<VecT>, T> {};
 
 		// are the element types of these vectors compatible?
 		template <typename VecT0, typename VecT1, bool Explicit = false, typename = void, typename = void>
@@ -787,12 +841,12 @@ namespace cgra {
 
 		template <typename VecT0, typename VecT1>
 		struct is_element_compatible<VecT0, VecT1, false, void_t<vec_value_t<VecT0>>, void_t<vec_value_t<VecT1>>> :
-			std::integral_constant<bool, is_mutually_convertible<vec_value_t<VecT0>, vec_value_t<VecT1>>::value> {};
+			bool_constant<is_mutually_convertible<vec_value_t<VecT0>, vec_value_t<VecT1>>::value> {};
 
 		template <typename VecT0, typename VecT1>
 		struct is_element_compatible<VecT0, VecT1, true, void_t<vec_value_t<VecT0>>, void_t<vec_value_t<VecT1>>> :
 			// we still need the 2-way check to avoid scalar broadcast problems etc.
-			std::integral_constant<bool, is_mutually_constructible<vec_value_t<VecT0>, vec_value_t<VecT1>>::value> {};
+			bool_constant<is_mutually_constructible<vec_value_t<VecT0>, vec_value_t<VecT1>>::value> {};
 
 		// are these vectors of the same size and are they element-compatible?
 		template <typename VecT0, typename VecT1, bool Explicit = false, typename = void, typename = void>
@@ -818,6 +872,11 @@ namespace cgra {
 				is_element_compatible<VecT0, VecT1>::value
 				&& vec_size<VecT0>::value == vec_size<VecT1>::value
 			>
+		{};
+
+		template <typename CatT, typename T, bool Explicit>
+		struct is_cat_compatible :
+			bool_constant<is_element_compatible<CatT, T, Explicit>::value || is_scalar_compatible<CatT, T, Explicit>::value>
 		{};
 
 		template <typename ...Tups>
@@ -929,6 +988,10 @@ namespace cgra {
 		template <typename CatT, typename T>
 		struct cat_arg_vec_size : cat_arg_vec_size_impl<T, is_element_compatible<CatT, T, true>::value> {};
 
+		template <typename CatT, typename ...ArgTs>
+		struct cat_arg_vec_total_size :
+			meta_fold_t<meta_quote2<meta_add>, index_constant<0>, std::tuple<cat_arg_vec_size<CatT, ArgTs>...>> {};
+
 		template <typename CatT, typename Seq, typename Tup>
 		struct cat_arg_seq {};
 
@@ -970,7 +1033,7 @@ namespace cgra {
 		template <typename CatT, size_t I, typename T>
 		CGRA_CONSTEXPR_FUNCTION decltype(auto) vec_get(T &&t) {
 			static_assert(
-				is_element_compatible<CatT, T, true>::value || is_scalar_compatible<CatT, T>::value,
+				is_cat_compatible<CatT, T, true>::value,
 				"vector cat argument is not element-compatible or scalar-compatible"
 			);
 			return vec_get_impl<I, T, is_element_compatible<CatT, T, true>::value>::go(std::forward<T>(t));
@@ -993,6 +1056,35 @@ namespace cgra {
 			// so, we call tuple's ctor directly to stop it complaining
 			return cat_impl_impl<CatT>(std::tuple<Ts &&...>{std::forward<Ts>(args)...}, argseq(), valseq());
 		}
+
+		template <typename CatT, typename ...ArgTs>
+		struct can_have_implicit_magic_ctor :
+			bool_constant<
+				vec_size<CatT>::value == cat_arg_vec_total_size<CatT, ArgTs...>::value
+				&& meta_fold_t<
+					meta_quote2<meta_and>,
+					std::true_type,
+					std::tuple<is_cat_compatible<CatT, ArgTs, false>...>
+				>::value
+			>
+		{};
+
+		// single arg -> vector only
+		template <typename CatT, typename ArgT>
+		struct can_have_implicit_magic_ctor<CatT, ArgT> : is_vector_compatible<CatT, ArgT, false> {};
+
+		template <typename CatT, typename ...ArgTs>
+		struct can_have_explicit_magic_ctor :
+			meta_fold_t<
+				meta_quote2<meta_and>,
+				std::true_type,
+				std::tuple<is_cat_compatible<CatT, ArgTs, false>...>
+			>
+		{};
+
+		// single arg -> vector only
+		template <typename CatT, typename ArgT>
+		struct can_have_explicit_magic_ctor<CatT, ArgT> : is_element_compatible<CatT, ArgT, true> {};
 
 		template <typename T>
 		CGRA_CONSTEXPR_FUNCTION const T & constify(const T &t) {
@@ -1278,41 +1370,67 @@ namespace cgra {
 				this_data_t{static_cast<T>(std::forward<ArgTs>(args))...}
 #endif
 			{}
-
-			// magic ctor
+			
+			// general magic ctor (implicit)
 			// enforcing >= 2 args is necessary to prevent unwanted implicit conversions
 			// direct enforcement with explicit 1st and 2nd args results in this being used instead of the above tagged ctor
-			// this cannot be marked explicit as it needs to be callable from within nested braced init lists
-			// FIXME for implicit use, check correct number of elements and conversions
-			template <typename ...ArgTs, typename = std::enable_if_t<(sizeof...(ArgTs) >= 2)>>
+			// this implicit version checks that the number of elements is correct and that they are implicitly convertible
+			// this is callable from within nested braced init lists
+			template <
+				typename ...ArgTs,
+				typename = std::enable_if_t<
+					(sizeof...(ArgTs) >= 2)
+					&& can_have_implicit_magic_ctor<basic_vec_ctor_proxy, ArgTs...>::value
+				>
+			>
 			CGRA_CONSTEXPR_FUNCTION basic_vec_ctor_proxy(ArgTs &&...args) :
 				// note that cat_impl constructs a basic_vec_ctor_proxy, not a basic_vec
 				// the latter would result in recursively delegating to this ctor
 				// in correct operation, the (default) move ctor is delegated to
 				basic_vec_ctor_proxy{cat_impl<basic_vec_ctor_proxy>(std::forward<ArgTs>(args)...)} {}
 			
+			// general magic ctor (explicit)
+			// this explicit version allows arguments with a different total number of elements and
+			// element types that are only explicitly convertible
+			template <
+				typename ...ArgTs,
+				typename = std::enable_if_t<
+					(sizeof...(ArgTs) >= 2)
+					&& can_have_explicit_magic_ctor<basic_vec_ctor_proxy, ArgTs...>::value
+					// second condition needed to not conflict with implicit general magic ctor
+					&& !can_have_implicit_magic_ctor<basic_vec_ctor_proxy, ArgTs...>::value
+				>,
+				typename = void
+			>
+			CGRA_CONSTEXPR_FUNCTION explicit basic_vec_ctor_proxy(ArgTs &&...args) :
+				basic_vec_ctor_proxy{cat_impl<basic_vec_ctor_proxy>(std::forward<ArgTs>(args)...)} {}
+
 			// 1-arg magic ctor (implicit)
 			// this is separate from the general magic ctor to restrict a single args to only vectors
 			// ie, it disables implicit conversion of scalars to vectors with the magic ctors
-			// is_vector_compatible checks that the element types are implicitly convertible and the vector sizes are the same
+			// this implicit version checks that the vector sizes are the same and the element types are implicitly convertible
 			template <
 				typename VecT,
-				typename = std::enable_if_t<is_vector_compatible<basic_vec_ctor_proxy, VecT, false>::value>,
+				typename = std::enable_if_t<
+					can_have_implicit_magic_ctor<basic_vec_ctor_proxy, VecT>::value
+				>,
+				typename = void,
 				typename = void
 			>
 			CGRA_CONSTEXPR_FUNCTION basic_vec_ctor_proxy(VecT &&v) :
 				basic_vec_ctor_proxy{cat_impl<basic_vec_ctor_proxy>(std::forward<VecT>(v))} {}
 
 			// 1-arg magic ctor (explicit)
-			// this (also) restricts single args to only vectors, but allows vectors whose elements
-			// are only explicitly convertible and vectors of different sizes
+			// this explicit version also restricts single args to only vectors, but allows vectors of different sizes
+			// and those whose elements are only explicitly convertible
 			template <
 				typename VecT,
 				typename = std::enable_if_t<
-					is_element_compatible<basic_vec_ctor_proxy, VecT, true>::value
-					// second condition needed to not conflict with other 1-arg magic ctor
-					&& !is_vector_compatible<basic_vec_ctor_proxy, VecT, false>::value
+					can_have_explicit_magic_ctor<basic_vec_ctor_proxy, VecT>::value
+					// second condition needed to not conflict with implicit 1-arg magic ctor
+					&& !can_have_implicit_magic_ctor<basic_vec_ctor_proxy, VecT>::value
 				>,
+				typename = void,
 				typename = void,
 				typename = void
 			>
@@ -4533,35 +4651,6 @@ namespace cgra {
 
 
 
-	//  .___  ___.  _______ .___________.    ___          _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
-	//  |   \/   | |   ____||           |   /   \        |   ____||  |  |  | |  \ |  |  /      ||           ||  |  /  __  \  |  \ |  |     /       |  //
-	//  |  \  /  | |  |__   `---|  |----`  /  ^  \       |  |__   |  |  |  | |   \|  | |  ,----'`---|  |----`|  | |  |  |  | |   \|  |    |   (----`  //
-	//  |  |\/|  | |   __|      |  |      /  /_\  \      |   __|  |  |  |  | |  . `  | |  |         |  |     |  | |  |  |  | |  . `  |     \   \      //
-	//  |  |  |  | |  |____     |  |     /  _____  \     |  |     |  `--'  | |  |\   | |  `----.    |  |     |  | |  `--'  | |  |\   | .----)   |     //
-	//  |__|  |__| |_______|    |__|    /__/     \__\    |__|      \______/  |__| \__|  \______|    |__|     |__|  \______/  |__| \__| |_______/      //
-	//                                                                                                                                                //
-	//================================================================================================================================================//
-
-	template <typename ...VecTs>
-	struct min_size {};
-
-	template <typename VecT>
-	struct min_size<VecT> : std::integral_constant<size_t, VecT::size> {};
-
-	// A meta struct with an integral_constant value equal to the minimum size of its template arguments
-	template <typename VecT1, typename VecT2, typename ...VecTs>
-	struct min_size<VecT1, VecT2, VecTs...> :
-		std::integral_constant<
-			size_t,
-			(min_size<VecT1>::value < min_size<VecT2>::value) ?
-			min_size<VecT1, VecTs...>::value : min_size<VecT2, VecTs...>::value
-		>
-	{};
-
-
-
-
-
 	//   __    __   __    _______  __    __       ______   .______       _______   _______ .______          _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
 	//  |  |  |  | |  |  /  _____||  |  |  |     /  __  \  |   _  \     |       \ |   ____||   _  \        |   ____||  |  |  | |  \ |  |  /      ||           ||  |  /  __  \  |  \ |  |     /       |  //
 	//  |  |__|  | |  | |  |  __  |  |__|  |    |  |  |  | |  |_)  |    |  .--.  ||  |__   |  |_)  |       |  |__   |  |  |  | |   \|  | |  ,----'`---|  |----`|  | |  |  |  | |   \|  |    |   (----`  //
@@ -4572,19 +4661,17 @@ namespace cgra {
 	//==================================================================================================================================================================================================//
 
 	namespace detail {
-		// A helper function used internally by zip_with
+		
 		template <size_t I, typename F, typename ...ArgTs>
 		CGRA_CONSTEXPR_FUNCTION decltype(auto) zip_with_impl_impl(F f, ArgTs &&...args) {
 			return f(std::forward<ArgTs>(args)[I]...);
 		}
 
-		// A helper function used internally by zip_with
 		template <typename ResT, typename F, size_t ...Is, typename ...ArgTs>
 		CGRA_CONSTEXPR_FUNCTION ResT zip_with_impl(F f, std::index_sequence<Is...>, ArgTs &&...args) {
 			return ResT(zip_with_impl_impl<Is>(f, std::forward<ArgTs>(args)...)...);
 		}
 
-		// A helper function used internally by fold
 		template <size_t I, size_t N>
 		struct fold_impl {
 			template <typename F, typename T1, typename ArgT>
@@ -4593,7 +4680,6 @@ namespace cgra {
 			}
 		};
 
-		// A helper function used internally by fold
 		template <size_t N>
 		struct fold_impl<N, N> {
 			template <typename F, typename T1, typename ArgT>
@@ -4603,17 +4689,17 @@ namespace cgra {
 		};
 	}
 
-	//TODO
-	// decsription
+	// TODO description
 	template <typename F, typename ...ArgTs>
 	CGRA_CONSTEXPR_FUNCTION auto zip_with(F f, ArgTs &&...args) {
 		using value_t = std::decay_t<decltype(f(std::forward<ArgTs>(args)[0]...))>;
-		using size = min_size<std::decay_t<ArgTs>...>;
+		using size = detail::vec_min_size<std::decay_t<ArgTs>...>;
 		using vec_t = basic_vec<value_t, size::value>;
 		using iseq = std::make_index_sequence<size::value>;
 		return detail::zip_with_impl<vec_t>(f, iseq(), std::forward<ArgTs>(args)...);
 	}
 
+	// TODO fix description
 	// Produce a scalar by applying f(T1,T2) -> T3 to adjacent pairs of elements
 	// from vector a in left-to-right order starting with f(z, v[0])
 	// Typically T1 = T3 and T2 is a vector of some T
