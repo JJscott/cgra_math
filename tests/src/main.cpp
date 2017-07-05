@@ -25,7 +25,7 @@ int main() {
 	cout << v3 << endl;
 	cout << v4 << endl;
 
-	mat3 m1{mat4(2)};
+	mat3 m1{mat4(pi)};
 	mat3 m2{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
 
 	cout << m1 << endl;

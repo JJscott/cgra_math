@@ -1670,19 +1670,50 @@ namespace cgra {
 
 	template <typename T, size_t Cols, size_t Rows>
 	inline std::ostream & operator<<(std::ostream &out, const basic_mat<T, Cols, Rows> &m) {
-		// TODO make mat stream insertion prettier
-		const size_t field_width = 10;
-		std::ostringstream oss;
-		oss << std::setprecision(4);
-		for (size_t r = 0; r < Rows; ++r) {
-			oss << '[' << std::setw(field_width) << m[0][r];
-			for (size_t c = 1; c < Cols; ++c)
-				oss << ", " << std::setw(field_width) << m[c][r];
-			oss << ']';
-			if (r < Rows - 1)
-				oss << std::endl;
+		static const char *toplinestart = Rows > 1 ? "/ " : "[ ";
+		static const char *toplineend = Rows > 1 ? " \\" : " ]";
+		static const char *midlinestart = "| ";
+		static const char *midlineend = " |";
+		static const char *bottomlinestart = Rows > 1 ? "\\ " : "[ ";
+		static const char *bottomlineend = Rows > 1 ? " /" : " ]";
+		// calculate column widths
+		size_t maxwidths[Cols];
+		std::ostringstream tempss;
+		tempss.precision(out.precision());
+		for (size_t i = 0; i < Cols; ++i) {
+			maxwidths[i] = 0;
+			for (size_t j = 0; j < Rows; ++j) {
+				// msvc: seeking to 0 on empty stream sets failbit
+				tempss.seekp(0);
+				tempss.clear();
+				tempss << m[i][j];
+				maxwidths[i] = size_t(tempss.tellp()) > maxwidths[i] ? size_t(tempss.tellp()) : maxwidths[i];
+			}
 		}
-		return out << oss.str();
+		// print
+		for (size_t i = 0; i < Rows; ++i) {
+			if (i == 0) {
+				out << toplinestart;
+			} else if (i + 1 == Rows) {
+				out << bottomlinestart;
+			} else {
+				out << midlinestart;
+			}
+			for (size_t j = 0; j < Cols; ++j) {
+				out.width(maxwidths[j]);
+				out << m[j][i];
+				if (j + 1 < Cols) out << ", ";
+			}
+			if (i == 0) {
+				out << toplineend;
+			} else if (i + 1 == Rows) {
+				out << bottomlineend;
+			} else {
+				out << midlineend;
+			}
+			if (i + 1 < Rows) out << '\n';
+		}
+		return out;
 	}
 
 	// Quaternion of type T
