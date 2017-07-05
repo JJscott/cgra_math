@@ -1419,9 +1419,7 @@ namespace cgra {
 				typename VecT,
 				typename = std::enable_if_t<
 					can_have_implicit_magic_ctor<basic_vec_ctor_proxy, VecT>::value
-				>,
-				typename = void,
-				typename = void
+				>
 			>
 			CGRA_CONSTEXPR_FUNCTION basic_vec_ctor_proxy(VecT &&v) :
 				basic_vec_ctor_proxy{cat_impl<basic_vec_ctor_proxy>(std::forward<VecT>(v))} {}
@@ -1436,8 +1434,6 @@ namespace cgra {
 					// second condition needed to not conflict with implicit 1-arg magic ctor
 					&& !can_have_implicit_magic_ctor<basic_vec_ctor_proxy, VecT>::value
 				>,
-				typename = void,
-				typename = void,
 				typename = void
 			>
 			CGRA_CONSTEXPR_FUNCTION explicit basic_vec_ctor_proxy(VecT &&v) :
