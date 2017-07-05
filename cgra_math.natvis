@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Type Name="cgra::detail::basic_vec_data&lt;*,*&gt;" Inheritable="true">
+    <DisplayString>{{size={$T2}}}</DisplayString>
+    <Expand>
+      <ArrayItems>
+        <Size>$T2</Size>
+        <ValuePointer>($T1 *) this</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+  <Type Name="cgra::detail::basic_vec_data&lt;*,0&gt;" Inheritable="true">
+    <DisplayString>{{}}</DisplayString>
+    <Expand>
+    </Expand>
+  </Type>
+  <Type Name="cgra::detail::basic_vec_data&lt;*,1&gt;" Inheritable="true">
+    <DisplayString>{{{x}}}</DisplayString>
+    <Expand>
+      <ArrayItems>
+        <Size>1</Size>
+        <ValuePointer>($T1 *) this</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+  <Type Name="cgra::detail::basic_vec_data&lt;*,2&gt;" Inheritable="true">
+    <DisplayString>{{{x}, {y}}}</DisplayString>
+    <Expand>
+      <ArrayItems>
+        <Size>2</Size>
+        <ValuePointer>($T1 *) this</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+  <Type Name="cgra::detail::basic_vec_data&lt;*,3&gt;" Inheritable="true">
+    <DisplayString>{{{x}, {y}, {z}}}</DisplayString>
+    <Expand>
+      <ArrayItems>
+        <Size>3</Size>
+        <ValuePointer>($T1 *) this</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+  <Type Name="cgra::detail::basic_vec_data&lt;*,4&gt;" Inheritable="true">
+    <DisplayString>{{{x}, {y}, {z}, {w}}}</DisplayString>
+    <Expand>
+      <ArrayItems>
+        <Size>4</Size>
+        <ValuePointer>($T1 *) this</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+</AutoVisualizer>

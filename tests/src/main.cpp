@@ -10,6 +10,7 @@ int main() {
 
 	using vec2x3 = basic_vec<basic_vec<float, 3>, 2>;
 
+	vec0 v0;
 	auto v1 = vec3(ivec2(3), ivec4(2));
 	vec2x3 v2{{1, 2, 3}, {4, 5, 6}};
 
@@ -17,6 +18,7 @@ int main() {
 	v3.y = 4;
 
 	vec4 v4{vec0(), vec4(5), vec0(), vec4()};
+	basic_vec<float, 5> v5;
 
 	cout << v1 << endl;
 	cout << v2 << endl;
