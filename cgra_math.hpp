@@ -1352,7 +1352,10 @@ namespace cgra {
 			using this_data_t::data;
 
 			// default ctor
-			CGRA_CONSTEXPR_FUNCTION basic_vec_ctor_proxy() = default;
+			// explictly defining this to delegate to the superclass prevents MSVC in VS2015
+			// from silently producing bad code in a certain case, and instead causes an ICE
+			// the bit of our code that caused this (in the general magic ctor) is now fixed
+			CGRA_CONSTEXPR_FUNCTION basic_vec_ctor_proxy() : this_data_t{} {}
 
 			// explict arg ctor for nested brace initializers
 			// vec_exarg_tup_t produces {vec_dead_ctor_tag} for vec0 to avoid conflict with the default ctor
@@ -1376,34 +1379,37 @@ namespace cgra {
 			// direct enforcement with explicit 1st and 2nd args results in this being used instead of the above tagged ctor
 			// this implicit version checks that the number of elements is correct and that they are implicitly convertible
 			// this is callable from within nested braced init lists
+			// for MSVC in VS2015, we have to have an explicit 1st arg to avoid some kind of weird conflict with the default ctor
 			template <
+				typename ArgT0,
 				typename ...ArgTs,
 				typename = std::enable_if_t<
-					(sizeof...(ArgTs) >= 2)
-					&& can_have_implicit_magic_ctor<basic_vec_ctor_proxy, ArgTs...>::value
+					(sizeof...(ArgTs) >= 1)
+					&& can_have_implicit_magic_ctor<basic_vec_ctor_proxy, ArgT0, ArgTs...>::value
 				>
 			>
-			CGRA_CONSTEXPR_FUNCTION basic_vec_ctor_proxy(ArgTs &&...args) :
+			CGRA_CONSTEXPR_FUNCTION basic_vec_ctor_proxy(ArgT0 &&arg0, ArgTs &&...args) :
 				// note that cat_impl constructs a basic_vec_ctor_proxy, not a basic_vec
 				// the latter would result in recursively delegating to this ctor
 				// in correct operation, the (default) move ctor is delegated to
-				basic_vec_ctor_proxy{cat_impl<basic_vec_ctor_proxy>(std::forward<ArgTs>(args)...)} {}
+				basic_vec_ctor_proxy{cat_impl<basic_vec_ctor_proxy>(std::forward<ArgT0>(arg0), std::forward<ArgTs>(args)...)} {}
 			
 			// general magic ctor (explicit)
 			// this explicit version allows arguments with a different total number of elements and
 			// element types that are only explicitly convertible
 			template <
+				typename ArgT0,
 				typename ...ArgTs,
 				typename = std::enable_if_t<
-					(sizeof...(ArgTs) >= 2)
-					&& can_have_explicit_magic_ctor<basic_vec_ctor_proxy, ArgTs...>::value
+					(sizeof...(ArgTs) >= 1)
+					&& can_have_explicit_magic_ctor<basic_vec_ctor_proxy, ArgT0, ArgTs...>::value
 					// second condition needed to not conflict with implicit general magic ctor
-					&& !can_have_implicit_magic_ctor<basic_vec_ctor_proxy, ArgTs...>::value
+					&& !can_have_implicit_magic_ctor<basic_vec_ctor_proxy, ArgT0, ArgTs...>::value
 				>,
 				typename = void
 			>
-			CGRA_CONSTEXPR_FUNCTION explicit basic_vec_ctor_proxy(ArgTs &&...args) :
-				basic_vec_ctor_proxy{cat_impl<basic_vec_ctor_proxy>(std::forward<ArgTs>(args)...)} {}
+			CGRA_CONSTEXPR_FUNCTION explicit basic_vec_ctor_proxy(ArgT0 &&arg0, ArgTs &&...args) :
+				basic_vec_ctor_proxy{cat_impl<basic_vec_ctor_proxy>(std::forward<ArgT0>(arg0), std::forward<ArgTs>(args)...)} {}
 
 			// 1-arg magic ctor (implicit)
 			// this is separate from the general magic ctor to restrict a single args to only vectors
