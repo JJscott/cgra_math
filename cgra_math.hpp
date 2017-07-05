@@ -4663,7 +4663,7 @@ namespace cgra {
 	namespace detail {
 		
 		template <size_t I, typename F, typename ...ArgTs>
-		CGRA_CONSTEXPR_FUNCTION decltype(auto) zip_with_impl_impl(F f, ArgTs &&...args) {
+		CGRA_CONSTEXPR_FUNCTION auto zip_with_impl_impl(F f, ArgTs &&...args) {
 			return f(std::forward<ArgTs>(args)[I]...);
 		}
 
@@ -4675,7 +4675,7 @@ namespace cgra {
 		template <size_t I, size_t N>
 		struct fold_impl {
 			template <typename F, typename T1, typename ArgT>
-			static CGRA_CONSTEXPR_FUNCTION decltype(auto) apply(F f, T1 &&t1, ArgT &&v) {
+			static CGRA_CONSTEXPR_FUNCTION auto apply(F f, T1 &&t1, ArgT &&v) {
 				return fold_impl<I + 1, N>::apply(f, f(std::forward<T1>(t1), std::forward<ArgT>(v)[I]), std::forward<ArgT>(v));
 			}
 		};
@@ -4704,7 +4704,7 @@ namespace cgra {
 	// from vector a in left-to-right order starting with f(z, v[0])
 	// Typically T1 = T3 and T2 is a vector of some T
 	template <typename F, typename T1, typename ArgT>
-	CGRA_CONSTEXPR_FUNCTION decltype(auto) fold(F f, T1 &&t1, ArgT &&v) {
+	CGRA_CONSTEXPR_FUNCTION auto fold(F f, T1 &&t1, ArgT &&v) {
 		return detail::fold_impl<0, std::decay_t<ArgT>::size>::apply(f, std::forward<T1>(t1), std::forward<ArgT>(v));
 	}
 
