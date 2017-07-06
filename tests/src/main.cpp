@@ -18,12 +18,14 @@ int main() {
 	v3.y = 4;
 
 	vec4 v4{vec0(), vec4(5), vec0(), vec4()};
-	basic_vec<float, 5> v5;
+
+	basic_vec<float, 5> v5{1, 2, 3};
 
 	cout << v1 << endl;
 	cout << v2 << endl;
 	cout << v3 << endl;
 	cout << v4 << endl;
+	cout << v5 << endl;
 
 	mat3 m1{mat4(pi)};
 	mat3 m2{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};

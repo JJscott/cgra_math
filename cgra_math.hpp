@@ -797,14 +797,39 @@ namespace cgra {
 		};
 
 		template <typename N1, typename N2>
+		using meta_min_t = typename meta_min<N1, N2>::type;
+
+		template <typename N1, typename N2>
+		struct meta_max {
+			using type = index_constant<(N1::value > N2::value) ? N1::value : N2::value>;
+		};
+
+		template <typename N1, typename N2>
+		using meta_max_t = typename meta_max<N1, N2>::type;
+
+		template <typename N1, typename N2>
 		struct meta_add {
 			using type = index_constant<(N1::value + N2::value)>;
 		};
 
 		template <typename N1, typename N2>
+		using meta_add_t = typename meta_add<N1, N2>::type;
+
+		template <typename N1, typename N2>
+		struct meta_sub {
+			using type = index_constant<(N1::value - N2::value)>;
+		};
+
+		template <typename N1, typename N2>
+		using meta_sub_t = typename meta_sub<N1, N2>::type;
+
+		template <typename N1, typename N2>
 		struct meta_and {
 			using type = bool_constant<(N1::value && N2::value)>;
 		};
+
+		template <typename N1, typename N2>
+		using meta_and_t = typename meta_and<N1, N2>::type;
 
 		template <typename VecT>
 		using vec_value_t = typename vec_traits<std::decay_t<VecT>>::value_t;
@@ -1046,15 +1071,19 @@ namespace cgra {
 
 		template <typename CatT, typename ...Ts>
 		CGRA_CONSTEXPR_FUNCTION CatT cat_impl(Ts &&...args) {
-			using argseq0 = typename cat_arg_seq<CatT, std::index_sequence_for<Ts...>, std::tuple<Ts...>>::type;
-			using valseq0 = typename cat_val_seq<CatT, std::tuple<Ts...>>::type;
+			using padsize = meta_sub_t<vec_size<CatT>, meta_min_t<vec_size<CatT>, cat_arg_vec_total_size<CatT, Ts...>>>;
+			using padvec_t = repeat_vec<vec_value_t<CatT>, padsize::value>;
+			using argseq0 = typename cat_arg_seq<CatT, std::index_sequence_for<Ts..., padvec_t>, std::tuple<Ts..., padvec_t>>::type;
+			using valseq0 = typename cat_val_seq<CatT, std::tuple<Ts..., padvec_t>>::type;
 			// trim to size so that extra components are ignored
 			using argseq = seq_trim_t<argseq0, index_constant<CatT::size>>;
 			using valseq = seq_trim_t<valseq0, index_constant<CatT::size>>;
+			// prepare padding, default constructed
+			padvec_t pad{vec_value_t<CatT>()};
 			// calling forward_as_tuple calls tuple's defaulted move ctor
 			// this compiles fine in vs2017, but intellisense thinks it isn't constexpr
 			// so, we call tuple's ctor directly to stop it complaining
-			return cat_impl_impl<CatT>(std::tuple<Ts &&...>{std::forward<Ts>(args)...}, argseq(), valseq());
+			return cat_impl_impl<CatT>(std::tuple<Ts &&..., const padvec_t &>{std::forward<Ts>(args)..., pad}, argseq(), valseq());
 		}
 
 		template <typename CatT, typename ...ArgTs>
