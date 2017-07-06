@@ -50,4 +50,13 @@
       </ArrayItems>
     </Expand>
   </Type>
+  <Type Name="cgra::basic_quat&lt;*&gt;">
+    <DisplayString>{{{x}i + {y}j + {z}k + {w}}}</DisplayString>
+    <Expand>
+      <ArrayItems>
+        <Size>4</Size>
+        <ValuePointer>($T1 *) this</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
 </AutoVisualizer>

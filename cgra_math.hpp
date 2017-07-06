@@ -16,7 +16,6 @@
 - vec_traits -> array_traits? (also: is_array_compatible, is_vector_compatible, is_matrix_compatible, is_*_scalar_compatible ?)
 - test is_vector_compatible etc with static asserts
 - enable_if_vector_compatible_t etc
-- make magic ctors pad with default if not enough elements???
 - move random section to bottom of file
 - move zip_with and friends to top
 - make mat inverse error by exception
@@ -1822,7 +1821,7 @@ namespace cgra {
 
 	template <typename T>
 	inline std::ostream & operator<<(std::ostream &out, const basic_quat<T> &v) {
-		return out << '(' << v.x << ", " << v.y << ", " << v.z << ", " << v.w << ')';
+		return out << '(' << v.x << "i + " << v.y << "j + " << v.z << "k + " << v.w << ')';
 	}
 
 
