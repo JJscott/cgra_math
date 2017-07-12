@@ -12,7 +12,8 @@
 	  TODO
 =================
 
-- FIXME unbreak vec constexpr
+- FIXME it would be better if quat had w first
+- FIXME unbreak constexpr for msvc and intellisense
 - vec_traits -> array_traits? (also: is_array_compatible, is_vector_compatible, is_matrix_compatible, is_*_scalar_compatible ?)
 - test is_vector_compatible etc with static asserts
 - enable_if_vector_compatible_t etc
@@ -47,6 +48,7 @@
 #include <utility>
 #include <exception>
 #include <stdexcept>
+#include <initializer_list>
 
 // MSVC and GCC-likes (including Clang) support anonymous structs which
 // we use for vector members while still allowing constexpr operator[]
@@ -55,28 +57,46 @@
 #define CGRA_HAVE_ANONYMOUS_STRUCT
 #else
 // otherwise, we have to disable constexprness for functions
-#define CGRA_CONSTEXPR_FUNCTION
+#define CGRA_NO_CONSTEXPR_FUNCTIONS
 #endif
 #endif
 
 // MSVC prior to vs2017 doesn't support constexpr well enough for our types
 #if defined(_MSC_VER) && _MSC_VER < 1910
+#define CGRA_NO_CONSTEXPR_FUNCTIONS
+#endif
+
+// turn off constexpr functions if needed
+// we require constexpr for variables, but it is optional for functions
+#ifdef CGRA_NO_CONSTEXPR_FUNCTIONS
 #define CGRA_CONSTEXPR_FUNCTION
 #endif
 
-// we require constexpr for variables, but it is optional for functions
+// turn on constexpr functions if possible
 #ifndef CGRA_CONSTEXPR_FUNCTION
 #define CGRA_CONSTEXPR_FUNCTION constexpr
 #endif
 
-// We undefine min and max macros if they exist
-// so it doesn't interfer with our function overloads
+// we undefine min and max macros if they exist
+// so they don't interfere with our function overloads
 // @$#! macros...
 #undef MIN
 #undef min
 #undef MAX
 #undef max
 
+// we may need these macros to define ctors that intellisense can constexpr-eval
+
+// normal magic ctor definition is dragged in from base class
+#ifndef CGRA_DEFINE_MAGIC_CTOR
+#define CGRA_DEFINE_MAGIC_CTOR(thisclass_t, baseclass_t, element_t, this_size) using baseclass_t::baseclass_t;
+#endif
+
+// normal default ctor delegates to base class
+#ifndef CGRA_DEFINE_DEFAULT_CTOR
+#define CGRA_DEFINE_DEFAULT_CTOR(thisclass_t, baseclass_t, element_t, this_size) \
+CGRA_CONSTEXPR_FUNCTION thisclass_t() : baseclass_t{} {};
+#endif
 
 namespace cgra {
 
@@ -749,15 +769,10 @@ namespace cgra {
 		struct vec_traits<basic_vec_ctor_proxy<T, N, ExArgTupT>> : vec_traits<basic_vec<T, N>> {};
 
 		template <typename T, size_t Cols, size_t Rows>
-		struct vec_traits<basic_mat<T, Cols, Rows>> {
-			using value_t = basic_vec<T, Rows>;
-			static const size_t size = Cols;
+		struct vec_traits<basic_mat<T, Cols, Rows>> : vec_traits<basic_vec<basic_vec<T, Rows>, Cols>> {};
 
-			template <size_t I, typename VecT>
-			CGRA_CONSTEXPR_FUNCTION static decltype(auto) get(VecT &&v) {
-				return std::forward<VecT>(v)[I];
-			}
-		};
+		template <typename T>
+		struct vec_traits<basic_quat<T>> : vec_traits<basic_vec<T, 4>> {};
 
 		// TODO vec traits for std::array, std::tuple
 
@@ -829,6 +844,14 @@ namespace cgra {
 
 		template <typename N1, typename N2>
 		using meta_and_t = typename meta_and<N1, N2>::type;
+
+		template <typename N1, typename N2>
+		struct meta_or {
+			using type = bool_constant<(N1::value || N2::value)>;
+		};
+
+		template <typename N1, typename N2>
+		using meta_or_t = typename meta_or<N1, N2>::type;
 
 		template <typename VecT>
 		using vec_value_t = typename vec_traits<std::decay_t<VecT>>::value_t;
@@ -1114,10 +1137,35 @@ namespace cgra {
 		template <typename CatT, typename ArgT>
 		struct can_have_explicit_magic_ctor<CatT, ArgT> : is_element_compatible<CatT, ArgT, true> {};
 
+		template <typename CatT, typename ...ArgTs>
+		struct can_have_any_magic_ctor :
+			meta_or_t<
+				can_have_explicit_magic_ctor<CatT, ArgTs...>,
+				can_have_implicit_magic_ctor<CatT, ArgTs...>
+			>
+		{};
+
+		template <typename T, typename ...ArgTs>
+		struct can_have_element_ctor :
+			meta_fold_t<
+				meta_quote2<meta_and>,
+				std::true_type,
+				std::tuple<std::is_same<T, std::decay_t<ArgTs>>...>
+			>
+		{};
+
+#ifdef __INTELLISENSE__
+		// this sometimes helps intellisense make sense of things
 		template <typename T>
-		CGRA_CONSTEXPR_FUNCTION const T & constify(const T &t) {
+		CGRA_CONSTEXPR_FUNCTION const T & intellisense_constify(const T &t) {
 			return t;
 		}
+#else
+		template <typename T>
+		CGRA_CONSTEXPR_FUNCTION decltype(auto) intellisense_constify(T &&t) {
+			return std::forward<T>(t);
+		}
+#endif
 
 		template <typename T, size_t N>
 		class repeat_vec {
@@ -1131,7 +1179,7 @@ namespace cgra {
 			CGRA_CONSTEXPR_FUNCTION repeat_vec() { }
 
 			template <typename U>
-			CGRA_CONSTEXPR_FUNCTION explicit repeat_vec(U &&u) : m_v(std::forward<U>(u)) { }
+			CGRA_CONSTEXPR_FUNCTION explicit repeat_vec(U &&u) : m_v(intellisense_constify(std::forward<U>(u))) { }
 
 			CGRA_CONSTEXPR_FUNCTION T & operator[](size_t i) {
 				assert(i < N);
@@ -1168,17 +1216,32 @@ namespace cgra {
 		using vec_exarg_tup_t = typename vec_exarg_tup<T, N>::type;
 
 		template <typename T, size_t N>
+		struct basic_array {
+			T data[N];
+
+			CGRA_CONSTEXPR_FUNCTION const T & operator[](size_t i) const {
+				return data[i];
+			}
+
+			CGRA_CONSTEXPR_FUNCTION T & operator[](size_t i) {
+				return data[i];
+			}
+		};
+
+		// base type for vector data storage
+		// specializations must be default constructible, copyable and movable;
+		// this means care must be taken to handle unions correctly.
+		template <typename T, size_t N>
 		class basic_vec_data {
 		protected:
 			// not using std::array for better constexpr behaviour
-			T m_data[N];
+			basic_array<T, N> m_data;
 
 		public:
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data() : m_data{} {}
-			CGRA_CONSTEXPR_FUNCTION basic_vec_data(vec_dead_ctor_tag) : m_data{} {}
 
-			template <typename ...ArgTs>
-			CGRA_CONSTEXPR_FUNCTION basic_vec_data(ArgTs &&...args) : m_data{std::forward<ArgTs>(args)...} {}
+			template <typename ...ArgTs, typename = std::enable_if_t<can_have_element_ctor<T, ArgTs...>::value>>
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(ArgTs &&...args) : m_data{intellisense_constify(std::forward<ArgTs>(args))...} {}
 
 			CGRA_CONSTEXPR_FUNCTION T & operator[](size_t i) {
 				assert(i < N);
@@ -1227,7 +1290,7 @@ namespace cgra {
 		class basic_vec_data<T, 1> {
 		protected:
 			union {
-				T m_data[1];
+				basic_array<T, 1> m_data;
 				struct { T x; };
 				struct { T r; };
 				struct { T s; };
@@ -1235,10 +1298,23 @@ namespace cgra {
 
 		public:
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data() : m_data{} {}
-			CGRA_CONSTEXPR_FUNCTION basic_vec_data(vec_dead_ctor_tag) : m_data{} {}
 
-			template <typename ...ArgTs>
-			CGRA_CONSTEXPR_FUNCTION basic_vec_data(ArgTs &&...args) : m_data{std::forward<ArgTs>(args)...} {}
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(const basic_vec_data &other) : m_data{other.m_data} {}
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(basic_vec_data &&other) : m_data{std::move(other.m_data)} {}
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(const basic_vec_data &other) {
+				m_data = other.m_data;
+				return *this;
+			}
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(basic_vec_data &&other) {
+				m_data = std::move(other.m_data);
+				return *this;
+			}
+			
+			template <typename ...ArgTs, typename = std::enable_if_t<can_have_element_ctor<T, ArgTs...>::value>>
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(ArgTs &&...args) : m_data{intellisense_constify(std::forward<ArgTs>(args))...} {}
 
 			CGRA_CONSTEXPR_FUNCTION T & operator[](size_t i) {
 				assert(i < 1);
@@ -1259,7 +1335,7 @@ namespace cgra {
 		class basic_vec_data<T, 2> {
 		protected:
 			union {
-				T m_data[2];
+				basic_array<T, 2> m_data;
 				struct { T x; T y; };
 				struct { T r; T g; };
 				struct { T s; T t; };
@@ -1267,10 +1343,23 @@ namespace cgra {
 
 		public:
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data() : m_data{} {}
-			CGRA_CONSTEXPR_FUNCTION basic_vec_data(vec_dead_ctor_tag) : m_data{} {}
 
-			template <typename ...ArgTs>
-			CGRA_CONSTEXPR_FUNCTION basic_vec_data(ArgTs &&...args) : m_data{std::forward<ArgTs>(args)...} {}
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(const basic_vec_data &other) : m_data{other.m_data} {}
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(basic_vec_data &&other) : m_data{std::move(other.m_data)} {}
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(const basic_vec_data &other) {
+				m_data = other.m_data;
+				return *this;
+			}
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(basic_vec_data &&other) {
+				m_data = std::move(other.m_data);
+				return *this;
+			}
+
+			template <typename ...ArgTs, typename = std::enable_if_t<can_have_element_ctor<T, ArgTs...>::value>>
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(ArgTs &&...args) : m_data{intellisense_constify(std::forward<ArgTs>(args))...} {}
 
 			CGRA_CONSTEXPR_FUNCTION T & operator[](size_t i) {
 				assert(i < 2);
@@ -1291,7 +1380,7 @@ namespace cgra {
 		class basic_vec_data<T, 3> {
 		protected:
 			union {
-				T m_data[3];
+				basic_array<T, 3> m_data;
 				struct { T x; T y; T z; };
 				struct { T r; T g; T b; };
 				struct { T s; T t; T p; };
@@ -1299,10 +1388,23 @@ namespace cgra {
 
 		public:
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data() : m_data{} {}
-			CGRA_CONSTEXPR_FUNCTION basic_vec_data(vec_dead_ctor_tag) : m_data{} {}
 
-			template <typename ...ArgTs>
-			CGRA_CONSTEXPR_FUNCTION basic_vec_data(ArgTs &&...args) : m_data{std::forward<ArgTs>(args)...} {}
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(const basic_vec_data &other) : m_data{other.m_data} {}
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(basic_vec_data &&other) : m_data{std::move(other.m_data)} {}
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(const basic_vec_data &other) {
+				m_data = other.m_data;
+				return *this;
+			}
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(basic_vec_data &&other) {
+				m_data = std::move(other.m_data);
+				return *this;
+			}
+
+			template <typename ...ArgTs, typename = std::enable_if_t<can_have_element_ctor<T, ArgTs...>::value>>
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(ArgTs &&...args) : m_data{intellisense_constify(std::forward<ArgTs>(args))...} {}
 
 			CGRA_CONSTEXPR_FUNCTION T & operator[](size_t i) {
 				assert(i < 3);
@@ -1323,7 +1425,7 @@ namespace cgra {
 		class basic_vec_data<T, 4> {
 		protected:
 			union {
-				T m_data[4];
+				basic_array<T, 4> m_data;
 				struct { T x; T y; T z; T w; };
 				struct { T r; T g; T b; T a; };
 				struct { T s; T t; T p; T q; };
@@ -1331,10 +1433,23 @@ namespace cgra {
 
 		public:
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data() : m_data{} {}
-			CGRA_CONSTEXPR_FUNCTION basic_vec_data(vec_dead_ctor_tag) : m_data{} {}
 
-			template <typename ...ArgTs>
-			CGRA_CONSTEXPR_FUNCTION basic_vec_data(ArgTs &&...args) : m_data{std::forward<ArgTs>(args)...} {}
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(const basic_vec_data &other) : m_data{other.m_data} {}
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(basic_vec_data &&other) : m_data{std::move(other.m_data)} {}
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(const basic_vec_data &other) {
+				m_data = other.m_data;
+				return *this;
+			}
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(basic_vec_data &&other) {
+				m_data = std::move(other.m_data);
+				return *this;
+			}
+
+			template <typename ...ArgTs, typename = std::enable_if_t<can_have_element_ctor<T, ArgTs...>::value>>
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(ArgTs &&...args) : m_data{intellisense_constify(std::forward<ArgTs>(args))...} {}
 
 			CGRA_CONSTEXPR_FUNCTION T & operator[](size_t i) {
 				assert(i < 4);
@@ -1363,7 +1478,7 @@ namespace cgra {
 		// FIXME basic_vec_data specializations without anonymous structs
 		
 #endif
-
+		
 		template <typename T, size_t N, typename ArgTupT>
 		class basic_vec_ctor_proxy {};
 
@@ -1385,21 +1500,23 @@ namespace cgra {
 			// the bit of our code that caused this (in the general magic ctor) is now fixed
 			CGRA_CONSTEXPR_FUNCTION basic_vec_ctor_proxy() : this_data_t{} {}
 
+			// explictly default the copy and move ops to ensure the base class supplies them
+			CGRA_CONSTEXPR_FUNCTION basic_vec_ctor_proxy(const basic_vec_ctor_proxy &other) = default;
+			CGRA_CONSTEXPR_FUNCTION basic_vec_ctor_proxy(basic_vec_ctor_proxy &&other) = default;
+			CGRA_CONSTEXPR_FUNCTION basic_vec_ctor_proxy & operator=(const basic_vec_ctor_proxy &other) = default;
+			CGRA_CONSTEXPR_FUNCTION basic_vec_ctor_proxy & operator=(basic_vec_ctor_proxy &&other) = default;
+
 			// explict arg ctor for nested brace initializers
 			// vec_exarg_tup_t produces {vec_dead_ctor_tag} for vec0 to avoid conflict with the default ctor
-			CGRA_CONSTEXPR_FUNCTION explicit basic_vec_ctor_proxy(ExArgTs ...ts) : this_data_t{std::move(ts)...} {}
+			// FIXME this needs to be implicit without breaking anything for >2 levels of braces
+			CGRA_CONSTEXPR_FUNCTION explicit basic_vec_ctor_proxy(ExArgTs ...ts) :
+				this_data_t{intellisense_constify(std::move(ts))...} {}
 
 			// tagged ctor, used by cat
 			// this must use generic forwarding references to avoid being out-competed by the magic ctor
 			template <typename ...ArgTs>
 			CGRA_CONSTEXPR_FUNCTION explicit basic_vec_ctor_proxy(vec_element_ctor_tag, ArgTs &&...args) :
-#ifdef __INTELLISENSE__
-				// intellisense needs a hand here
-				this_data_t{constify(static_cast<T>(std::forward<ArgTs>(args)))...}
-#else
-				// but for actual compilation, we should allow moving
-				this_data_t{static_cast<T>(std::forward<ArgTs>(args))...}
-#endif
+				this_data_t{intellisense_constify(static_cast<T>(std::forward<ArgTs>(args)))...}
 			{}
 			
 			// general magic ctor (implicit)
@@ -1420,7 +1537,8 @@ namespace cgra {
 				// note that cat_impl constructs a basic_vec_ctor_proxy, not a basic_vec
 				// the latter would result in recursively delegating to this ctor
 				// in correct operation, the (default) move ctor is delegated to
-				basic_vec_ctor_proxy{cat_impl<basic_vec_ctor_proxy>(std::forward<ArgT0>(arg0), std::forward<ArgTs>(args)...)} {}
+				basic_vec_ctor_proxy{intellisense_constify(cat_impl<basic_vec_ctor_proxy>(std::forward<ArgT0>(arg0), std::forward<ArgTs>(args)...))}
+			{}
 			
 			// general magic ctor (explicit)
 			// this explicit version allows arguments with a different total number of elements and
@@ -1437,7 +1555,7 @@ namespace cgra {
 				typename = void
 			>
 			CGRA_CONSTEXPR_FUNCTION explicit basic_vec_ctor_proxy(ArgT0 &&arg0, ArgTs &&...args) :
-				basic_vec_ctor_proxy{cat_impl<basic_vec_ctor_proxy>(std::forward<ArgT0>(arg0), std::forward<ArgTs>(args)...)} {}
+				basic_vec_ctor_proxy{intellisense_constify(cat_impl<basic_vec_ctor_proxy>(std::forward<ArgT0>(arg0), std::forward<ArgTs>(args)...))} {}
 
 			// 1-arg magic ctor (implicit)
 			// this is separate from the general magic ctor to restrict a single args to only vectors
@@ -1450,7 +1568,7 @@ namespace cgra {
 				>
 			>
 			CGRA_CONSTEXPR_FUNCTION basic_vec_ctor_proxy(VecT &&v) :
-				basic_vec_ctor_proxy{cat_impl<basic_vec_ctor_proxy>(std::forward<VecT>(v))} {}
+				basic_vec_ctor_proxy{intellisense_constify((cat_impl<basic_vec_ctor_proxy>(std::forward<VecT>(v))))} {}
 
 			// 1-arg magic ctor (explicit)
 			// this explicit version also restricts single args to only vectors, but allows vectors of different sizes
@@ -1465,7 +1583,7 @@ namespace cgra {
 				typename = void
 			>
 			CGRA_CONSTEXPR_FUNCTION explicit basic_vec_ctor_proxy(VecT &&v) :
-				basic_vec_ctor_proxy{cat_impl<basic_vec_ctor_proxy>(std::forward<VecT>(v))} {}
+				basic_vec_ctor_proxy{intellisense_constify(cat_impl<basic_vec_ctor_proxy>(std::forward<VecT>(v)))} {}
 
 		};
 	}
@@ -1480,18 +1598,19 @@ namespace cgra {
 		using value_t = T;
 		static constexpr size_t size = N;
 
-		// make inherited magic ctor etc visible
-		using ctor_proxy_t::ctor_proxy_t;
+		// define default ctor
+		CGRA_DEFINE_DEFAULT_CTOR(basic_vec, ctor_proxy_t, T, size)
+
+		// define magic ctor
+		CGRA_DEFINE_MAGIC_CTOR(basic_vec, ctor_proxy_t, T, size)
+
+		// make inherited functions visible
 		using ctor_proxy_t::operator[];
 		using ctor_proxy_t::data;
 
-		// default ctor
-		CGRA_CONSTEXPR_FUNCTION basic_vec() = default;
-
 		// scalar broadcast ctor
 		CGRA_CONSTEXPR_FUNCTION explicit basic_vec(const T &t) :
-			// constify is to help intellisense, but should have no impact on actual codegen
-			ctor_proxy_t{detail::constify(detail::repeat_vec<const T &, N>(t))} {}
+			ctor_proxy_t{detail::intellisense_constify(detail::repeat_vec<const T &, N>(t))} {}
 
 	};
 
@@ -1503,14 +1622,16 @@ namespace cgra {
 	public:
 		using value_t = T;
 		static constexpr size_t size = 0;
+		
+		// define default ctor
+		CGRA_DEFINE_DEFAULT_CTOR(basic_vec, ctor_proxy_t, T, size)
 
-		// make inherited magic ctor etc visible
-		using ctor_proxy_t::ctor_proxy_t;
+		// define magic ctor
+		CGRA_DEFINE_MAGIC_CTOR(basic_vec, ctor_proxy_t, T, size)
+
+		// make inherited functions visible
 		using ctor_proxy_t::operator[];
 		using ctor_proxy_t::data;
-
-		// default ctor
-		CGRA_CONSTEXPR_FUNCTION basic_vec() = default;
 
 		// scalar broadcast ctor
 		CGRA_CONSTEXPR_FUNCTION explicit basic_vec(const T &) {}
@@ -1530,13 +1651,15 @@ namespace cgra {
 		using detail::basic_vec_data<T, 1>::r;
 		using detail::basic_vec_data<T, 1>::s;
 
-		// make inherited magic ctor etc visible
-		using ctor_proxy_t::ctor_proxy_t;
+		// define default ctor
+		CGRA_DEFINE_DEFAULT_CTOR(basic_vec, ctor_proxy_t, T, size)
+
+		// define magic ctor
+		CGRA_DEFINE_MAGIC_CTOR(basic_vec, ctor_proxy_t, T, size)
+
+		// make inherited functions visible
 		using ctor_proxy_t::operator[];
 		using ctor_proxy_t::data;
-
-		// default ctor
-		CGRA_CONSTEXPR_FUNCTION basic_vec() = default;
 
 		// vec1 has no scalar broadcast ctor to avoid conflict with the explicit arg ctor
 
@@ -1558,17 +1681,19 @@ namespace cgra {
 		using detail::basic_vec_data<T, 2>::g;
 		using detail::basic_vec_data<T, 2>::t;
 
-		// make inherited magic ctor etc visible
-		using ctor_proxy_t::ctor_proxy_t;
+		// define default ctor
+		CGRA_DEFINE_DEFAULT_CTOR(basic_vec, ctor_proxy_t, T, size)
+
+		// define magic ctor
+		CGRA_DEFINE_MAGIC_CTOR(basic_vec, ctor_proxy_t, T, size)
+
+		// make inherited functions visible
 		using ctor_proxy_t::operator[];
 		using ctor_proxy_t::data;
-
-		// default ctor
-		CGRA_CONSTEXPR_FUNCTION basic_vec() = default;
-
+		
 		// scalar broadcast ctor
 		CGRA_CONSTEXPR_FUNCTION explicit basic_vec(const T &t) :
-			ctor_proxy_t{detail::constify(detail::repeat_vec<const T &, 2>(t))} {}
+			ctor_proxy_t{detail::intellisense_constify(detail::repeat_vec<const T &, 2>(t))} {}
 
 	};
 
@@ -1591,17 +1716,19 @@ namespace cgra {
 		using detail::basic_vec_data<T, 3>::b;
 		using detail::basic_vec_data<T, 3>::p;
 
-		// make inherited magic ctor etc visible
-		using ctor_proxy_t::ctor_proxy_t;
+		// define default ctor
+		CGRA_DEFINE_DEFAULT_CTOR(basic_vec, ctor_proxy_t, T, size)
+
+		// define magic ctor
+		CGRA_DEFINE_MAGIC_CTOR(basic_vec, ctor_proxy_t, T, size)
+
+		// make inherited functions visible
 		using ctor_proxy_t::operator[];
 		using ctor_proxy_t::data;
 
-		// default ctor
-		CGRA_CONSTEXPR_FUNCTION basic_vec() = default;
-
 		// scalar broadcast ctor
 		CGRA_CONSTEXPR_FUNCTION explicit basic_vec(const T &t) :
-			ctor_proxy_t{detail::constify(detail::repeat_vec<const T &, 3>(t))} {}
+			ctor_proxy_t{detail::intellisense_constify(detail::repeat_vec<const T &, 3>(t))} {}
 
 	};
 
@@ -1627,17 +1754,19 @@ namespace cgra {
 		using detail::basic_vec_data<T, 4>::a;
 		using detail::basic_vec_data<T, 4>::q;
 
-		// make inherited magic ctor etc visible
-		using ctor_proxy_t::ctor_proxy_t;
+		// define default ctor
+		CGRA_DEFINE_DEFAULT_CTOR(basic_vec, ctor_proxy_t, T, size)
+
+		// define magic ctor
+		CGRA_DEFINE_MAGIC_CTOR(basic_vec, ctor_proxy_t, T, size)
+
+		// make inherited functions visible
 		using ctor_proxy_t::operator[];
 		using ctor_proxy_t::data;
 
-		// default ctor
-		CGRA_CONSTEXPR_FUNCTION basic_vec() = default;
-
 		// scalar broadcast ctor
 		CGRA_CONSTEXPR_FUNCTION explicit basic_vec(const T &t) :
-			ctor_proxy_t{detail::constify(detail::repeat_vec<const T &, 4>(t))} {}
+			ctor_proxy_t{detail::intellisense_constify(detail::repeat_vec<const T &, 4>(t))} {}
 
 	};
 
@@ -1657,6 +1786,7 @@ namespace cgra {
 	class basic_mat : protected basic_vec<basic_vec<T, Rows>, Cols> {
 	private:
 		using vec_t = basic_vec<basic_vec<T, Rows>, Cols>;
+		using element_t = basic_vec<T, Rows>;
 
 	public:
 		using value_t = T;
@@ -1666,12 +1796,14 @@ namespace cgra {
 		// TODO should this member exist? is it useful? could be confusing vs. basic_vec::size
 		static constexpr size_t size = Cols * Rows;
 
-		// make inherited magic ctor etc visible
-		using vec_t::vec_t;
-		using vec_t::operator[];
+		// define default ctor
+		CGRA_DEFINE_DEFAULT_CTOR(basic_mat, vec_t, element_t, cols)
 
-		// default ctor
-		CGRA_CONSTEXPR_FUNCTION basic_mat() = default;
+		// define magic ctor
+		CGRA_DEFINE_MAGIC_CTOR(basic_mat, vec_t, element_t, cols)
+
+		// make inherited functions visible
+		using vec_t::operator[];
 
 		// identity ctor
 		// this does not hide the inherited scalar broadcast ctor
@@ -1755,8 +1887,10 @@ namespace cgra {
 		using basic_vec<T, 4>::z;
 		using basic_vec<T, 4>::w;
 
-		// make inherited magic ctor etc visible
-		using vec_t::vec_t;
+		// define magic ctor
+		CGRA_DEFINE_MAGIC_CTOR(basic_quat, vec_t, T, 4)
+
+		// make inherited functions visible
 		using vec_t::operator[];
 
 		// default ctor: the 'one' quaternion
@@ -4821,3 +4955,6 @@ namespace std {
 		}
 	};
 }
+
+
+#undef CGRA_DEFINE_MAGIC_CTOR
