@@ -1,5 +1,7 @@
 #include <iostream>
 
+//#define CGRA_NO_ANONYMOUS_STRUCT
+
 #include "math_test.hpp"
 
 using namespace std;
@@ -58,7 +60,7 @@ int main() {
 
 	cout << q1 << endl;
 
-	//basic_vec<foobar, 2> fb;
+	basic_vec<foobar, 2> fb;
 
 	cin.get();
 }

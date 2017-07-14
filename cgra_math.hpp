@@ -1227,9 +1227,9 @@ namespace cgra {
 		};
 
 		// base type for vector data storage
-		// specializations must be default constructible, copyable and movable;
+		// specializations must be default constructible, copyable, movable and destructible;
 		// this means care must be taken to handle unions correctly.
-		template <typename T, size_t N>
+		template <typename T, size_t N, typename = void>
 		class basic_vec_data {
 		protected:
 			// not using std::array for better constexpr behaviour
@@ -1271,6 +1271,226 @@ namespace cgra {
 			CGRA_CONSTEXPR_FUNCTION const T * data() const { return nullptr; }
 		};
 
+		template <typename T, typename X>
+		class basic_vec_data<T, 1, X> {
+		public:
+			union { T x, r, s; };
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data() : x{} {}
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(const basic_vec_data &other) :
+				x{other.x} {}
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(basic_vec_data &&other) :
+				x{std::move(other.x)} {}
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(const basic_vec_data &other) {
+				x = other.x;
+				return *this;
+			}
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(basic_vec_data &&other) {
+				x = std::move(other.x);
+				return *this;
+			}
+
+			CGRA_CONSTEXPR_FUNCTION explicit basic_vec_data(T x_) :
+				x{std::move(x_)} {}
+
+			const T & operator[](size_t i) const {
+				assert(i == 0);
+				return x;
+			}
+
+			T & operator[](size_t i) {
+				assert(i == 0);
+				return x;
+			}
+
+			CGRA_CONSTEXPR_FUNCTION const T * data() const {
+				return &x;
+			}
+
+			CGRA_CONSTEXPR_FUNCTION T * data() {
+				return &x;
+			}
+
+			~basic_vec_data() {
+				x.~T();
+			}
+		};
+
+		template <typename T, typename X>
+		class basic_vec_data<T, 2, X> {
+		public:
+			union { T x, r, s; };
+			union { T y, g, t; };
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data() : x{}, y{} {}
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(const basic_vec_data &other) :
+				x{other.x}, y{other.y} {}
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(basic_vec_data &&other) :
+				x{std::move(other.x)}, y{std::move(other.y)} {}
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(const basic_vec_data &other) {
+				x = other.x;
+				y = other.y;
+				return *this;
+			}
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(basic_vec_data &&other) {
+				x = std::move(other.x);
+				y = std::move(other.y);
+				return *this;
+			}
+
+			CGRA_CONSTEXPR_FUNCTION explicit basic_vec_data(T x_, T y_) :
+				x{std::move(x_)}, y{std::move(y_)} {}
+
+			const T & operator[](size_t i) const {
+				assert(i < 2);
+				return *(&x + i);
+			}
+
+			T & operator[](size_t i) {
+				assert(i < 2);
+				return *(&x + i);
+			}
+
+			CGRA_CONSTEXPR_FUNCTION const T * data() const {
+				return &x;
+			}
+
+			CGRA_CONSTEXPR_FUNCTION T * data() {
+				return &x;
+			}
+
+			~basic_vec_data() {
+				x.~T();
+				y.~T();
+			}
+		};
+
+		template <typename T, typename X>
+		class basic_vec_data<T, 3, X> {
+		public:
+			union { T x, r, s; };
+			union { T y, g, t; };
+			union { T z, b, p; };
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data() : x{}, y{}, z{} {}
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(const basic_vec_data &other) :
+				x{other.x}, y{other.y}, z{other.z} {}
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(basic_vec_data &&other) :
+				x{std::move(other.x)}, y{std::move(other.y)}, z{std::move(other.z)} {}
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(const basic_vec_data &other) {
+				x = other.x;
+				y = other.y;
+				z = other.z;
+				return *this;
+			}
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(basic_vec_data &&other) {
+				x = std::move(other.x);
+				y = std::move(other.y);
+				z = std::move(other.z);
+				return *this;
+			}
+
+			CGRA_CONSTEXPR_FUNCTION explicit basic_vec_data(T x_, T y_, T z_) :
+				x{std::move(x_)}, y{std::move(y_)}, z{std::move(z_)} {}
+
+			const T & operator[](size_t i) const {
+				assert(i < 3);
+				return *(&x + i);
+			}
+
+			T & operator[](size_t i) {
+				assert(i < 3);
+				return *(&x + i);
+			}
+
+			CGRA_CONSTEXPR_FUNCTION const T * data() const {
+				return &x;
+			}
+
+			CGRA_CONSTEXPR_FUNCTION T * data() {
+				return &x;
+			}
+
+			~basic_vec_data() {
+				x.~T();
+				y.~T();
+				z.~T();
+			}
+		};
+
+		template <typename T, typename X>
+		class basic_vec_data<T, 4, X> {
+		public:
+			union { T x, r, s; };
+			union { T y, g, t; };
+			union { T z, b, p; };
+			union { T w, a, q; };
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data() : x{}, y{}, z{}, w{} {}
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(const basic_vec_data &other) :
+				x{other.x}, y{other.y}, z{other.z}, w{other.w} {}
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(basic_vec_data &&other) :
+				x{std::move(other.x)}, y{std::move(other.y)}, z{std::move(other.z)}, w{std::move(other.w)} {}
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(const basic_vec_data &other) {
+				x = other.x;
+				y = other.y;
+				z = other.z;
+				w = other.w;
+				return *this;
+			}
+
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(basic_vec_data &&other) {
+				x = std::move(other.x);
+				y = std::move(other.y);
+				z = std::move(other.z);
+				w = std::move(other.w);
+				return *this;
+			}
+
+			CGRA_CONSTEXPR_FUNCTION explicit basic_vec_data(T x_, T y_, T z_, T w_) :
+				x{std::move(x_)}, y{std::move(y_)}, z{std::move(z_)}, w{std::move(w_)} {}
+
+			const T & operator[](size_t i) const {
+				assert(i < 4);
+				return *(&x + i);
+			}
+
+			T & operator[](size_t i) {
+				assert(i < 4);
+				return *(&x + i);
+			}
+
+			CGRA_CONSTEXPR_FUNCTION const T * data() const {
+				return &x;
+			}
+
+			CGRA_CONSTEXPR_FUNCTION T * data() {
+				return &x;
+			}
+
+			~basic_vec_data() {
+				x.~T();
+				y.~T();
+				z.~T();
+				w.~T();
+			}
+		};
+
 #ifdef CGRA_HAVE_ANONYMOUS_STRUCT
 		// we turn off some warnings around these specializations
 		// because otherwise we get warnings about our anonymous structs
@@ -1284,7 +1504,7 @@ namespace cgra {
 #endif
 
 		template <typename T>
-		class basic_vec_data<T, 1> {
+		class basic_vec_data<T, 1, std::enable_if_t<std::is_trivially_destructible<T>::value>> {
 		protected:
 			union {
 				basic_array<T, 1> m_data;
@@ -1329,7 +1549,7 @@ namespace cgra {
 		};
 
 		template <typename T>
-		class basic_vec_data<T, 2> {
+		class basic_vec_data<T, 2, std::enable_if_t<std::is_trivially_destructible<T>::value>> {
 		protected:
 			union {
 				basic_array<T, 2> m_data;
@@ -1374,7 +1594,7 @@ namespace cgra {
 		};
 
 		template <typename T>
-		class basic_vec_data<T, 3> {
+		class basic_vec_data<T, 3, std::enable_if_t<std::is_trivially_destructible<T>::value>> {
 		protected:
 			union {
 				basic_array<T, 3> m_data;
@@ -1419,7 +1639,7 @@ namespace cgra {
 		};
 
 		template <typename T>
-		class basic_vec_data<T, 4> {
+		class basic_vec_data<T, 4, std::enable_if_t<std::is_trivially_destructible<T>::value>> {
 		protected:
 			union {
 				basic_array<T, 4> m_data;
@@ -1470,8 +1690,6 @@ namespace cgra {
 #pragma warning(pop)
 #endif
 
-#else // CGRA_HAVE_ANONYMOUS_STRUCT
-		
 #endif // CGRA_HAVE_ANONYMOUS_STRUCT
 		
 		template <typename T, size_t N, typename ArgTupT>
