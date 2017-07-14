@@ -5,6 +5,19 @@
 using namespace std;
 using namespace cgra;
 
+//#define constexpr
+
+class foobar {
+public:
+	foobar() {
+		cout << "hello foobar" << endl;
+	}
+
+	~foobar() {
+		cout << "goodbye foobar" << endl;
+	}
+};
+
 int main() {
 	//test::run_basic_vec_tests();
 
@@ -17,8 +30,9 @@ int main() {
 	
 	constexpr auto v2a = vec3{1, 2, 3};
 	constexpr auto v2b = vec3{4, 5, 6};
+	vec2x3 v2c;
 
-	vec2x3 v2{v2a, v2b, vec2x3()}; // {vec3{1, 2, 3}, vec3{4, 5, 6}};
+	vec2x3 v2{v2a, v2b, v2c}; // {vec3{1, 2, 3}, vec3{4, 5, 6}};
 
 	auto v3 = vec3(vec4(7));
 	v3.y = 4;
@@ -43,6 +57,8 @@ int main() {
 	constexpr quat q1;
 
 	cout << q1 << endl;
+
+	//basic_vec<foobar, 2> fb;
 
 	cin.get();
 }

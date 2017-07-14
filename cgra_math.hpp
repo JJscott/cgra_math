@@ -52,13 +52,11 @@
 
 // MSVC and GCC-likes (including Clang) support anonymous structs which
 // we use for vector members while still allowing constexpr operator[]
-#ifndef CGRA_NO_ANONYMOUS_STRUCT
-#if defined(_MSC_VER) || defined(__GNUC__)
+#if !defined(CGRA_NO_ANONYMOUS_STRUCT) && (defined(_MSC_VER) || defined(__GNUC__))
 #define CGRA_HAVE_ANONYMOUS_STRUCT
 #else
 // otherwise, we have to disable constexprness for functions
 #define CGRA_NO_CONSTEXPR_FUNCTIONS
-#endif
 #endif
 
 // MSVC prior to vs2017 doesn't support constexpr well enough for our types
@@ -876,11 +874,11 @@ namespace cgra {
 
 		template <typename VecT, typename T>
 		struct is_scalar_compatible<VecT, T, false, void_t<vec_value_t<VecT>>> :
-			is_mutually_convertible<vec_value_t<VecT>, T> {};
+			is_mutually_convertible<vec_value_t<VecT>, std::decay_t<T>> {};
 
 		template <typename VecT, typename T>
 		struct is_scalar_compatible<VecT, T, true, void_t<vec_value_t<VecT>>> :
-			is_mutually_constructible<vec_value_t<VecT>, T> {};
+			is_mutually_constructible<vec_value_t<VecT>, std::decay_t<T>> {};
 
 		// are the element types of these vectors compatible?
 		template <typename VecT0, typename VecT1, bool Explicit = false, typename = void, typename = void>
@@ -1266,7 +1264,6 @@ namespace cgra {
 
 			CGRA_CONSTEXPR_FUNCTION T operator[](size_t) const {
 				throw std::logic_error("0-size basic_vec has no elements");
-				return T();
 			}
 
 			CGRA_CONSTEXPR_FUNCTION T * data() { return nullptr; }
@@ -1475,9 +1472,7 @@ namespace cgra {
 
 #else // CGRA_HAVE_ANONYMOUS_STRUCT
 		
-		// FIXME basic_vec_data specializations without anonymous structs
-		
-#endif
+#endif // CGRA_HAVE_ANONYMOUS_STRUCT
 		
 		template <typename T, size_t N, typename ArgTupT>
 		class basic_vec_ctor_proxy {};
