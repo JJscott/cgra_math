@@ -7,7 +7,7 @@
 using namespace std;
 using namespace cgra;
 
-//#define constexpr
+#define constexpr
 
 class foobar {
 public:

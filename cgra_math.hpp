@@ -16,7 +16,6 @@
 - FIXME reimplement vec/mat ops/functions more generically
 - FIXME unbreak constexpr for msvc and intellisense
 - test is_vector_compatible etc with static asserts
-- enable_if_vector_compatible_t etc
 - move random section to bottom of file
 - move zip_with and friends to top
 - make mat inverse error by exception
@@ -98,21 +97,171 @@ CGRA_CONSTEXPR_FUNCTION thisclass_t() : baseclass_t{} {};
 
 namespace cgra {
 
-	// Forward declarations
 	template <typename T> class not_nan;
-	template <typename, size_t> class basic_vec;
-	template <typename, size_t, size_t> class basic_mat;
-	template <typename> class basic_quat;
-	
+	template <typename T> class basic_quat;
 
-	// pi
-	constexpr double pi = 3.1415926535897932384626433832795;
+	namespace detail {
+		namespace vectors {
+			// TODO repeat_vec, basic_vec_ctor_proxy can go in this ns
+			template <typename T, size_t N> class basic_vec;
+		}
+		namespace matrices {
+			template <typename T, size_t Cols, size_t Rows> class basic_mat;
+		}
+	}
 
-	// natural log base
-	constexpr double e = 2.7182818284590452353602874713527;
+	template <typename T, size_t N>
+	using basic_vec = detail::vectors::basic_vec<T, N>;
 
-	// golden ratio
-	constexpr double phi = 1.61803398874989484820458683436563811;
+	template <typename T, size_t Cols, size_t Rows>
+	using basic_mat = detail::matrices::basic_mat<T, Cols, Rows>;
+
+#ifdef CGRA_INITIAL3D_NAMES
+	// aliases: Intial3D naming convention
+
+	using vec0f = basic_vec<float, 0>;
+	using vec0d = basic_vec<double, 0>;
+	using vec0i = basic_vec<int, 0>;
+	using vec0u = basic_vec<unsigned, 0>;
+	using vec0b = basic_vec<bool, 0>;
+
+	using vec1f = basic_vec<float, 1>;
+	using vec1d = basic_vec<double, 1>;
+	using vec1i = basic_vec<int, 1>;
+	using vec1u = basic_vec<unsigned, 1>;
+	using vec1b = basic_vec<bool, 1>;
+
+	using vec2f = basic_vec<float, 2>;
+	using vec2d = basic_vec<double, 2>;
+	using vec2i = basic_vec<int, 2>;
+	using vec2u = basic_vec<unsigned, 2>;
+	using vec2b = basic_vec<bool, 2>;
+
+	using vec3f = basic_vec<float, 3>;
+	using vec3d = basic_vec<double, 3>;
+	using vec3i = basic_vec<int, 3>;
+	using vec3u = basic_vec<unsigned, 3>;
+	using vec3b = basic_vec<bool, 3>;
+
+	using vec4f = basic_vec<float, 4>;
+	using vec4d = basic_vec<double, 4>;
+	using vec4i = basic_vec<int, 4>;
+	using vec4u = basic_vec<unsigned, 4>;
+	using vec4b = basic_vec<bool, 4>;
+
+	using mat2f = basic_mat<float, 2, 2>;
+	using mat2d = basic_mat<double, 2, 2>;
+	using mat2i = basic_mat<int, 2, 2>;
+	using mat3f = basic_mat<float, 3, 3>;
+	using mat3d = basic_mat<double, 3, 3>;
+	using mat3i = basic_mat<int, 3, 3>;
+	using mat4f = basic_mat<float, 4, 4>;
+	using mat4d = basic_mat<double, 4, 4>;
+	using mat4i = basic_mat<int, 4, 4>;
+
+	using mat2x3f = basic_mat<float, 2, 3>;
+	using mat2x3d = basic_mat<double, 2, 3>;
+	using mat2x3i = basic_mat<int, 2, 3>;
+	using mat2x4f = basic_mat<float, 2, 4>;
+	using mat2x4d = basic_mat<double, 2, 4>;
+	using mat2x4i = basic_mat<int, 2, 4>;
+
+	using mat3x2f = basic_mat<float, 3, 2>;
+	using mat3x2d = basic_mat<double, 3, 2>;
+	using mat3x2i = basic_mat<int, 3, 2>;
+	using mat3x4f = basic_mat<float, 3, 4>;
+	using mat3x4d = basic_mat<double, 3, 4>;
+	using mat3x4i = basic_mat<int, 3, 4>;
+
+	using mat4x2f = basic_mat<float, 4, 2>;
+	using mat4x2d = basic_mat<double, 4, 2>;
+	using mat4x2i = basic_mat<int, 4, 2>;
+	using mat4x3f = basic_mat<float, 4, 3>;
+	using mat4x3d = basic_mat<double, 4, 3>;
+	using mat4x3i = basic_mat<int, 4, 3>;
+
+	using quatf = basic_quat<float>;
+	using quatd = basic_quat<double>;
+
+#else
+	// aliases: GLSL naming convention
+
+	using vec0 = basic_vec<float, 0>;
+	using dvec0 = basic_vec<double, 0>;
+	using ivec0 = basic_vec<int, 0>;
+	using uvec0 = basic_vec<unsigned, 0>;
+	using bvec0 = basic_vec<bool, 0>;
+
+	using vec1 = basic_vec<float, 1>;
+	using dvec1 = basic_vec<double, 1>;
+	using ivec1 = basic_vec<int, 1>;
+	using uvec1 = basic_vec<unsigned, 1>;
+	using bvec1 = basic_vec<bool, 1>;
+
+	using vec2 = basic_vec<float, 2>;
+	using dvec2 = basic_vec<double, 2>;
+	using ivec2 = basic_vec<int, 2>;
+	using uvec2 = basic_vec<unsigned, 2>;
+	using bvec2 = basic_vec<bool, 2>;
+
+	using vec3 = basic_vec<float, 3>;
+	using dvec3 = basic_vec<double, 3>;
+	using ivec3 = basic_vec<int, 3>;
+	using uvec3 = basic_vec<unsigned, 3>;
+	using bvec3 = basic_vec<bool, 3>;
+
+	using vec4 = basic_vec<float, 4>;
+	using dvec4 = basic_vec<double, 4>;
+	using ivec4 = basic_vec<int, 4>;
+	using uvec4 = basic_vec<unsigned, 4>;
+	using bvec4 = basic_vec<bool, 4>;
+
+	using mat2 = basic_mat<float, 2, 2>;
+	using dmat2 = basic_mat<double, 2, 2>;
+	using imat2 = basic_mat<int, 2, 2>;
+	using mat3 = basic_mat<float, 3, 3>;
+	using dmat3 = basic_mat<double, 3, 3>;
+	using imat3 = basic_mat<int, 3, 3>;
+	using mat4 = basic_mat<float, 4, 4>;
+	using dmat4 = basic_mat<double, 4, 4>;
+	using imat4 = basic_mat<int, 4, 4>;
+
+	using mat2x3 = basic_mat<float, 2, 3>;
+	using dmat2x3 = basic_mat<double, 2, 3>;
+	using imat2x3 = basic_mat<int, 2, 3>;
+	using mat2x4 = basic_mat<float, 2, 4>;
+	using dmat2x4 = basic_mat<double, 2, 4>;
+	using imat2x4 = basic_mat<int, 2, 4>;
+
+	using mat3x2 = basic_mat<float, 3, 2>;
+	using dmat3x2 = basic_mat<double, 3, 2>;
+	using imat3x2 = basic_mat<int, 3, 2>;
+	using mat3x4 = basic_mat<float, 3, 4>;
+	using dmat3x4 = basic_mat<double, 3, 4>;
+	using imat3x4 = basic_mat<int, 3, 4>;
+
+	using mat4x2 = basic_mat<float, 4, 2>;
+	using dmat4x2 = basic_mat<double, 4, 2>;
+	using imat4x2 = basic_mat<int, 4, 2>;
+	using mat4x3 = basic_mat<float, 4, 3>;
+	using dmat4x3 = basic_mat<double, 4, 3>;
+	using imat4x3 = basic_mat<int, 4, 3>;
+
+	using quat = basic_quat<float>;
+	using dquat = basic_quat<double>;
+
+#endif
+
+	inline namespace constants {
+		// pi
+		constexpr double pi = 3.1415926535897932384626433832795;
+
+		// natural log base
+		constexpr double e = 2.7182818284590452353602874713527;
+
+		// golden ratio
+		constexpr double phi = 1.61803398874989484820458683436563811;
+	}
 
 	// eg: inf<float>()
 	// only for floating point types
@@ -578,151 +727,16 @@ namespace cgra {
 
 
 
-//   _______       ___   .___________.    ___              _______.___________..______       __    __    ______ .___________. __    __  .______       _______     _______.  //
-//  |       \     /   \  |           |   /   \            /       |           ||   _  \     |  |  |  |  /      ||           ||  |  |  | |   _  \     |   ____|   /       |  //
-//  |  .--.  |   /  ^  \ `---|  |----`  /  ^  \          |   (----`---|  |----`|  |_)  |    |  |  |  | |  ,----'`---|  |----`|  |  |  | |  |_)  |    |  |__     |   (----`  //
-//  |  |  |  |  /  /_\  \    |  |      /  /_\  \          \   \       |  |     |      /     |  |  |  | |  |         |  |     |  |  |  | |      /     |   __|     \   \      //
-//  |  '--'  | /  _____  \   |  |     /  _____  \     .----)   |      |  |     |  |\  \----.|  `--'  | |  `----.    |  |     |  `--'  | |  |\  \----.|  |____.----)   |     //
-//  |_______/ /__/     \__\  |__|    /__/     \__\    |_______/       |__|     | _| `._____| \______/   \______|    |__|      \______/  | _| `._____||_______|_______/      //
-//                                                                                                                                                                          //
-//==========================================================================================================================================================================//
 
-	// Aliases
-	// 
-
-#ifdef CGRA_INITIAL3D_NAMES // Intial3D naming convention
-	using vec0f = basic_vec<float,    0>;
-	using vec0d = basic_vec<double,   0>;
-	using vec0i = basic_vec<int,      0>;
-	using vec0u = basic_vec<unsigned, 0>;
-	using vec0b = basic_vec<bool,     0>;
- 
-	using vec1f = basic_vec<float,    1>;
-	using vec1d = basic_vec<double,   1>;
-	using vec1i = basic_vec<int,      1>;
-	using vec1u = basic_vec<unsigned, 1>;
-	using vec1b = basic_vec<bool,     1>;
-
-	using vec2f = basic_vec<float,    2>;
-	using vec2d = basic_vec<double,   2>;
-	using vec2i = basic_vec<int,      2>;
-	using vec2u = basic_vec<unsigned, 2>;
-	using vec2b = basic_vec<bool,     2>;
-
-	using vec3f = basic_vec<float,    3>;
-	using vec3d = basic_vec<double,   3>;
-	using vec3i = basic_vec<int,      3>;
-	using vec3u = basic_vec<unsigned, 3>;
-	using vec3b = basic_vec<bool,     3>;
-
-	using vec4f = basic_vec<float,    4>;
-	using vec4d = basic_vec<double,   4>;
-	using vec4i = basic_vec<int,      4>;
-	using vec4u = basic_vec<unsigned, 4>;
-	using vec4b = basic_vec<bool,     4>;
-
-	using mat2f = basic_mat<float,  2, 2>;
-	using mat2d = basic_mat<double, 2, 2>;
-	using mat2i = basic_mat<int,    2, 2>;
-	using mat3f = basic_mat<float,  3, 3>;
-	using mat3d = basic_mat<double, 3, 3>;
-	using mat3i = basic_mat<int,    3, 3>;
-	using mat4f = basic_mat<float,  4, 4>;
-	using mat4d = basic_mat<double, 4, 4>;
-	using mat4i = basic_mat<int,    4, 4>;
-
-	using mat2x3f = basic_mat<float,  2, 3>;
-	using mat2x3d = basic_mat<double, 2, 3>;
-	using mat2x3i = basic_mat<int,    2, 3>;
-	using mat2x4f = basic_mat<float,  2, 4>;
-	using mat2x4d = basic_mat<double, 2, 4>;
-	using mat2x4i = basic_mat<int,    2, 4>;
-
-	using mat3x2f = basic_mat<float,  3, 2>;
-	using mat3x2d = basic_mat<double, 3, 2>;
-	using mat3x2i = basic_mat<int,    3, 2>;
-	using mat3x4f = basic_mat<float,  3, 4>;
-	using mat3x4d = basic_mat<double, 3, 4>;
-	using mat3x4i = basic_mat<int,    3, 4>;
-
-	using mat4x2f = basic_mat<float,  4, 2>;
-	using mat4x2d = basic_mat<double, 4, 2>;
-	using mat4x2i = basic_mat<int,    4, 2>;
-	using mat4x3f = basic_mat<float,  4, 3>;
-	using mat4x3d = basic_mat<double, 4, 3>;
-	using mat4x3i = basic_mat<int,    4, 3>;
-
-	using quatf = basic_quat<float>;
-	using quatd = basic_quat<double>;
-
-#else // GLSL naming convention
-	using vec0  = basic_vec<float,    0>;
-	using dvec0 = basic_vec<double,   0>;
-	using ivec0 = basic_vec<int,      0>;
-	using uvec0 = basic_vec<unsigned, 0>;
-	using bvec0 = basic_vec<bool,     0>;
-
-	using vec1  = basic_vec<float,    1>;
-	using dvec1 = basic_vec<double,   1>;
-	using ivec1 = basic_vec<int,      1>;
-	using uvec1 = basic_vec<unsigned, 1>;
-	using bvec1 = basic_vec<bool,     1>;
-
-	using vec2  = basic_vec<float,    2>;
-	using dvec2 = basic_vec<double,   2>;
-	using ivec2 = basic_vec<int,      2>;
-	using uvec2 = basic_vec<unsigned, 2>;
-	using bvec2 = basic_vec<bool,     2>;
-
-	using vec3  = basic_vec<float,    3>;
-	using dvec3 = basic_vec<double,   3>;
-	using ivec3 = basic_vec<int,      3>;
-	using uvec3 = basic_vec<unsigned, 3>;
-	using bvec3 = basic_vec<bool,     3>;
-
-	using vec4  = basic_vec<float,    4>;
-	using dvec4 = basic_vec<double,   4>;
-	using ivec4 = basic_vec<int,      4>;
-	using uvec4 = basic_vec<unsigned, 4>;
-	using bvec4 = basic_vec<bool,     4>;
-
-	using mat2  = basic_mat<float,  2, 2>;
-	using dmat2 = basic_mat<double, 2, 2>;
-	using imat2 = basic_mat<int,    2, 2>;
-	using mat3  = basic_mat<float,  3, 3>;
-	using dmat3 = basic_mat<double, 3, 3>;
-	using imat3 = basic_mat<int,    3, 3>;
-	using mat4  = basic_mat<float,  4, 4>;
-	using dmat4 = basic_mat<double, 4, 4>;
-	using imat4 = basic_mat<int,    4, 4>;
-
-	using mat2x3  = basic_mat<float,  2, 3>;
-	using dmat2x3 = basic_mat<double, 2, 3>;
-	using imat2x3 = basic_mat<int,    2, 3>;
-	using mat2x4  = basic_mat<float,  2, 4>;
-	using dmat2x4 = basic_mat<double, 2, 4>;
-	using imat2x4 = basic_mat<int,    2, 4>;
-
-	using mat3x2  = basic_mat<float,  3, 2>;
-	using dmat3x2 = basic_mat<double, 3, 2>;
-	using imat3x2 = basic_mat<int,    3, 2>;
-	using mat3x4  = basic_mat<float,  3, 4>;
-	using dmat3x4 = basic_mat<double, 3, 4>;
-	using imat3x4 = basic_mat<int,    3, 4>;
-
-	using mat4x2  = basic_mat<float,  4, 2>;
-	using dmat4x2 = basic_mat<double, 4, 2>;
-	using imat4x2 = basic_mat<int,    4, 2>;
-	using mat4x3  = basic_mat<float,  4, 3>;
-	using dmat4x3 = basic_mat<double, 4, 3>;
-	using imat4x3 = basic_mat<int,    4, 3>;
-
-	using quat = basic_quat<float>;
-	using dquat = basic_quat<double>;
-
-#endif
-
-	// constructor magic
+	//   __  .__   __. .___________. _______ .______      .__   __.      ___       __          _______.  //
+	//  |  | |  \ |  | |           ||   ____||   _  \     |  \ |  |     /   \     |  |        /       |  //
+	//  |  | |   \|  | `---|  |----`|  |__   |  |_)  |    |   \|  |    /  ^  \    |  |       |   (----`  //
+	//  |  | |  . `  |     |  |     |   __|  |      /     |  . `  |   /  /_\  \   |  |        \   \      //
+	//  |  | |  |\   |     |  |     |  |____ |  |\  \----.|  |\   |  /  _____  \  |  `----.----)   |     //
+	//  |__| |__| \__|     |__|     |_______|| _| `._____||__| \__| /__/     \__\ |_______|_______/      //
+	//                                                                                                   //
+	//===================================================================================================//
+	
 	namespace detail {
 
 		// foward decl
@@ -751,6 +765,7 @@ namespace cgra {
 			using value_t = void;
 			static constexpr size_t size = 0;
 
+			static constexpr bool is_arr = false;
 			static constexpr bool is_vec = false;
 			static constexpr bool is_mat = false;
 		};
@@ -760,6 +775,7 @@ namespace cgra {
 			using value_t = T;
 			static constexpr size_t size = N;
 
+			static constexpr bool is_arr = true;
 			static constexpr bool is_vec = true;
 			static constexpr bool is_mat = false;
 
@@ -788,6 +804,9 @@ namespace cgra {
 		};
 
 		// TODO array_traits for std::array, std::tuple
+
+		template <typename T>
+		struct is_arr : bool_constant<array_traits<std::decay_t<T>>::is_arr> {};
 
 		template <typename T>
 		struct is_vec : bool_constant<array_traits<std::decay_t<T>>::is_vec> {};
@@ -1864,290 +1883,18 @@ namespace cgra {
 	}
 
 
-	template <typename T, size_t N>
-	class basic_vec : protected detail::basic_vec_ctor_proxy<T, N, detail::vec_exarg_tup_t<T, N>> {
-	private:
-		using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, N, detail::vec_exarg_tup_t<T, N>>;
-		
-	public:
-		using value_t = T;
-		static constexpr size_t size = N;
 
-		// define default ctor
-		CGRA_DEFINE_DEFAULT_CTOR(basic_vec, ctor_proxy_t, T, size)
 
-		// define magic ctor
-		CGRA_DEFINE_MAGIC_CTOR(basic_vec, ctor_proxy_t, T, size)
+	//   _______       ___   .___________.    ___              _______.___________..______       __    __    ______ .___________. __    __  .______       _______     _______.  //
+	//  |       \     /   \  |           |   /   \            /       |           ||   _  \     |  |  |  |  /      ||           ||  |  |  | |   _  \     |   ____|   /       |  //
+	//  |  .--.  |   /  ^  \ `---|  |----`  /  ^  \          |   (----`---|  |----`|  |_)  |    |  |  |  | |  ,----'`---|  |----`|  |  |  | |  |_)  |    |  |__     |   (----`  //
+	//  |  |  |  |  /  /_\  \    |  |      /  /_\  \          \   \       |  |     |      /     |  |  |  | |  |         |  |     |  |  |  | |      /     |   __|     \   \      //
+	//  |  '--'  | /  _____  \   |  |     /  _____  \     .----)   |      |  |     |  |\  \----.|  `--'  | |  `----.    |  |     |  `--'  | |  |\  \----.|  |____.----)   |     //
+	//  |_______/ /__/     \__\  |__|    /__/     \__\    |_______/       |__|     | _| `._____| \______/   \______|    |__|      \______/  | _| `._____||_______|_______/      //
+	//                                                                                                                                                                          //
+	//==========================================================================================================================================================================//
 
-		// make inherited functions visible
-		using ctor_proxy_t::operator[];
-		using ctor_proxy_t::data;
-
-		// scalar broadcast ctor
-		CGRA_CONSTEXPR_FUNCTION explicit basic_vec(const T &t) :
-			ctor_proxy_t{detail::intellisense_constify(detail::repeat_vec<const T &, N>(t))} {}
-
-	};
-
-	template <typename T>
-	class basic_vec<T, 0> : protected detail::basic_vec_ctor_proxy<T, 0, detail::vec_exarg_tup_t<T, 0>> {
-	private:
-		using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 0, detail::vec_exarg_tup_t<T, 0>>;
-
-	public:
-		using value_t = T;
-		static constexpr size_t size = 0;
-		
-		// define default ctor
-		CGRA_DEFINE_DEFAULT_CTOR(basic_vec, ctor_proxy_t, T, size)
-
-		// define magic ctor
-		CGRA_DEFINE_MAGIC_CTOR(basic_vec, ctor_proxy_t, T, size)
-
-		// make inherited functions visible
-		using ctor_proxy_t::operator[];
-		using ctor_proxy_t::data;
-
-		// scalar broadcast ctor
-		CGRA_CONSTEXPR_FUNCTION explicit basic_vec(const T &) {}
-
-	};
-
-	template <typename T>
-	class basic_vec<T, 1> : protected detail::basic_vec_ctor_proxy<T, 1, detail::vec_exarg_tup_t<T, 1>> {
-	private:
-		using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 1, detail::vec_exarg_tup_t<T, 1>>;
-
-	public:
-		using value_t = T;
-		static constexpr size_t size = 1;
-
-		using detail::basic_vec_data<T, 1>::x;
-		using detail::basic_vec_data<T, 1>::r;
-		using detail::basic_vec_data<T, 1>::s;
-
-		// define default ctor
-		CGRA_DEFINE_DEFAULT_CTOR(basic_vec, ctor_proxy_t, T, size)
-
-		// define magic ctor
-		CGRA_DEFINE_MAGIC_CTOR(basic_vec, ctor_proxy_t, T, size)
-
-		// make inherited functions visible
-		using ctor_proxy_t::operator[];
-		using ctor_proxy_t::data;
-
-		// vec1 has no scalar broadcast ctor to avoid conflict with the explicit arg ctor
-
-	};
-
-	template <typename T>
-	class basic_vec<T, 2> : protected detail::basic_vec_ctor_proxy<T, 2, detail::vec_exarg_tup_t<T, 2>> {
-	private:
-		using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 2, detail::vec_exarg_tup_t<T, 2>>;
-
-	public:
-		using value_t = T;
-		static constexpr size_t size = 2;
-
-		using detail::basic_vec_data<T, 2>::x;
-		using detail::basic_vec_data<T, 2>::r;
-		using detail::basic_vec_data<T, 2>::s;
-		using detail::basic_vec_data<T, 2>::y;
-		using detail::basic_vec_data<T, 2>::g;
-		using detail::basic_vec_data<T, 2>::t;
-
-		// define default ctor
-		CGRA_DEFINE_DEFAULT_CTOR(basic_vec, ctor_proxy_t, T, size)
-
-		// define magic ctor
-		CGRA_DEFINE_MAGIC_CTOR(basic_vec, ctor_proxy_t, T, size)
-
-		// make inherited functions visible
-		using ctor_proxy_t::operator[];
-		using ctor_proxy_t::data;
-		
-		// scalar broadcast ctor
-		CGRA_CONSTEXPR_FUNCTION explicit basic_vec(const T &t) :
-			ctor_proxy_t{detail::intellisense_constify(detail::repeat_vec<const T &, 2>(t))} {}
-
-	};
-
-	template <typename T>
-	class basic_vec<T, 3> : protected detail::basic_vec_ctor_proxy<T, 3, detail::vec_exarg_tup_t<T, 3>> {
-	private:
-		using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 3, detail::vec_exarg_tup_t<T, 3>>;
-
-	public:
-		using value_t = T;
-		static constexpr size_t size = 3;
-
-		using detail::basic_vec_data<T, 3>::x;
-		using detail::basic_vec_data<T, 3>::r;
-		using detail::basic_vec_data<T, 3>::s;
-		using detail::basic_vec_data<T, 3>::y;
-		using detail::basic_vec_data<T, 3>::g;
-		using detail::basic_vec_data<T, 3>::t;
-		using detail::basic_vec_data<T, 3>::z;
-		using detail::basic_vec_data<T, 3>::b;
-		using detail::basic_vec_data<T, 3>::p;
-
-		// define default ctor
-		CGRA_DEFINE_DEFAULT_CTOR(basic_vec, ctor_proxy_t, T, size)
-
-		// define magic ctor
-		CGRA_DEFINE_MAGIC_CTOR(basic_vec, ctor_proxy_t, T, size)
-
-		// make inherited functions visible
-		using ctor_proxy_t::operator[];
-		using ctor_proxy_t::data;
-
-		// scalar broadcast ctor
-		CGRA_CONSTEXPR_FUNCTION explicit basic_vec(const T &t) :
-			ctor_proxy_t{detail::intellisense_constify(detail::repeat_vec<const T &, 3>(t))} {}
-
-	};
-
-	template <typename T>
-	class basic_vec<T, 4> : protected detail::basic_vec_ctor_proxy<T, 4, detail::vec_exarg_tup_t<T, 4>> {
-	private:
-		using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 4, detail::vec_exarg_tup_t<T, 4>>;
-
-	public:
-		using value_t = T;
-		static constexpr size_t size = 4;
-
-		using detail::basic_vec_data<T, 4>::x;
-		using detail::basic_vec_data<T, 4>::r;
-		using detail::basic_vec_data<T, 4>::s;
-		using detail::basic_vec_data<T, 4>::y;
-		using detail::basic_vec_data<T, 4>::g;
-		using detail::basic_vec_data<T, 4>::t;
-		using detail::basic_vec_data<T, 4>::z;
-		using detail::basic_vec_data<T, 4>::b;
-		using detail::basic_vec_data<T, 4>::p;
-		using detail::basic_vec_data<T, 4>::w;
-		using detail::basic_vec_data<T, 4>::a;
-		using detail::basic_vec_data<T, 4>::q;
-
-		// define default ctor
-		CGRA_DEFINE_DEFAULT_CTOR(basic_vec, ctor_proxy_t, T, size)
-
-		// define magic ctor
-		CGRA_DEFINE_MAGIC_CTOR(basic_vec, ctor_proxy_t, T, size)
-
-		// make inherited functions visible
-		using ctor_proxy_t::operator[];
-		using ctor_proxy_t::data;
-
-		// scalar broadcast ctor
-		CGRA_CONSTEXPR_FUNCTION explicit basic_vec(const T &t) :
-			ctor_proxy_t{detail::intellisense_constify(detail::repeat_vec<const T &, 4>(t))} {}
-
-	};
-
-	template <typename T, size_t N>
-	inline std::ostream & operator<<(std::ostream &out, const basic_vec<T, N> &v) {
-		out << '(';
-		if (N > 0) out << v[0];
-		for (size_t i = 1; i < N; ++i) {
-			out << ", " << v[i];
-		}
-		out << ')';
-		return out;
-	}
-
-	// [Cols, Rows]-dimensional matrix of type T
-	template <typename T, size_t Cols, size_t Rows>
-	class basic_mat : protected basic_vec<basic_vec<T, Rows>, Cols> {
-	private:
-		using vec_t = basic_vec<basic_vec<T, Rows>, Cols>;
-		using element_t = basic_vec<T, Rows>;
-
-	public:
-		using value_t = T;
-		static constexpr size_t cols = Cols;
-		static constexpr size_t rows = Rows;
-
-		// TODO should this member exist? is it useful? could be confusing vs. basic_vec::size
-		static constexpr size_t size = Cols * Rows;
-
-		// define default ctor
-		CGRA_DEFINE_DEFAULT_CTOR(basic_mat, vec_t, element_t, cols)
-
-		// define magic ctor
-		CGRA_DEFINE_MAGIC_CTOR(basic_mat, vec_t, element_t, cols)
-
-		// make inherited functions visible
-		using vec_t::operator[];
-
-		// identity ctor
-		// this does not hide the inherited scalar broadcast ctor
-		// (that takes a vec<T>, this takes a T)
-		CGRA_CONSTEXPR_FUNCTION explicit basic_mat(const T &t) {
-			for (size_t i = 0; i < std::min(Cols, Rows); i++) {
-				(*this)[i][i] = t;
-			}
-		}
-		
-		CGRA_CONSTEXPR_FUNCTION T * data() { return &(*this)[0][0]; }
-
-		CGRA_CONSTEXPR_FUNCTION const T * data() const { return &(*this)[0][0]; }
-		
-		CGRA_CONSTEXPR_FUNCTION vec_t & as_vec() { return *this; }
-
-		CGRA_CONSTEXPR_FUNCTION const vec_t & as_vec() const { return *this; }
-
-	};
-
-	template <typename T, size_t Cols, size_t Rows>
-	inline std::ostream & operator<<(std::ostream &out, const basic_mat<T, Cols, Rows> &m) {
-		static const char *toplinestart = Rows > 1 ? "/ " : "[ ";
-		static const char *toplineend = Rows > 1 ? " \\" : " ]";
-		static const char *midlinestart = "| ";
-		static const char *midlineend = " |";
-		static const char *bottomlinestart = Rows > 1 ? "\\ " : "[ ";
-		static const char *bottomlineend = Rows > 1 ? " /" : " ]";
-		// calculate column widths
-		size_t maxwidths[Cols];
-		std::ostringstream tempss;
-		tempss.precision(out.precision());
-		for (size_t i = 0; i < Cols; ++i) {
-			maxwidths[i] = 0;
-			for (size_t j = 0; j < Rows; ++j) {
-				// msvc: seeking to 0 on empty stream sets failbit
-				tempss.seekp(0);
-				tempss.clear();
-				tempss << m[i][j];
-				maxwidths[i] = size_t(tempss.tellp()) > maxwidths[i] ? size_t(tempss.tellp()) : maxwidths[i];
-			}
-		}
-		// print
-		for (size_t i = 0; i < Rows; ++i) {
-			if (i == 0) {
-				out << toplinestart;
-			} else if (i + 1 == Rows) {
-				out << bottomlinestart;
-			} else {
-				out << midlinestart;
-			}
-			for (size_t j = 0; j < Cols; ++j) {
-				out.width(maxwidths[j]);
-				out << m[j][i];
-				if (j + 1 < Cols) out << ", ";
-			}
-			if (i == 0) {
-				out << toplineend;
-			} else if (i + 1 == Rows) {
-				out << bottomlineend;
-			} else {
-				out << midlineend;
-			}
-			if (i + 1 < Rows) out << '\n';
-		}
-		return out;
-	}
-
-	// Quaternion of type T
+	// quaternion of type T
 	template <typename T>
 	class basic_quat : protected basic_vec<T, 4> {
 	private:
@@ -2165,8 +1912,8 @@ namespace cgra {
 		// define magic ctor
 		CGRA_DEFINE_MAGIC_CTOR(basic_quat, vec_t, T, 4)
 
-		// make inherited functions visible
-		using vec_t::operator[];
+			// make inherited functions visible
+			using vec_t::operator[];
 
 		// default ctor: the 'one' quaternion
 		CGRA_CONSTEXPR_FUNCTION basic_quat() : vec_t{0, 0, 0, 1} {}
@@ -2229,10 +1976,387 @@ namespace cgra {
 	};
 
 	template <typename T>
+	void swap(basic_quat<T> &lhs, basic_quat<T> &rhs) {
+		// TODO c++17: noexcept(std::is_nothrow_swappable<T>::value)
+		for (size_t i = 0; i < lhs.size; i++) {
+			using std::swap;
+			swap(lhs[i], rhs[i]);
+		}
+	}
+
+	template <typename T>
 	inline std::ostream & operator<<(std::ostream &out, const basic_quat<T> &v) {
 		return out << '(' << v.x << "i + " << v.y << "j + " << v.z << "k + " << v.w << ')';
 	}
 
+	template <typename T>
+	inline T * begin(basic_quat<T> &q) { return q.data(); }
+
+	template <typename T>
+	inline const T * begin(const basic_quat<T> &q) { return q.data(); }
+
+	template <typename T>
+	inline const T * cbegin(const basic_quat<T> &q) { return q.data(); }
+
+	template <typename T>
+	inline T * end(basic_quat<T> &q) { return begin(q) + 4; }
+
+	template <typename T>
+	inline const T * end(const basic_quat<T> &q) { return begin(q) + 4; }
+
+	template <typename T>
+	inline const T * cend(const basic_quat<T> &q) { return begin(q) + 4; }
+
+	namespace detail {
+
+		namespace vectors {
+
+			// size N vector of type T
+			template <typename T, size_t N>
+			class basic_vec : protected detail::basic_vec_ctor_proxy<T, N, detail::vec_exarg_tup_t<T, N>> {
+			private:
+				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, N, detail::vec_exarg_tup_t<T, N>>;
+
+			public:
+				using value_t = T;
+				static constexpr size_t size = N;
+
+				// define default ctor
+				CGRA_DEFINE_DEFAULT_CTOR(basic_vec, ctor_proxy_t, T, size)
+
+				// define magic ctor
+				CGRA_DEFINE_MAGIC_CTOR(basic_vec, ctor_proxy_t, T, size)
+
+				// make inherited functions visible
+				using ctor_proxy_t::operator[];
+				using ctor_proxy_t::data;
+
+				// scalar broadcast ctor
+				CGRA_CONSTEXPR_FUNCTION explicit basic_vec(const T &t) :
+					ctor_proxy_t{detail::intellisense_constify(detail::repeat_vec<const T &, N>(t))} {}
+
+			};
+
+			template <typename T>
+			class basic_vec<T, 0> : protected detail::basic_vec_ctor_proxy<T, 0, detail::vec_exarg_tup_t<T, 0>> {
+			private:
+				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 0, detail::vec_exarg_tup_t<T, 0>>;
+
+			public:
+				using value_t = T;
+				static constexpr size_t size = 0;
+
+				// define default ctor
+				CGRA_DEFINE_DEFAULT_CTOR(basic_vec, ctor_proxy_t, T, size)
+
+				// define magic ctor
+				CGRA_DEFINE_MAGIC_CTOR(basic_vec, ctor_proxy_t, T, size)
+
+				// make inherited functions visible
+				using ctor_proxy_t::operator[];
+				using ctor_proxy_t::data;
+
+				// scalar broadcast ctor
+				CGRA_CONSTEXPR_FUNCTION explicit basic_vec(const T &) {}
+
+			};
+
+			template <typename T>
+			class basic_vec<T, 1> : protected detail::basic_vec_ctor_proxy<T, 1, detail::vec_exarg_tup_t<T, 1>> {
+			private:
+				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 1, detail::vec_exarg_tup_t<T, 1>>;
+
+			public:
+				using value_t = T;
+				static constexpr size_t size = 1;
+
+				using detail::basic_vec_data<T, 1>::x;
+				using detail::basic_vec_data<T, 1>::r;
+				using detail::basic_vec_data<T, 1>::s;
+
+				// define default ctor
+				CGRA_DEFINE_DEFAULT_CTOR(basic_vec, ctor_proxy_t, T, size)
+
+				// define magic ctor
+				CGRA_DEFINE_MAGIC_CTOR(basic_vec, ctor_proxy_t, T, size)
+
+				// make inherited functions visible
+				using ctor_proxy_t::operator[];
+				using ctor_proxy_t::data;
+
+				// vec1 has no scalar broadcast ctor to avoid conflict with the explicit arg ctor
+
+			};
+
+			template <typename T>
+			class basic_vec<T, 2> : protected detail::basic_vec_ctor_proxy<T, 2, detail::vec_exarg_tup_t<T, 2>> {
+			private:
+				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 2, detail::vec_exarg_tup_t<T, 2>>;
+
+			public:
+				using value_t = T;
+				static constexpr size_t size = 2;
+
+				using detail::basic_vec_data<T, 2>::x;
+				using detail::basic_vec_data<T, 2>::r;
+				using detail::basic_vec_data<T, 2>::s;
+				using detail::basic_vec_data<T, 2>::y;
+				using detail::basic_vec_data<T, 2>::g;
+				using detail::basic_vec_data<T, 2>::t;
+
+				// define default ctor
+				CGRA_DEFINE_DEFAULT_CTOR(basic_vec, ctor_proxy_t, T, size)
+
+				// define magic ctor
+				CGRA_DEFINE_MAGIC_CTOR(basic_vec, ctor_proxy_t, T, size)
+
+				// make inherited functions visible
+				using ctor_proxy_t::operator[];
+				using ctor_proxy_t::data;
+
+				// scalar broadcast ctor
+				CGRA_CONSTEXPR_FUNCTION explicit basic_vec(const T &t) :
+					ctor_proxy_t{detail::intellisense_constify(detail::repeat_vec<const T &, 2>(t))} {}
+
+			};
+
+			template <typename T>
+			class basic_vec<T, 3> : protected detail::basic_vec_ctor_proxy<T, 3, detail::vec_exarg_tup_t<T, 3>> {
+			private:
+				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 3, detail::vec_exarg_tup_t<T, 3>>;
+
+			public:
+				using value_t = T;
+				static constexpr size_t size = 3;
+
+				using detail::basic_vec_data<T, 3>::x;
+				using detail::basic_vec_data<T, 3>::r;
+				using detail::basic_vec_data<T, 3>::s;
+				using detail::basic_vec_data<T, 3>::y;
+				using detail::basic_vec_data<T, 3>::g;
+				using detail::basic_vec_data<T, 3>::t;
+				using detail::basic_vec_data<T, 3>::z;
+				using detail::basic_vec_data<T, 3>::b;
+				using detail::basic_vec_data<T, 3>::p;
+
+				// define default ctor
+				CGRA_DEFINE_DEFAULT_CTOR(basic_vec, ctor_proxy_t, T, size)
+
+				// define magic ctor
+				CGRA_DEFINE_MAGIC_CTOR(basic_vec, ctor_proxy_t, T, size)
+
+				// make inherited functions visible
+				using ctor_proxy_t::operator[];
+				using ctor_proxy_t::data;
+
+				// scalar broadcast ctor
+				CGRA_CONSTEXPR_FUNCTION explicit basic_vec(const T &t) :
+					ctor_proxy_t{detail::intellisense_constify(detail::repeat_vec<const T &, 3>(t))} {}
+
+			};
+
+			template <typename T>
+			class basic_vec<T, 4> : protected detail::basic_vec_ctor_proxy<T, 4, detail::vec_exarg_tup_t<T, 4>> {
+			private:
+				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 4, detail::vec_exarg_tup_t<T, 4>>;
+
+			public:
+				using value_t = T;
+				static constexpr size_t size = 4;
+
+				using detail::basic_vec_data<T, 4>::x;
+				using detail::basic_vec_data<T, 4>::r;
+				using detail::basic_vec_data<T, 4>::s;
+				using detail::basic_vec_data<T, 4>::y;
+				using detail::basic_vec_data<T, 4>::g;
+				using detail::basic_vec_data<T, 4>::t;
+				using detail::basic_vec_data<T, 4>::z;
+				using detail::basic_vec_data<T, 4>::b;
+				using detail::basic_vec_data<T, 4>::p;
+				using detail::basic_vec_data<T, 4>::w;
+				using detail::basic_vec_data<T, 4>::a;
+				using detail::basic_vec_data<T, 4>::q;
+
+				// define default ctor
+				CGRA_DEFINE_DEFAULT_CTOR(basic_vec, ctor_proxy_t, T, size)
+
+				// define magic ctor
+				CGRA_DEFINE_MAGIC_CTOR(basic_vec, ctor_proxy_t, T, size)
+
+				// make inherited functions visible
+				using ctor_proxy_t::operator[];
+				using ctor_proxy_t::data;
+
+				// scalar broadcast ctor
+				CGRA_CONSTEXPR_FUNCTION explicit basic_vec(const T &t) :
+					ctor_proxy_t{detail::intellisense_constify(detail::repeat_vec<const T &, 4>(t))} {}
+
+			};
+
+			template <typename T, size_t N>
+			constexpr void swap(basic_vec<T, N> &lhs, basic_vec<T, N> &rhs) {
+				// TODO c++17: noexcept(std::is_nothrow_swappable<T>::value)
+				for (size_t i = 0; i < N; i++) {
+					using std::swap;
+					swap(lhs[i], rhs[i]);
+				}
+			}
+
+			template <typename T, size_t N>
+			inline std::ostream & operator<<(std::ostream &out, const basic_vec<T, N> &v) {
+				out << '(';
+				if (N > 0) out << v[0];
+				for (size_t i = 1; i < N; ++i) {
+					out << ", " << v[i];
+				}
+				out << ')';
+				return out;
+			}
+
+			template <typename T, size_t N>
+			inline T * begin(basic_vec<T, N> &v) { return v.data(); }
+
+			template <typename T, size_t N>
+			inline const T * begin(const basic_vec<T, N> &v) { return v.data(); }
+
+			template <typename T, size_t N>
+			inline const T * cbegin(const basic_vec<T, N> &v) { return v.data(); }
+
+			template <typename T, size_t N>
+			inline T * end(basic_vec<T, N> &v) { return begin(v) + N; }
+
+			template <typename T, size_t N>
+			inline const T * end(const basic_vec<T, N> &v) { return begin(v) + N; }
+
+			template <typename T, size_t N>
+			inline const T * cend(const basic_vec<T, N> &v) { return begin(v) + N; }
+
+		}
+
+		namespace matrices {
+
+			// Cols x Rows matrix of type T
+			template <typename T, size_t Cols, size_t Rows>
+			class basic_mat : protected basic_vec<basic_vec<T, Rows>, Cols> {
+			private:
+				using vec_t = basic_vec<basic_vec<T, Rows>, Cols>;
+				using element_t = basic_vec<T, Rows>;
+
+			public:
+				using value_t = T;
+				static constexpr size_t cols = Cols;
+				static constexpr size_t rows = Rows;
+
+				// TODO should this member exist? is it useful? could be confusing vs. basic_vec::size
+				//static constexpr size_t size = Cols * Rows;
+
+				// define default ctor
+				CGRA_DEFINE_DEFAULT_CTOR(basic_mat, vec_t, element_t, cols)
+
+				// define magic ctor
+				CGRA_DEFINE_MAGIC_CTOR(basic_mat, vec_t, element_t, cols)
+
+				// make inherited functions visible
+				using vec_t::operator[];
+
+				// identity ctor
+				// this does not hide the inherited scalar broadcast ctor
+				// (that takes a vec<T>, this takes a T)
+				CGRA_CONSTEXPR_FUNCTION explicit basic_mat(const T &t) {
+					for (size_t i = 0; i < std::min(Cols, Rows); i++) {
+						(*this)[i][i] = t;
+					}
+				}
+
+				CGRA_CONSTEXPR_FUNCTION T * data() { return &(*this)[0][0]; }
+
+				CGRA_CONSTEXPR_FUNCTION const T * data() const { return &(*this)[0][0]; }
+
+				CGRA_CONSTEXPR_FUNCTION vec_t & as_vec() { return *this; }
+
+				CGRA_CONSTEXPR_FUNCTION const vec_t & as_vec() const { return *this; }
+
+			};
+
+			template <typename T, size_t Cols, size_t Rows>
+			void swap(basic_mat<T, Cols, Rows> &lhs, basic_mat<T, Cols, Rows> &rhs) {
+				// TODO c++17: noexcept(std::is_nothrow_swappable<T>::value)
+				for (size_t i = 0; i < Cols; i++) {
+					using std::swap;
+					swap(lhs[i], rhs[i]);
+				}
+			}
+
+			template <typename T, size_t Cols, size_t Rows>
+			inline std::ostream & operator<<(std::ostream &out, const basic_mat<T, Cols, Rows> &m) {
+				static const char *toplinestart = Rows > 1 ? "/ " : "[ ";
+				static const char *toplineend = Rows > 1 ? " \\" : " ]";
+				static const char *midlinestart = "| ";
+				static const char *midlineend = " |";
+				static const char *bottomlinestart = Rows > 1 ? "\\ " : "[ ";
+				static const char *bottomlineend = Rows > 1 ? " /" : " ]";
+				// calculate column widths
+				size_t maxwidths[Cols];
+				std::ostringstream tempss;
+				tempss.precision(out.precision());
+				for (size_t i = 0; i < Cols; ++i) {
+					maxwidths[i] = 0;
+					for (size_t j = 0; j < Rows; ++j) {
+						// msvc: seeking to 0 on empty stream sets failbit
+						tempss.seekp(0);
+						tempss.clear();
+						tempss << m[i][j];
+						maxwidths[i] = size_t(tempss.tellp()) > maxwidths[i] ? size_t(tempss.tellp()) : maxwidths[i];
+					}
+				}
+				// print
+				for (size_t i = 0; i < Rows; ++i) {
+					if (i == 0) {
+						out << toplinestart;
+					} else if (i + 1 == Rows) {
+						out << bottomlinestart;
+					} else {
+						out << midlinestart;
+					}
+					for (size_t j = 0; j < Cols; ++j) {
+						out.width(maxwidths[j]);
+						out << m[j][i];
+						if (j + 1 < Cols) out << ", ";
+					}
+					if (i == 0) {
+						out << toplineend;
+					} else if (i + 1 == Rows) {
+						out << bottomlineend;
+					} else {
+						out << midlineend;
+					}
+					if (i + 1 < Rows) out << '\n';
+				}
+				return out;
+			}
+
+			template <typename T, size_t Cols, size_t Rows>
+			inline T * begin(basic_mat<T, Cols, Rows> &m) { return m.data(); }
+
+			template <typename T, size_t Cols, size_t Rows>
+			inline const T * begin(const basic_mat<T, Cols, Rows> &m) { return m.data(); }
+
+			template <typename T, size_t Cols, size_t Rows>
+			inline const T * cbegin(const basic_mat<T, Cols, Rows> &m) { return m.data(); }
+
+			template <typename T, size_t Cols, size_t Rows>
+			inline T * end(basic_mat<T, Cols, Rows> &m) { return begin(m) + Cols * Rows; }
+
+			template <typename T, size_t Cols, size_t Rows>
+			inline const T * end(const basic_mat<T, Cols, Rows> &m) { return begin(m) + Cols * Rows; }
+
+			template <typename T, size_t Cols, size_t Rows>
+			inline const T * cend(const basic_mat<T, Cols, Rows> &m) { return begin(m) + Cols * Rows; }
+
+		}
+
+	}
+	
 
 
 
@@ -2246,6 +2370,8 @@ namespace cgra {
 	//========================================================================================================================================================================================================//
 
 	namespace detail {
+
+		// used in place of a void return to be usable with zip_with
 		struct nothing {};
 
 		namespace op {
@@ -2428,7 +2554,6 @@ namespace cgra {
 				}
 			};
 
-
 			struct equal {
 				template <typename T1, typename T2>
 				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
@@ -2474,828 +2599,24 @@ namespace cgra {
 		}
 	}
 
-	// Vector assign operators
-	// 
-
-	// addition
-
-	template <typename T1, size_t N, typename T2>
-	inline basic_vec<T1, N> & operator+=(basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-		zip_with(detail::op::add_assign(), lhs, rhs);
-		return lhs;
-	}
-
-	template <typename T1, size_t N, typename T2>
-	inline basic_vec<T1, N> & operator+=(basic_vec<T1, N> &lhs, const T2 &rhs) {
-		zip_with(detail::op::add_assign(), lhs, basic_vec<T2, N>(rhs));
-		return lhs;
-	}
-
-	// subtraction
-
-	template <typename T1, size_t N, typename T2>
-	inline basic_vec<T1, N> & operator-=(basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-		zip_with(detail::op::sub_assign(), lhs, rhs);
-		return lhs;
-	}
-
-	template <typename T1, size_t N, typename T2>
-	inline basic_vec<T1, N> & operator-=(basic_vec<T1, N> &lhs, const T2 &rhs) {
-		zip_with(detail::op::sub_assign(), lhs, basic_vec<T2, N>(rhs));
-		return lhs;
-	}
-
-	// multiplication
-
-	template <typename T1, size_t N, typename T2>
-	inline basic_vec<T1, N> & operator*=(basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-		zip_with(detail::op::mul_assign(), lhs, rhs);
-		return lhs;
-	}
-
-	template <typename T1, size_t N, typename T2>
-	inline basic_vec<T1, N> & operator*=(basic_vec<T1, N> &lhs, const T2 &rhs) {
-		zip_with(detail::op::mul_assign(), lhs, basic_vec<T2, N>(rhs));
-		return lhs;
-	}
-
-	// division
-
-	template <typename T1, size_t N, typename T2>
-	inline basic_vec<T1, N> & operator/=(basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-		zip_with(detail::op::div_assign(), lhs, rhs);
-		return lhs;
-	}
-
-	template <typename T1, size_t N, typename T2>
-	inline basic_vec<T1, N> & operator/=(basic_vec<T1, N> &lhs, const T2 &rhs) {
-		zip_with(detail::op::div_assign(), lhs, basic_vec<T2, N>(rhs));
-		return lhs;
-	}
-
-	// remainder (mod)
-
-	template <typename T1, size_t N, typename T2>
-	inline basic_vec<T1, N> & operator%=(basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-		zip_with(detail::op::mod_assign(), lhs, rhs);
-		return lhs;
-	}
-
-	template <typename T1, size_t N, typename T2>
-	inline basic_vec<T1, N> & operator%=(basic_vec<T1, N> &lhs, const T2 &rhs) {
-		zip_with(detail::op::mod_assign(), lhs, basic_vec<T2, N>(rhs));
-		return lhs;
-	}
-
-	// left-shift
-
-	template <typename T1, size_t N, typename T2>
-	inline basic_vec<T1, N> & operator<<=(basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-		zip_with(detail::op::lshift_assign(), lhs, rhs);
-		return lhs;
-	}
-
-	template <typename T1, size_t N, typename T2>
-	inline basic_vec<T1, N> & operator<<=(basic_vec<T1, N> &lhs, const T2 &rhs) {
-		zip_with(detail::op::lshift_assign(), lhs, basic_vec<T2, N>(rhs));
-		return lhs;
-	}
-
-	// right-shift
-
-	template <typename T1, size_t N, typename T2>
-	inline basic_vec<T1, N> & operator>>=(basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-		zip_with(detail::op::rshift_assign(), lhs, rhs);
-		return lhs;
-	}
-
-	template <typename T1, size_t N, typename T2>
-	inline basic_vec<T1, N> & operator>>=(basic_vec<T1, N> &lhs, const T2 &rhs) {
-		zip_with(detail::op::rshift_assign(), lhs, basic_vec<T2, N>(rhs));
-		return lhs;
-	}
-
-	// logical or
-
-	template <typename T1, size_t N, typename T2>
-	inline basic_vec<T1, N> & operator|=(basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-		zip_with(detail::op::bitwise_or_assign(), lhs, rhs);
-		return lhs;
-	}
-
-	template <typename T1, size_t N, typename T2>
-	inline basic_vec<T1, N> & operator|=(basic_vec<T1, N> &lhs, const T2 &rhs) {
-		zip_with(detail::op::bitwise_or_assign(), lhs, basic_vec<T2, N>(rhs));
-		return lhs;
-	}
-
-	// logical xor
-
-	template <typename T1, size_t N, typename T2>
-	inline basic_vec<T1, N> & operator^=(basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-		zip_with(detail::op::bitwise_xor_assign(), lhs, rhs);
-		return lhs;
-	}
-
-	template <typename T1, size_t N, typename T2>
-	inline basic_vec<T1, N> & operator^=(basic_vec<T1, N> &lhs, const T2 &rhs) {
-		zip_with(detail::op::bitwise_xor_assign(), lhs, basic_vec<T2, N>(rhs));
-		return lhs;
-	}
-
-	// logical and
-
-	template <typename T1, size_t N, typename T2>
-	inline basic_vec<T1, N> & operator&=(basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-		zip_with(detail::op::bitwise_and_assign(), lhs, rhs);
-		return lhs;
-	}
-
-	template <typename T1, size_t N, typename T2>
-	inline basic_vec<T1, N> & operator&=(basic_vec<T1, N> &lhs, const T2 &rhs) {
-		zip_with(detail::op::bitwise_and_assign(), lhs, basic_vec<T2, N>(rhs));
-		return lhs;
-	}
-
-
-	// Vector operators
-	// 
-
-	// negate
-
-	template <typename T, size_t N>
-	inline auto operator-(const basic_vec<T, N> &rhs) {
-		return zip_with(detail::op::neg(), rhs);
-	}
-
-	// addition
-
-	template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
-	inline auto operator+(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-		return zip_with(detail::op::add(), lhs, rhs);
-	}
-
-	template <typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T1, N>, T2>::value>>
-	inline auto operator+(const basic_vec<T1, N> &lhs, const T2 &rhs) {
-		return zip_with(detail::op::add(), lhs, basic_vec<T2, N>(rhs));
-	}
-
-	template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T2, N>, T1>::value>>
-	inline auto operator+(const T1 &lhs, const basic_vec<T2, N> &rhs) {
-		return zip_with(detail::op::add(), basic_vec<T1, N>(lhs), rhs);
-	}
-
-	// subtraction
-
-	template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
-	inline auto operator-(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-		return zip_with(detail::op::sub(), lhs, rhs);
-	}
-
-	template <typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T1, N>, T2>::value>>
-	inline auto operator-(const basic_vec<T1, N> &lhs, const T2 &rhs) {
-		return zip_with(detail::op::sub(), lhs, basic_vec<T2, N>(rhs));
-	}
-
-	template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T2, N>, T1>::value>>
-	inline auto operator-(const T1 &lhs, const basic_vec<T2, N> &rhs) {
-		return zip_with(detail::op::sub(), basic_vec<T1, N>(lhs), rhs);
-	}
-
-	// multiplication
-
-	template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
-	inline auto operator*(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-		return zip_with(detail::op::mul(), lhs, rhs);
-	}
-
-	template <typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T1, N>, T2>::value>>
-	inline auto operator*(const basic_vec<T1, N> &lhs, const T2 &rhs) {
-		return zip_with(detail::op::mul(), lhs, basic_vec<T2, N>(rhs));
-	}
-
-	template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T2, N>, T1>::value>>
-	inline auto operator*(const T1 &lhs, const basic_vec<T2, N> &rhs) {
-		return zip_with(detail::op::mul(), basic_vec<T1, N>(lhs), rhs);
-	}
-
-	// division
-
-	template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
-	inline auto operator/(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-		return zip_with(detail::op::div(), lhs, rhs);
-	}
-
-	template <typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T1, N>, T2>::value>>
-	inline auto operator/(const basic_vec<T1, N> &lhs, const T2 &rhs) {
-		return zip_with(detail::op::div(), lhs, basic_vec<T2, N>(rhs));
-	}
-
-	template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T2, N>, T1>::value>>
-	inline auto operator/(const T1 &lhs, const basic_vec<T2, N> &rhs) {
-		return zip_with(detail::op::div(), basic_vec<T1, N>(lhs), rhs);
-	}
-
-	// remainder (mod)
-
-	template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
-	inline auto operator%(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-		return zip_with(detail::op::mod(), lhs, rhs);
-	}
-
-	template <typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T1, N>, T2>::value>>
-	inline auto operator%(const basic_vec<T1, N> &lhs, const T2 &rhs) {
-		return zip_with(detail::op::mod(), lhs, basic_vec<T2, N>(rhs));
-	}
-
-	template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T2, N>, T1>::value>>
-	inline auto operator%(const T1 &lhs, const basic_vec<T2, N> &rhs) {
-		return zip_with(detail::op::mod(), basic_vec<T1, N>(lhs), rhs);
-	}
-
-	// left-shift
-
-	template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
-	inline auto operator<<(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-		return zip_with(detail::op::lshift(), lhs, rhs);
-	}
-
-	template <typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T1, N>, T2>::value>>
-	inline auto operator<<(const basic_vec<T1, N> &lhs, const T2 &rhs) {
-		return zip_with(detail::op::lshift(), lhs, basic_vec<T2, N>(rhs));
-	}
-
-	template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T2, N>, T1>::value>>
-	inline auto operator<<(const T1 &lhs, const basic_vec<T2, N> &rhs) {
-		return zip_with(detail::op::lshift(), basic_vec<T1, N>(lhs), rhs);
-	}
-
-	// right-shift
-
-	template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
-	inline auto operator>>(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-		return zip_with(detail::op::rshift(), lhs, rhs);
-	}
-
-	template <typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T1, N>, T2>::value>>
-	inline auto operator>>(const basic_vec<T1, N> &lhs, const T2 &rhs) {
-		return zip_with(detail::op::rshift(), lhs, basic_vec<T2, N>(rhs));
-	}
-
-	template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T2, N>, T1>::value>>
-	inline auto operator>>(const T1 &lhs, const basic_vec<T2, N> &rhs) {
-		return zip_with(detail::op::rshift(), basic_vec<T1, N>(lhs), rhs);
-	}
-
-	// logical not
-
-	template <typename T, size_t N>
-	inline auto operator!(const basic_vec<T, N> &rhs) {
-		return zip_with(detail::op::logical_not(), rhs);
-	}
-
-	// logical or
-
-	template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
-	inline auto operator||(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-		return zip_with(detail::op::logical_or(), lhs, rhs);
-	}
-
-	template <typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T1, N>, T2>::value>>
-	inline auto operator||(const basic_vec<T1, N> &lhs, const T2 &rhs) {
-		return zip_with(detail::op::logical_or(), lhs, basic_vec<T2, N>(rhs));
-	}
-
-	template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T2, N>, T1>::value>>
-	inline auto operator||(const T1 &lhs, const basic_vec<T2, N> &rhs) {
-		return zip_with(detail::op::logical_or(), basic_vec<T1, N>(lhs), rhs);
-	}
-
-	// logical and
-
-	template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
-	inline auto operator&&(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-		return zip_with(detail::op::logical_and(), lhs, rhs);
-	}
-
-	template <typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T1, N>, T2>::value>>
-	inline auto operator&&(const basic_vec<T1, N> &lhs, const T2 &rhs) {
-		return zip_with(detail::op::logical_and(), lhs, basic_vec<T2, N>(rhs));
-	}
-
-	template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T2, N>, T1>::value>>
-	inline auto operator&&(const T1 &lhs, const basic_vec<T2, N> &rhs) {
-		return zip_with(detail::op::logical_and(), basic_vec<T1, N>(lhs), rhs);
-	}
-
-	// bitwise not
-
-	template <typename T, size_t N>
-	inline auto operator~(const basic_vec<T, N> &rhs) {
-		return zip_with(detail::op::bitwise_not(), rhs);
-	}
-
-	// bitwise or
-
-	template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
-	inline auto operator|(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-		return zip_with(detail::op::bitwise_or(), lhs, rhs);
-	}
-
-	template <typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T1, N>, T2>::value>>
-	inline auto operator|(const basic_vec<T1, N> &lhs, const T2 &rhs) {
-		return zip_with(detail::op::bitwise_or(), lhs, basic_vec<T2, N>(rhs));
-	}
-
-	template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T2, N>, T1>::value>>
-	inline auto operator|(const T1 &lhs, const basic_vec<T2, N> &rhs) {
-		return zip_with(detail::op::bitwise_or(), basic_vec<T1, N>(lhs), rhs);
-	}
-
-	// bitwise xor
-
-	template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
-	inline auto operator^(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-		return zip_with(detail::op::bitwise_xor(), lhs, rhs);
-	}
-
-	template <typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T1, N>, T2>::value>>
-	inline auto operator^(const basic_vec<T1, N> &lhs, const T2 &rhs) {
-		return zip_with(detail::op::bitwise_xor(), lhs, basic_vec<T2, N>(rhs));
-	}
-
-	template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T2, N>, T1>::value>>
-	inline auto operator^(const T1 &lhs, const basic_vec<T2, N> &rhs) {
-		return zip_with(detail::op::bitwise_xor(), basic_vec<T1, N>(lhs), rhs);
-	}
-
-	// bitwise and
-
-	template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
-	inline auto operator&(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-		return zip_with(detail::op::bitwise_and(), lhs, rhs);
-	}
-
-	template <typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T1, N>, T2>::value>>
-	inline auto operator&(const basic_vec<T1, N> &lhs, const T2 &rhs) {
-		return zip_with(detail::op::bitwise_and(), lhs, basic_vec<T2, N>(rhs));
-	}
-
-	template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T2, N>, T1>::value>>
-	inline auto operator&(const T1 &lhs, const basic_vec<T2, N> &rhs) {
-		return zip_with(detail::op::bitwise_and(), basic_vec<T1, N>(lhs), rhs);
-	}
-
-	// equal
-
-	template <typename T1, typename T2, size_t N>
-	inline auto operator==(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-		return fold(detail::op::logical_and(), true, zip_with(detail::op::equal(), lhs, rhs));
-	}
-
-	// not equal
-
-	template <typename T1, typename T2, size_t N>
-	inline auto operator!=(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-		return fold(detail::op::logical_or(), false, zip_with(detail::op::nequal(), lhs, rhs));
-	}
-
-	// less than
-
-	template <typename T1, typename T2, size_t N>
-	inline auto operator<(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-		return reinterpret_cast<const std::array<T1, N> &>(lhs) < reinterpret_cast<const std::array<T2, N> &>(rhs);
-	}
-
-
-
-	// Matrix assign operators
-	// 
-
-	// addition
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline basic_mat<T1, Cols, Rows> & operator+=(basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		zip_with(detail::op::add_assign(), lhs.as_vec(), rhs.as_vec());
-		return lhs;
-	}
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline basic_mat<T1, Cols, Rows> & operator+=(basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-		zip_with(detail::op::add_assign(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec());
-		return lhs;
-	}
-
-	// subtraction
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline basic_mat<T1, Cols, Rows> & operator-=(basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		zip_with(detail::op::sub_assign(), lhs.as_vec(), rhs.as_vec());
-		return lhs;
-	}
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline basic_mat<T1, Cols, Rows> & operator-=(basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-		zip_with(detail::op::sub_assign(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec());
-		return lhs;
-	}
-
-	// multiplication
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline basic_mat<T1, Cols, Rows> & operator*=(basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Rows, Cols> &rhs) {
-		lhs = lhs * rhs;
-		return lhs;
-	}
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline basic_mat<T1, Cols, Rows> & operator*=(basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-		zip_with(detail::op::mul_assign(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec());
-		return lhs;
-	}
-
-	// division
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline basic_mat<T1, Cols, Rows> & operator/=(basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		zip_with(detail::op::div_assign(), lhs.as_vec(), rhs.as_vec());
-		return lhs;
-	}
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline basic_mat<T1, Cols, Rows> & operator/=(basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-		zip_with(detail::op::div_assign(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec());
-		return lhs;
-	}
-
-	// remainder (mod)
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline basic_mat<T1, Cols, Rows> & operator%=(basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		zip_with(detail::op::mod_assign(), lhs.as_vec(), rhs.as_vec());
-		return lhs;
-	}
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline basic_mat<T1, Cols, Rows> & operator%=(basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-		zip_with(detail::op::mod_assign(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec());
-		return lhs;
-	}
-
-	// left-shift
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline basic_mat<T1, Cols, Rows> & operator<<=(basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		zip_with(detail::op::lshift_assign(), lhs.as_vec(), rhs.as_vec());
-		return lhs;
-	}
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline basic_mat<T1, Cols, Rows> & operator<<=(basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-		zip_with(detail::op::lshift_assign(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec());
-		return lhs;
-	}
-
-	// right-shift
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline basic_mat<T1, Cols, Rows> & operator>>=(basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		zip_with(detail::op::rshift_assign(), lhs.as_vec(), rhs.as_vec());
-		return lhs;
-	}
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline basic_mat<T1, Cols, Rows> & operator>>=(basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-		zip_with(detail::op::rshift_assign(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec());
-		return lhs;
-	}
-
-	// logical or
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline basic_mat<T1, Cols, Rows> & operator|=(basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		zip_with(detail::op::bitwise_or_assign(), lhs.as_vec(), rhs.as_vec());
-		return lhs;
-	}
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline basic_mat<T1, Cols, Rows> & operator|=(basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-		zip_with(detail::op::bitwise_or_assign(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec());
-		return lhs;
-	}
-
-	// logical xor
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline basic_mat<T1, Cols, Rows> & operator^=(basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		zip_with(detail::op::bitwise_xor_assign(), lhs.as_vec(), rhs.as_vec());
-		return lhs;
-	}
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline basic_mat<T1, Cols, Rows> & operator^=(basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-		zip_with(detail::op::bitwise_xor_assign(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec());
-		return lhs;
-	}
-
-	// logical and
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline basic_mat<T1, Cols, Rows> & operator&=(basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		zip_with(detail::op::bitwise_and_assign(), lhs.as_vec(), rhs.as_vec());
-		return lhs;
-	}
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline basic_mat<T1, Cols, Rows> & operator&=(basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-		zip_with(detail::op::bitwise_and_assign(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec());
-		return lhs;
-	}
-
-
-	// Matrix operators
-	// 
-
-	// negate
-
-	template <typename T, size_t Cols, size_t Rows>
-	inline auto operator-(const basic_mat<T, Cols, Rows> &rhs) {
-		return detail::make_mat(zip_with(detail::op::neg(), rhs.as_vec()));
-	}
-
-	// addition
-
-	template <typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator+(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return detail::make_mat(zip_with(detail::op::add(), lhs.as_vec(), rhs.as_vec()));
-	}
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline auto operator+(const basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-		return detail::make_mat(zip_with(detail::op::add(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec()));
-	}
-
-	template <typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator+(const T1 &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return detail::make_mat(zip_with(detail::op::add(), basic_mat<T1, Cols, Rows>(lhs).as_vec(), rhs.as_vec()));
-	}
-
-	// subtraction
-
-	template <typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator-(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return detail::make_mat(zip_with(detail::op::sub(), lhs.as_vec(), rhs.as_vec()));
-	}
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline auto operator-(const basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-		return detail::make_mat(zip_with(detail::op::sub(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec()));
-	}
-
-	template <typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator-(const T1 &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return detail::make_mat(zip_with(detail::op::sub(), basic_mat<T1, Cols, Rows>(lhs).as_vec(), rhs.as_vec()));
-	}
-
-	// multiplication
-	template <typename T1, typename T2, size_t CommonSize, size_t Cols, size_t Rows>
-	inline auto operator*(const basic_mat<T1, CommonSize, Rows> &lhs, const basic_mat<T2, Cols, CommonSize> &rhs) {
-		return detail::make_mat(zip_with([&](auto &&rcol) { return dot(lhs.as_vec(), decltype(rcol)(rcol)); }, rhs.as_vec()));
-	}
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline auto operator*(const basic_mat<T1, Cols, Rows> &lhs, const basic_vec<T2, Cols> &rhs) {
-		return dot(lhs.as_vec(), rhs);
-		//return fold(detail::op::add(), basic_vec<T1, Rows>{}, zip_with(detail::op::mul(), lhs.as_vec(), rhs));
-	}
-
-	template <typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator*(const basic_vec<T1, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		//return dot(repeat_vec(lhs), rhs.as_vec());
-		return fold(detail::op::add(), basic_vec<T1, Rows>(0), zip_with(detail::op::mul(), detail::repeat_vec<basic_vec<T1, Cols>, Rows>(lhs), rhs.as_vec()));
-	}
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline auto operator*(const basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-		return detail::make_mat(zip_with(detail::op::mul(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec()));
-	}
-
-	template <typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator*(const T1 &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return detail::make_mat(zip_with(detail::op::mul(), basic_mat<T1, Cols, Rows>(lhs).as_vec(), rhs.as_vec()));
-	}
-
-	// division
-
-	template <typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator/(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return detail::make_mat(zip_with(detail::op::div(), lhs.as_vec(), rhs.as_vec()));
-	}
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline auto operator/(const basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-		return detail::make_mat(zip_with(detail::op::div(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec()));
-	}
-
-	template <typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator/(const T1 &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return detail::make_mat(zip_with(detail::op::div(), basic_mat<T1, Cols, Rows>(lhs).as_vec(), rhs.as_vec()));
-	}
-
-	// remainder (mod)
-
-	template <typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator%(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return detail::make_mat(zip_with(detail::op::mod(), lhs.as_vec(), rhs.as_vec()));
-	}
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline auto operator%(const basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-		return detail::make_mat(zip_with(detail::op::mod(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec()));
-	}
-
-	template <typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator%(const T1 &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return detail::make_mat(zip_with(detail::op::mod(), basic_mat<T1, Cols, Rows>(lhs).as_vec(), rhs.as_vec()));
-	}
-
-	// left-shift
-
-	template <typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator<<(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return detail::make_mat(zip_with(detail::op::lshift(), lhs.as_vec(), rhs.as_vec()));
-	}
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline auto operator<<(const basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-		return detail::make_mat(zip_with(detail::op::lshift(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec()));
-	}
-
-	template <typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator<<(const T1 &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return detail::make_mat(zip_with(detail::op::lshift(), basic_mat<T1, Cols, Rows>(lhs).as_vec(), rhs.as_vec()));
-	}
-
-	// right-shift
-
-	template <typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator>>(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return detail::make_mat(zip_with(detail::op::rshift(), lhs.as_vec(), rhs.as_vec()));
-	}
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline auto operator>>(const basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-		return detail::make_mat(zip_with(detail::op::rshift(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec()));
-	}
-
-	template <typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator>>(const T1 &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return detail::make_mat(zip_with(detail::op::rshift(), basic_mat<T1, Cols, Rows>(lhs).as_vec(), rhs.as_vec()));
-	}
-
-	// logical not
-
-	template <typename T, size_t Cols, size_t Rows>
-	inline auto operator!(const basic_mat<T, Cols, Rows> &rhs) {
-		return detail::make_mat(zip_with(detail::op::logical_not(), rhs.as_vec().as_vec()));
-	}
-
-	// logical or
-
-	template <typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator||(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return detail::make_mat(zip_with(detail::op::logical_or(), lhs.as_vec(), rhs.as_vec()));
-	}
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline auto operator||(const basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-		return detail::make_mat(zip_with(detail::op::logical_or(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec()));
-	}
-
-	template <typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator||(const T1 &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return detail::make_mat(zip_with(detail::op::logical_or(), basic_mat<T1, Cols, Rows>(lhs).as_vec(), rhs.as_vec()));
-	}
-
-	// logical and
-
-	template <typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator&&(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return detail::make_mat(zip_with(detail::op::logical_and(), lhs.as_vec(), rhs.as_vec()));
-	}
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline auto operator&&(const basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-		return detail::make_mat(zip_with(detail::op::logical_and(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec()));
-	}
-
-	template <typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator&&(const T1 &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return detail::make_mat(zip_with(detail::op::logical_and(), basic_mat<T1, Cols, Rows>(lhs).as_vec(), rhs.as_vec()));
-	}
-
-	// bitwise not
-
-	template <typename T, size_t Cols, size_t Rows>
-	inline auto operator~(const basic_mat<T, Cols, Rows> &rhs) {
-		return detail::make_mat(zip_with(detail::op::bitwise_not(), rhs.as_vec().as_vec()));
-	}
-
-	// bitwise or
-
-	template <typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator|(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return detail::make_mat(zip_with(detail::op::bitwise_or(), lhs.as_vec(), rhs.as_vec()));
-	}
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline auto operator|(const basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-		return detail::make_mat(zip_with(detail::op::bitwise_or(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec()));
-	}
-
-	template <typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator|(const T1 &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return detail::make_mat(zip_with(detail::op::bitwise_or(), basic_mat<T1, Cols, Rows>(lhs).as_vec(), rhs.as_vec()));
-	}
-
-	// bitwise xor
-
-	template <typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator^(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return detail::make_mat(zip_with(detail::op::bitwise_xor(), lhs.as_vec(), rhs.as_vec()));
-	}
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline auto operator^(const basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-		return detail::make_mat(zip_with(detail::op::bitwise_xor(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec()));
-	}
-
-	template <typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator^(const T1 &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return detail::make_mat(zip_with(detail::op::bitwise_xor(), basic_mat<T1, Cols, Rows>(lhs).as_vec(), rhs.as_vec()));
-	}
-
-	// bitwise and
-
-	template <typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator&(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return detail::make_mat(zip_with(detail::op::bitwise_and(), lhs.as_vec(), rhs.as_vec()));
-	}
-
-	template <typename T1, size_t Cols, size_t Rows, typename T2>
-	inline auto operator&(const basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-		return detail::make_mat(zip_with(detail::op::bitwise_and(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec()));
-	}
-
-	template <typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator&(const T1 &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return detail::make_mat(zip_with(detail::op::bitwise_and(), basic_mat<T1, Cols, Rows>(lhs).as_vec(), rhs.as_vec()));
-	}
-
-	// equal
-
-	template <typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator==(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return fold(detail::op::logical_and(), true, detail::make_mat(zip_with(detail::op::equal(), lhs.as_vec(), rhs.as_vec())));
-	}
-
-	// not equal
-
-	template <typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator!=(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return fold(detail::op::logical_or(), false, detail::make_mat(zip_with(detail::op::nequal(), lhs.as_vec(), rhs.as_vec())));
-	}
-
-	// less than
-
-	template <typename T1, typename T2, size_t Cols, size_t Rows>
-	inline auto operator<(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-		return lhs.as_vec() < rhs.as_vec();
-	}
-
-
-	// Quaternion assign operators
-	//
-
-	// addition
-
+	// quat add assign
 	template <typename T1, typename T2>
 	inline basic_quat<T1> & operator+=(basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
 		zip_with(detail::op::add_assign(), lhs.as_vec(), rhs.as_vec());
 		return lhs;
 	}
 
-	// subtraction
-
+	// quat sub assign
 	template <typename T1, typename T2>
 	inline basic_quat<T1> & operator-=(basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
 		zip_with(detail::op::sub_assign(), lhs.as_vec(), rhs.as_vec());
 		return lhs;
 	}
 
-	// multiplication
-
+	// quat mul assign
 	template <typename T1, typename T2>
 	inline basic_quat<T1> & operator*=(basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
+		// TODO implement quat *= in terms of *
 		using common_t = std::common_type_t<T1, T2>;
 		common_t x = lhs.w * rhs.x + lhs.x * rhs.w + lhs.y * rhs.z - lhs.z * rhs.y;
 		common_t y = lhs.w * rhs.y - lhs.x * rhs.z + lhs.y * rhs.w + lhs.z * rhs.x;
@@ -3308,53 +2629,33 @@ namespace cgra {
 		return lhs;
 	}
 
+	// quat mul assign scalar
 	template <typename T1, typename T2>
 	inline basic_quat<T1> & operator*=(basic_quat<T1> &lhs, const T2 &rhs) {
 		zip_with(detail::op::mul_assign(), lhs.as_vec(), basic_vec<T2, 4>(rhs));
 		return lhs;
 	}
 
-	// division
-
-	template <typename T1, typename T2>
-	inline basic_quat<T1> & operator/=(basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
-		zip_with(detail::op::div_assign(), lhs.as_vec(), rhs.as_vec());
-		return lhs;
-	}
-
-	template <typename T1, typename T2>
-	inline basic_quat<T1> & operator/=(basic_quat<T1> &lhs, const T2 &rhs) {
-		zip_with(detail::op::div_assign(), lhs.as_vec(), basic_vec<T2, 4>(rhs));
-		return lhs;
-	}
-
-
-	// Quaternion operators
-	//
-
-	// negate
-
+	// quat negate
 	template <typename T>
 	inline auto operator-(const basic_quat<T> &rhs) {
+		// TODO negate is not conjugate damnit josh
 		return conjugate(rhs);
 	}
 
-	// addition
-
+	// quat add
 	template <typename T1, typename T2>
 	inline auto operator+(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
 		return basic_quat<T1>(zip_with(detail::op::add(), lhs.as_vec(), rhs.as_vec()));
 	}
 
-	// subtraction
-
+	// quat sub
 	template <typename T1, typename T2>
 	inline auto operator-(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
 		return basic_quat<T1>(zip_with(detail::op::sub(), lhs.as_vec(), rhs.as_vec()));
 	}
 
-	// multiplication
-
+	// quat mul
 	template <typename T1, typename T2>
 	inline auto operator*(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
 		basic_quat<std::common_type_t<T1, T2>> r = lhs;
@@ -3362,6 +2663,7 @@ namespace cgra {
 		return r;
 	}
 
+	// quat mul vector
 	template <typename T1, typename T2>
 	inline auto operator*(const basic_quat<T1> &lhs, const basic_vec<T2, 3> &rhs) {
 		using common_t = std::common_type_t<T1, T2>;
@@ -3370,141 +2672,588 @@ namespace cgra {
 		return basic_vec<common_t, 3>(q * p * inverse(q));
 	}
 
+	// quat mul scalar
 	template <typename T1, typename T2>
 	inline auto operator*(const basic_quat<T1> &lhs, const T2 &rhs) {
 		return basic_quat<std::common_type_t<T1, T2>>(zip_with(detail::op::mul(), lhs.as_vec(), detail::repeat_vec<T2, 4>(rhs)));
 	}
 
+	// quat mul scalar
 	template <typename T1, typename T2>
 	inline auto operator*(const T1 &lhs, const basic_quat<T2> &rhs) {
 		return basic_quat<std::common_type_t<T1, T2>>(zip_with(detail::op::mul(), detail::repeat_vec<T1, 4>(lhs), rhs.as_vec()));
 	}
 
-	// division
-
-	template <typename T1, typename T2>
-	inline auto operator/(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
-		return basic_quat<std::common_type_t<T1, T2>>(zip_with(detail::op::div(), lhs.as_vec(), rhs.as_vec()));
-	}
-
-	template <typename T1, typename T2>
-	inline auto operator/(const basic_quat<T1> &lhs, const T2 &rhs) {
-		return  basic_quat<std::common_type_t<T1, T2>>(zip_with(detail::op::div(), lhs.as_vec(), detail::repeat_vec<T2, 4>(rhs)));
-	}
-
-	// equal
-
+	// quat equal
 	template <typename T1, typename T2>
 	inline auto operator==(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
 		return fold(detail::op::logical_and(), true, zip_with(detail::op::equal(), lhs.as_vec(), rhs.as_vec()));
 	}
 
-	// not equal
-
+	// quat not-equal
 	template <typename T1, typename T2>
 	inline auto operator!=(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
 		return fold(detail::op::logical_or(), false, zip_with(detail::op::nequal(), lhs.as_vec(), rhs.as_vec()));
 	}
 
-	// less than
-
+	// quat less-than
 	template <typename T1, typename T2>
 	inline auto operator<(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
 		return lhs.as_vec() < rhs.as_vec();
 	}
 
+	namespace detail {
 
+		namespace vectors {
 
+			// vec add assign
+			template <typename T1, size_t N, typename T2>
+			inline basic_vec<T1, N> & operator+=(basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+				zip_with(detail::op::add_assign(), lhs, rhs);
+				return lhs;
+			}
 
-	// Iterator functions
-	// 
+			// vec add assign scalar
+			template <typename T1, size_t N, typename T2>
+			inline basic_vec<T1, N> & operator+=(basic_vec<T1, N> &lhs, const T2 &rhs) {
+				zip_with(detail::op::add_assign(), lhs, basic_vec<T2, N>(rhs));
+				return lhs;
+			}
 
-	template <typename T, size_t N>
-	inline T * begin(basic_vec<T, N> &v) { return v.data(); }
+			// vec sub assign
+			template <typename T1, size_t N, typename T2>
+			inline basic_vec<T1, N> & operator-=(basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+				zip_with(detail::op::sub_assign(), lhs, rhs);
+				return lhs;
+			}
 
-	template <typename T, size_t N>
-	inline const T * begin(const basic_vec<T, N> &v) { return v.data(); }
+			// vec sub assign scalar
+			template <typename T1, size_t N, typename T2>
+			inline basic_vec<T1, N> & operator-=(basic_vec<T1, N> &lhs, const T2 &rhs) {
+				zip_with(detail::op::sub_assign(), lhs, basic_vec<T2, N>(rhs));
+				return lhs;
+			}
 
-	template <typename T, size_t N>
-	inline const T * cbegin(const basic_vec<T, N> &v) { return v.data(); }
+			// vec mul assign
+			template <typename T1, size_t N, typename T2>
+			inline basic_vec<T1, N> & operator*=(basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+				zip_with(detail::op::mul_assign(), lhs, rhs);
+				return lhs;
+			}
 
-	template <typename T, size_t N>
-	inline T * end(basic_vec<T, N> &v) { return begin(v) + N; }
+			// vec mul assign scalar
+			template <typename T1, size_t N, typename T2>
+			inline basic_vec<T1, N> & operator*=(basic_vec<T1, N> &lhs, const T2 &rhs) {
+				zip_with(detail::op::mul_assign(), lhs, basic_vec<T2, N>(rhs));
+				return lhs;
+			}
 
-	template <typename T, size_t N>
-	inline const T * end(const basic_vec<T, N> &v) { return begin(v) + N; }
+			// vec div assign
+			template <typename T1, size_t N, typename T2>
+			inline basic_vec<T1, N> & operator/=(basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+				zip_with(detail::op::div_assign(), lhs, rhs);
+				return lhs;
+			}
 
-	template <typename T, size_t N>
-	inline const T * cend(const basic_vec<T, N> &v) { return begin(v) + N; }
+			// vec div assign scalar
+			template <typename T1, size_t N, typename T2>
+			inline basic_vec<T1, N> & operator/=(basic_vec<T1, N> &lhs, const T2 &rhs) {
+				zip_with(detail::op::div_assign(), lhs, basic_vec<T2, N>(rhs));
+				return lhs;
+			}
 
-	
-	template <typename T, size_t Cols, size_t Rows>
-	inline T * begin(basic_mat<T, Cols, Rows> &m) { return m.data(); }
-	
-	template <typename T, size_t Cols, size_t Rows>
-	inline const T * begin(const basic_mat<T, Cols, Rows> &m) { return m.data(); }
+			// vec remainder (mod) assign
+			template <typename T1, size_t N, typename T2>
+			inline basic_vec<T1, N> & operator%=(basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+				zip_with(detail::op::mod_assign(), lhs, rhs);
+				return lhs;
+			}
 
-	template <typename T, size_t Cols, size_t Rows>
-	inline const T * cbegin(const basic_mat<T, Cols, Rows> &m) { return m.data(); }
-	
-	template <typename T, size_t Cols, size_t Rows>
-	inline T * end(basic_mat<T, Cols, Rows> &m) { return begin(m) + Cols * Rows; }
-	
-	template <typename T, size_t Cols, size_t Rows>
-	inline const T * end(const basic_mat<T, Cols, Rows> &m) { return begin(m) + Cols * Rows; }
+			// vec remainder (mod) assign scalar
+			template <typename T1, size_t N, typename T2>
+			inline basic_vec<T1, N> & operator%=(basic_vec<T1, N> &lhs, const T2 &rhs) {
+				zip_with(detail::op::mod_assign(), lhs, basic_vec<T2, N>(rhs));
+				return lhs;
+			}
 
-	template <typename T, size_t Cols, size_t Rows>
-	inline const T * cend(const basic_mat<T, Cols, Rows> &m) { return begin(m) + Cols * Rows; }
+			// vec left-shift assign
+			template <typename T1, size_t N, typename T2>
+			inline basic_vec<T1, N> & operator<<=(basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+				zip_with(detail::op::lshift_assign(), lhs, rhs);
+				return lhs;
+			}
 
+			// vec left-shift assign scalar
+			template <typename T1, size_t N, typename T2>
+			inline basic_vec<T1, N> & operator<<=(basic_vec<T1, N> &lhs, const T2 &rhs) {
+				zip_with(detail::op::lshift_assign(), lhs, basic_vec<T2, N>(rhs));
+				return lhs;
+			}
 
-	template <typename T>
-	inline T * begin(basic_quat<T> &q) { return q.data(); }
+			// vec right-shift assign
+			template <typename T1, size_t N, typename T2>
+			inline basic_vec<T1, N> & operator>>=(basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+				zip_with(detail::op::rshift_assign(), lhs, rhs);
+				return lhs;
+			}
 
-	template <typename T>
-	inline const T * begin(const basic_quat<T> &q) { return q.data(); }
+			// vec right-shift assign scalar
+			template <typename T1, size_t N, typename T2>
+			inline basic_vec<T1, N> & operator>>=(basic_vec<T1, N> &lhs, const T2 &rhs) {
+				zip_with(detail::op::rshift_assign(), lhs, basic_vec<T2, N>(rhs));
+				return lhs;
+			}
 
-	template <typename T>
-	inline const T * cbegin(const basic_quat<T> &q) { return q.data(); }
+			// vec bitwise-or assign
+			template <typename T1, size_t N, typename T2>
+			inline basic_vec<T1, N> & operator|=(basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+				zip_with(detail::op::bitwise_or_assign(), lhs, rhs);
+				return lhs;
+			}
 
-	template <typename T>
-	inline T * end(basic_quat<T> &q) { return begin(q) + 4; }
+			// vec bitwise-or assign scalar
+			template <typename T1, size_t N, typename T2>
+			inline basic_vec<T1, N> & operator|=(basic_vec<T1, N> &lhs, const T2 &rhs) {
+				zip_with(detail::op::bitwise_or_assign(), lhs, basic_vec<T2, N>(rhs));
+				return lhs;
+			}
 
-	template <typename T>
-	inline const T * end(const basic_quat<T> &q) { return begin(q) + 4; }
+			// vec bitwise-xor assign
+			template <typename T1, size_t N, typename T2>
+			inline basic_vec<T1, N> & operator^=(basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+				zip_with(detail::op::bitwise_xor_assign(), lhs, rhs);
+				return lhs;
+			}
 
-	template <typename T>
-	inline const T * cend(const basic_quat<T> &q) { return begin(q) + 4; }
+			// vec bitwise-xor assign scalar
+			template <typename T1, size_t N, typename T2>
+			inline basic_vec<T1, N> & operator^=(basic_vec<T1, N> &lhs, const T2 &rhs) {
+				zip_with(detail::op::bitwise_xor_assign(), lhs, basic_vec<T2, N>(rhs));
+				return lhs;
+			}
 
+			// vec bitwise-and assign
+			template <typename T1, size_t N, typename T2>
+			inline basic_vec<T1, N> & operator&=(basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+				zip_with(detail::op::bitwise_and_assign(), lhs, rhs);
+				return lhs;
+			}
 
+			// vec bitwise-and assign scalar
+			template <typename T1, size_t N, typename T2>
+			inline basic_vec<T1, N> & operator&=(basic_vec<T1, N> &lhs, const T2 &rhs) {
+				zip_with(detail::op::bitwise_and_assign(), lhs, basic_vec<T2, N>(rhs));
+				return lhs;
+			}
 
-	// Swap overloads
-	//
+			// vec negate
+			template <typename T, size_t N>
+			inline auto operator-(const basic_vec<T, N> &rhs) {
+				return zip_with(detail::op::neg(), rhs);
+			}
 
-	template <typename T, size_t N>
-	void swap(basic_vec<T, N> &lhs, basic_vec<T, N> &rhs) {
-		for (size_t i = 0; i < N; i++) {
-			using std::swap;
-			swap(lhs[i], rhs[i]);
+			// vec add
+			template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
+			inline auto operator+(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+				return zip_with(detail::op::add(), lhs, rhs);
+			}
+
+			// vec add scalar
+			template <typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T1, N>, T2>::value>>
+			inline auto operator+(const basic_vec<T1, N> &lhs, const T2 &rhs) {
+				return zip_with(detail::op::add(), lhs, basic_vec<T2, N>(rhs));
+			}
+
+			// vec add scalar
+			template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T2, N>, T1>::value>>
+			inline auto operator+(const T1 &lhs, const basic_vec<T2, N> &rhs) {
+				return zip_with(detail::op::add(), basic_vec<T1, N>(lhs), rhs);
+			}
+
+			// vec sub
+			template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
+			inline auto operator-(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+				return zip_with(detail::op::sub(), lhs, rhs);
+			}
+
+			// vec sub scalar
+			template <typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T1, N>, T2>::value>>
+			inline auto operator-(const basic_vec<T1, N> &lhs, const T2 &rhs) {
+				return zip_with(detail::op::sub(), lhs, basic_vec<T2, N>(rhs));
+			}
+
+			// vec sub scalar
+			template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T2, N>, T1>::value>>
+			inline auto operator-(const T1 &lhs, const basic_vec<T2, N> &rhs) {
+				return zip_with(detail::op::sub(), basic_vec<T1, N>(lhs), rhs);
+			}
+
+			// vec mul
+			template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
+			inline auto operator*(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+				return zip_with(detail::op::mul(), lhs, rhs);
+			}
+
+			// vec mul scalar
+			template <typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T1, N>, T2>::value>>
+			inline auto operator*(const basic_vec<T1, N> &lhs, const T2 &rhs) {
+				return zip_with(detail::op::mul(), lhs, basic_vec<T2, N>(rhs));
+			}
+
+			// vec mul scalar
+			template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T2, N>, T1>::value>>
+			inline auto operator*(const T1 &lhs, const basic_vec<T2, N> &rhs) {
+				return zip_with(detail::op::mul(), basic_vec<T1, N>(lhs), rhs);
+			}
+
+			// vec div
+			template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
+			inline auto operator/(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+				return zip_with(detail::op::div(), lhs, rhs);
+			}
+
+			// vec div scalar
+			template <typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T1, N>, T2>::value>>
+			inline auto operator/(const basic_vec<T1, N> &lhs, const T2 &rhs) {
+				return zip_with(detail::op::div(), lhs, basic_vec<T2, N>(rhs));
+			}
+
+			// vec div scalar
+			template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T2, N>, T1>::value>>
+			inline auto operator/(const T1 &lhs, const basic_vec<T2, N> &rhs) {
+				return zip_with(detail::op::div(), basic_vec<T1, N>(lhs), rhs);
+			}
+
+			// vec remainder (mod)
+			template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
+			inline auto operator%(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+				return zip_with(detail::op::mod(), lhs, rhs);
+			}
+
+			// vec remainder (mod) scalar
+			template <typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T1, N>, T2>::value>>
+			inline auto operator%(const basic_vec<T1, N> &lhs, const T2 &rhs) {
+				return zip_with(detail::op::mod(), lhs, basic_vec<T2, N>(rhs));
+			}
+
+			// vec remainder (mod) scalar
+			template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T2, N>, T1>::value>>
+			inline auto operator%(const T1 &lhs, const basic_vec<T2, N> &rhs) {
+				return zip_with(detail::op::mod(), basic_vec<T1, N>(lhs), rhs);
+			}
+
+			// vec left-shift
+			template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
+			inline auto operator<<(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+				return zip_with(detail::op::lshift(), lhs, rhs);
+			}
+
+			// vec left-shift scalar
+			template <typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T1, N>, T2>::value>>
+			inline auto operator<<(const basic_vec<T1, N> &lhs, const T2 &rhs) {
+				return zip_with(detail::op::lshift(), lhs, basic_vec<T2, N>(rhs));
+			}
+
+			// vec left-shift scalar
+			template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T2, N>, T1>::value>>
+			inline auto operator<<(const T1 &lhs, const basic_vec<T2, N> &rhs) {
+				return zip_with(detail::op::lshift(), basic_vec<T1, N>(lhs), rhs);
+			}
+
+			// vec right-shift
+			template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
+			inline auto operator >> (const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+				return zip_with(detail::op::rshift(), lhs, rhs);
+			}
+
+			// vec right-shift scalar
+			template <typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T1, N>, T2>::value>>
+			inline auto operator >> (const basic_vec<T1, N> &lhs, const T2 &rhs) {
+				return zip_with(detail::op::rshift(), lhs, basic_vec<T2, N>(rhs));
+			}
+
+			// vec right-shift scalar
+			template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T2, N>, T1>::value>>
+			inline auto operator >> (const T1 &lhs, const basic_vec<T2, N> &rhs) {
+				return zip_with(detail::op::rshift(), basic_vec<T1, N>(lhs), rhs);
+			}
+
+			// vec logical-not
+			template <typename T, size_t N>
+			inline auto operator!(const basic_vec<T, N> &rhs) {
+				return zip_with(detail::op::logical_not(), rhs);
+			}
+
+			// vec logical-or
+			template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
+			inline auto operator||(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+				return zip_with(detail::op::logical_or(), lhs, rhs);
+			}
+
+			// vec logical-or scalar
+			template <typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T1, N>, T2>::value>>
+			inline auto operator||(const basic_vec<T1, N> &lhs, const T2 &rhs) {
+				return zip_with(detail::op::logical_or(), lhs, basic_vec<T2, N>(rhs));
+			}
+
+			// vec logical-or scalar
+			template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T2, N>, T1>::value>>
+			inline auto operator||(const T1 &lhs, const basic_vec<T2, N> &rhs) {
+				return zip_with(detail::op::logical_or(), basic_vec<T1, N>(lhs), rhs);
+			}
+
+			// vec logical-and
+			template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
+			inline auto operator&&(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+				return zip_with(detail::op::logical_and(), lhs, rhs);
+			}
+
+			// vec logical-and scalar
+			template <typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T1, N>, T2>::value>>
+			inline auto operator&&(const basic_vec<T1, N> &lhs, const T2 &rhs) {
+				return zip_with(detail::op::logical_and(), lhs, basic_vec<T2, N>(rhs));
+			}
+
+			// vec logical-and scalar
+			template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T2, N>, T1>::value>>
+			inline auto operator&&(const T1 &lhs, const basic_vec<T2, N> &rhs) {
+				return zip_with(detail::op::logical_and(), basic_vec<T1, N>(lhs), rhs);
+			}
+
+			// vec bitwise-not
+			template <typename T, size_t N>
+			inline auto operator~(const basic_vec<T, N> &rhs) {
+				return zip_with(detail::op::bitwise_not(), rhs);
+			}
+
+			// vec bitwise-or
+			template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
+			inline auto operator|(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+				return zip_with(detail::op::bitwise_or(), lhs, rhs);
+			}
+
+			// vec bitwise-or scalar
+			template <typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T1, N>, T2>::value>>
+			inline auto operator|(const basic_vec<T1, N> &lhs, const T2 &rhs) {
+				return zip_with(detail::op::bitwise_or(), lhs, basic_vec<T2, N>(rhs));
+			}
+
+			// vec bitwise-or scalar
+			template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T2, N>, T1>::value>>
+			inline auto operator|(const T1 &lhs, const basic_vec<T2, N> &rhs) {
+				return zip_with(detail::op::bitwise_or(), basic_vec<T1, N>(lhs), rhs);
+			}
+
+			// vec bitwise-xor
+			template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
+			inline auto operator^(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+				return zip_with(detail::op::bitwise_xor(), lhs, rhs);
+			}
+
+			// vec bitwise-xor scalar
+			template <typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T1, N>, T2>::value>>
+			inline auto operator^(const basic_vec<T1, N> &lhs, const T2 &rhs) {
+				return zip_with(detail::op::bitwise_xor(), lhs, basic_vec<T2, N>(rhs));
+			}
+
+			// vec bitwise-xor scalar
+			template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T2, N>, T1>::value>>
+			inline auto operator^(const T1 &lhs, const basic_vec<T2, N> &rhs) {
+				return zip_with(detail::op::bitwise_xor(), basic_vec<T1, N>(lhs), rhs);
+			}
+
+			// vec bitwise-and
+			template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_compatible<basic_vec<T1, N>, basic_vec<T2, N>>::value>>
+			inline auto operator&(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+				return zip_with(detail::op::bitwise_and(), lhs, rhs);
+			}
+
+			// vec bitwise-and scalar
+			template <typename T1, size_t N, typename T2, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T1, N>, T2>::value>>
+			inline auto operator&(const basic_vec<T1, N> &lhs, const T2 &rhs) {
+				return zip_with(detail::op::bitwise_and(), lhs, basic_vec<T2, N>(rhs));
+			}
+
+			// vec bitwise-and scalar
+			template <typename T1, typename T2, size_t N, typename = std::enable_if_t<detail::is_array_scalar_compatible<basic_vec<T2, N>, T1>::value>>
+			inline auto operator&(const T1 &lhs, const basic_vec<T2, N> &rhs) {
+				return zip_with(detail::op::bitwise_and(), basic_vec<T1, N>(lhs), rhs);
+			}
+
+			// vec equal
+			template <typename T1, typename T2, size_t N>
+			inline auto operator==(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+				return fold(detail::op::logical_and(), true, zip_with(detail::op::equal(), lhs, rhs));
+			}
+
+			// vec not-equal
+			template <typename T1, typename T2, size_t N>
+			inline auto operator!=(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+				return fold(detail::op::logical_or(), false, zip_with(detail::op::nequal(), lhs, rhs));
+			}
+
+			// vec less-than
+			template <typename T1, typename T2, size_t N>
+			inline auto operator<(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+				return reinterpret_cast<const std::array<T1, N> &>(lhs) < reinterpret_cast<const std::array<T2, N> &>(rhs);
+			}
+
 		}
-	}
+
+		namespace matrices {
+
+			// mat add assign
+			template <typename T1, size_t Cols, size_t Rows, typename T2>
+			inline basic_mat<T1, Cols, Rows> & operator+=(basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
+				zip_with(detail::op::add_assign(), lhs.as_vec(), rhs.as_vec());
+				return lhs;
+			}
+
+			// mat add assign scalar
+			template <typename T1, size_t Cols, size_t Rows, typename T2>
+			inline basic_mat<T1, Cols, Rows> & operator+=(basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
+				zip_with(detail::op::add_assign(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec());
+				return lhs;
+			}
+
+			// mat sub assign
+			template <typename T1, size_t Cols, size_t Rows, typename T2>
+			inline basic_mat<T1, Cols, Rows> & operator-=(basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
+				zip_with(detail::op::sub_assign(), lhs.as_vec(), rhs.as_vec());
+				return lhs;
+			}
+
+			// mat sub assign scalar
+			template <typename T1, size_t Cols, size_t Rows, typename T2>
+			inline basic_mat<T1, Cols, Rows> & operator-=(basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
+				zip_with(detail::op::sub_assign(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec());
+				return lhs;
+			}
+
+			// mat mul assign
+			template <typename T1, size_t Cols, size_t Rows, typename T2>
+			inline basic_mat<T1, Cols, Rows> & operator*=(basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Rows, Cols> &rhs) {
+				lhs = lhs * rhs;
+				return lhs;
+			}
+
+			// mat mul assign scalar
+			template <typename T1, size_t Cols, size_t Rows, typename T2>
+			inline basic_mat<T1, Cols, Rows> & operator*=(basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
+				zip_with(detail::op::mul_assign(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec());
+				return lhs;
+			}
 
 
-	template <typename T, size_t Cols, size_t Rows>
-	void swap(basic_mat<T, Cols, Rows> &lhs, basic_mat<T, Cols, Rows> &rhs) {
-		for (size_t i = 0; i < Cols; i++) {
-			using std::swap;
-			swap(lhs[i], rhs[i]);
+			// mat negate
+			template <typename T, size_t Cols, size_t Rows>
+			inline auto operator-(const basic_mat<T, Cols, Rows> &rhs) {
+				return detail::make_mat(zip_with(detail::op::neg(), rhs.as_vec()));
+			}
+
+			// mat add
+			template <typename T1, typename T2, size_t Cols, size_t Rows>
+			inline auto operator+(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
+				return detail::make_mat(zip_with(detail::op::add(), lhs.as_vec(), rhs.as_vec()));
+			}
+
+			// mat add scalar
+			template <typename T1, size_t Cols, size_t Rows, typename T2>
+			inline auto operator+(const basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
+				return detail::make_mat(zip_with(detail::op::add(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec()));
+			}
+
+			// mat add scalar
+			template <typename T1, typename T2, size_t Cols, size_t Rows>
+			inline auto operator+(const T1 &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
+				return detail::make_mat(zip_with(detail::op::add(), basic_mat<T1, Cols, Rows>(lhs).as_vec(), rhs.as_vec()));
+			}
+
+			// mat sub
+			template <typename T1, typename T2, size_t Cols, size_t Rows>
+			inline auto operator-(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
+				return detail::make_mat(zip_with(detail::op::sub(), lhs.as_vec(), rhs.as_vec()));
+			}
+
+			// mat sub scalar
+			template <typename T1, size_t Cols, size_t Rows, typename T2>
+			inline auto operator-(const basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
+				return detail::make_mat(zip_with(detail::op::sub(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec()));
+			}
+
+			// mat sub scalar
+			template <typename T1, typename T2, size_t Cols, size_t Rows>
+			inline auto operator-(const T1 &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
+				return detail::make_mat(zip_with(detail::op::sub(), basic_mat<T1, Cols, Rows>(lhs).as_vec(), rhs.as_vec()));
+			}
+
+			// mat mul
+			template <typename T1, typename T2, size_t CommonSize, size_t Cols, size_t Rows>
+			inline auto operator*(const basic_mat<T1, CommonSize, Rows> &lhs, const basic_mat<T2, Cols, CommonSize> &rhs) {
+				return detail::make_mat(zip_with([&](auto &&rcol) { return dot(lhs.as_vec(), decltype(rcol)(rcol)); }, rhs.as_vec()));
+			}
+
+			// mat mul vec
+			template <typename T1, size_t Cols, size_t Rows, typename T2>
+			inline auto operator*(const basic_mat<T1, Cols, Rows> &lhs, const basic_vec<T2, Cols> &rhs) {
+				return dot(lhs.as_vec(), rhs);
+				//return fold(detail::op::add(), basic_vec<T1, Rows>{}, zip_with(detail::op::mul(), lhs.as_vec(), rhs));
+			}
+
+			// mat mul vec
+			template <typename T1, typename T2, size_t Cols, size_t Rows>
+			inline auto operator*(const basic_vec<T1, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
+				// TODO vec*mat == ?
+				//return dot(repeat_vec(lhs), rhs.as_vec());
+				return fold(detail::op::add(), basic_vec<T1, Rows>(0), zip_with(detail::op::mul(), detail::repeat_vec<basic_vec<T1, Cols>, Rows>(lhs), rhs.as_vec()));
+			}
+
+			// mat mul scalar
+			template <typename T1, size_t Cols, size_t Rows, typename T2>
+			inline auto operator*(const basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
+				return detail::make_mat(zip_with(detail::op::mul(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec()));
+			}
+
+			// mat mul scalar
+			template <typename T1, typename T2, size_t Cols, size_t Rows>
+			inline auto operator*(const T1 &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
+				return detail::make_mat(zip_with(detail::op::mul(), basic_mat<T1, Cols, Rows>(lhs).as_vec(), rhs.as_vec()));
+			}
+
+			// mat div scalar
+			template <typename T1, size_t Cols, size_t Rows, typename T2>
+			inline auto operator/(const basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
+				return detail::make_mat(zip_with(detail::op::div(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec()));
+			}
+
+			// mat div scalar
+			template <typename T1, typename T2, size_t Cols, size_t Rows>
+			inline auto operator/(const T1 &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
+				// FIXME should do: lhs * inverse(rhs)
+				return detail::make_mat(zip_with(detail::op::div(), basic_mat<T1, Cols, Rows>(lhs).as_vec(), rhs.as_vec()));
+			}
+
+			// mat equal
+			template <typename T1, typename T2, size_t Cols, size_t Rows>
+			inline auto operator==(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
+				return fold(detail::op::logical_and(), true, detail::make_mat(zip_with(detail::op::equal(), lhs.as_vec(), rhs.as_vec())));
+			}
+
+			// mat not-equal
+			template <typename T1, typename T2, size_t Cols, size_t Rows>
+			inline auto operator!=(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
+				return fold(detail::op::logical_or(), false, detail::make_mat(zip_with(detail::op::nequal(), lhs.as_vec(), rhs.as_vec())));
+			}
+
+			// mat less-than
+			template <typename T1, typename T2, size_t Cols, size_t Rows>
+			inline auto operator<(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
+				return lhs.as_vec() < rhs.as_vec();
+			}
+
 		}
-	}
 
-	template <typename T>
-	void swap(basic_quat<T> &lhs, basic_quat<T> &rhs) {
-		for (size_t i = 0; i < lhs.size; i++) {
-			using std::swap;
-			swap(lhs[i], rhs[i]);
-		}
 	}
-
 
 
 
@@ -3599,6 +3348,7 @@ namespace cgra {
 	// Results are undefined if x and y are both 0
 	template <typename T1, typename T2, size_t N>
 	inline auto atan(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+		// FIXME atan use?
 		return zip_with([](auto &&x, auto &&y) { return atan2(decltype(x)(x), decltype(y)(y)); }, v2, v1);
 	}
 
@@ -5233,3 +4983,5 @@ namespace std {
 
 
 #undef CGRA_DEFINE_MAGIC_CTOR
+#undef CGRA_DEFINE_DEFAULT_CTOR
+
