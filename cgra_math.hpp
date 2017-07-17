@@ -104,9 +104,15 @@ namespace cgra {
 		namespace vectors {
 			// TODO repeat_vec, basic_vec_ctor_proxy can go in this ns
 			template <typename T, size_t N> class basic_vec;
+			inline namespace functions {
+				// inline so functions in here can be found by ADL for types in the parent namespace
+			}
 		}
 		namespace matrices {
 			template <typename T, size_t Cols, size_t Rows> class basic_mat;
+			inline namespace functions {
+				// inline so functions in here can be found by ADL for types in the parent namespace
+			}
 		}
 	}
 
@@ -115,6 +121,9 @@ namespace cgra {
 
 	template <typename T, size_t Cols, size_t Rows>
 	using basic_mat = detail::matrices::basic_mat<T, Cols, Rows>;
+
+	using namespace detail::vectors::functions;
+	using namespace detail::matrices::functions;
 
 #ifdef CGRA_INITIAL3D_NAMES
 	// aliases: Intial3D naming convention
