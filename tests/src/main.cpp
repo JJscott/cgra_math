@@ -53,8 +53,12 @@ int main() {
 	mat3 m2{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
 	mat3 m3 = m2;
 
+	auto m4 = zip_with<type_to_mat>(detail::op::add(), m2, m3);
+
 	cout << m1 << endl;
 	cout << m2 << endl;
+	cout << m3 << endl;
+	cout << m4 << endl;
 
 	constexpr quat q1;
 
