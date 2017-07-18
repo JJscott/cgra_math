@@ -17,7 +17,6 @@
 - FIXME unbreak constexpr for msvc and intellisense
 - test is_vector_compatible etc with static asserts
 - move random section to bottom of file
-- move zip_with and friends to top
 - make mat inverse error by exception
 - constexpr everything
 - clean up common function definitions and remove duplicates
@@ -748,7 +747,6 @@ namespace cgra {
 	namespace detail {
 
 		namespace vectors {
-			// foward decl
 			template <typename T, size_t N> class repeat_vec;
 			template <typename T, size_t N, typename ArgTupT> class basic_vec_ctor_proxy;
 		}
@@ -1116,6 +1114,33 @@ namespace cgra {
 		struct tup_repeat<Tup, 2> {
 			using type = tup_cat_t<Tup, Tup>;
 		};
+
+		template <typename Seq>
+		struct seq_pop_front {};
+
+		template <typename Seq>
+		using seq_pop_front_t = typename seq_pop_front<Seq>::type;
+
+		template <typename T>
+		struct seq_pop_front<std::integer_sequence<T>> {
+			using type = std::integer_sequence<T>;
+		};
+
+		template <typename T, T V0>
+		struct seq_pop_front<std::integer_sequence<T, V0>> {
+			using type = std::integer_sequence<T>;
+		};
+
+		template <typename T, T V0, T ...Vs>
+		struct seq_pop_front<std::integer_sequence<T, V0, Vs...>> {
+			using type = std::integer_sequence<T, Vs...>;
+		};
+
+		template <typename Seq, size_t I>
+		struct seq_get : seq_get<seq_pop_front_t<Seq>, I - 1> {};
+
+		template <typename T, T V0, T ...Vs>
+		struct seq_get<std::integer_sequence<T, V0, Vs...>, 0> : std::integral_constant<T, V0> {};
 
 		template <typename ...Seqs>
 		struct seq_cat {};
@@ -3466,8 +3491,7 @@ namespace cgra {
 				// mat mul left vec
 				template <typename MatT, typename VecT, typename = enable_if_matrix_mul_row_compatible_t<MatT, VecT>, typename = void, typename = void, typename = void, typename = void>
 				inline auto operator*(const VecT &lhs, const MatT &rhs) {
-					// FIXME vec * mat
-					return lhs;
+					return zip_with([&](auto &rcol) { return dot(lhs, rcol); }, rhs);
 				}
 				
 				// mat equal

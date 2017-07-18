@@ -59,7 +59,9 @@ int main() {
 	auto m6 = 1 / m5;
 
 	auto v6 = m6 * v3;
+	auto v7 = v3 * transpose(m6);
 	cout << v6 << endl;
+	cout << v7 << endl;
 
 	cout << m1 << endl;
 	cout << m2 << endl;
@@ -67,6 +69,7 @@ int main() {
 	cout << m4 << endl;
 	cout << m5 << endl;
 	cout << m6 << endl;
+	cout << (m5 * m6) << endl;
 
 	constexpr quat q1;
 
