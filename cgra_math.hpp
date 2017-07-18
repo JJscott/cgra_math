@@ -2529,7 +2529,7 @@ namespace cgra {
 		using size = detail::array_min_size<ArgTs...>;
 		using vec_t = typename TypeMap::template apply<basic_vec<value_t, size::value>>::type;
 		using iseq = std::make_index_sequence<size::value>;
-		return detail::zip_with_impl<vec_t>(f, iseq(), std::forward<ArgTs>(args)...);
+		return detail::zip_with_impl<vec_t>(f, iseq(), detail::intellisense_constify(std::forward<ArgTs>(args))...);
 	}
 
 	// TODO fix description

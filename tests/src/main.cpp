@@ -58,6 +58,9 @@ int main() {
 	auto m5 = m3 * m4 + m1;
 	auto m6 = 1 / m5;
 
+	auto v6 = m6 * v3;
+	cout << v6 << endl;
+
 	cout << m1 << endl;
 	cout << m2 << endl;
 	cout << m3 << endl;
