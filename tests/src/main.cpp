@@ -55,10 +55,15 @@ int main() {
 
 	auto m4 = zip_with<type_to_mat>(detail::op::add(), m2, m3);
 
+	auto m5 = m3 * m4 + m1;
+	auto m6 = 1 / m5;
+
 	cout << m1 << endl;
 	cout << m2 << endl;
 	cout << m3 << endl;
 	cout << m4 << endl;
+	cout << m5 << endl;
+	cout << m6 << endl;
 
 	constexpr quat q1;
 

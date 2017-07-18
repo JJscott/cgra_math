@@ -102,7 +102,6 @@ namespace cgra {
 
 	namespace detail {
 		namespace vectors {
-			// TODO repeat_vec, basic_vec_ctor_proxy can go in this ns
 			template <typename T, size_t N> class basic_vec;
 			inline namespace functions {
 				// inline so functions in here can be found by ADL for types in the parent namespace
@@ -756,6 +755,9 @@ namespace cgra {
 
 		template <typename T, size_t N>
 		using repeat_vec = vectors::repeat_vec<T, N>;
+
+		template <typename T, size_t Cols, size_t Rows>
+		using repeat_vec_vec = repeat_vec<repeat_vec<T, Rows>, Cols>;
 
 		template <typename T, size_t N, typename ArgTupT>
 		using basic_vec_ctor_proxy = vectors::basic_vec_ctor_proxy<T, N, ArgTupT>;
@@ -3308,21 +3310,23 @@ namespace cgra {
 				}
 
 				// vec equal
-				template <typename T1, typename T2, size_t N>
-				inline auto operator==(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				inline auto operator==(const VecT1 &lhs, const VecT2 &rhs) {
 					return fold(detail::op::logical_and(), true, zip_with(detail::op::equal(), lhs, rhs));
 				}
 
 				// vec not-equal
-				template <typename T1, typename T2, size_t N>
-				inline auto operator!=(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				inline auto operator!=(const VecT1 &lhs, const VecT2 &rhs) {
 					return fold(detail::op::logical_or(), false, zip_with(detail::op::nequal(), lhs, rhs));
 				}
 
 				// vec less-than
-				template <typename T1, typename T2, size_t N>
-				inline auto operator<(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-					return reinterpret_cast<const std::array<T1, N> &>(lhs) < reinterpret_cast<const std::array<T2, N> &>(rhs);
+				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				inline auto operator<(const VecT1 &lhs, const VecT2 &rhs) {
+					// TODO nicely
+					return reinterpret_cast<const std::array<array_value_t<VecT1>, array_size<VecT1>::value> &>(lhs)
+						< reinterpret_cast<const std::array<array_value_t<VecT2>, array_size<VecT2>::value> &>(rhs);
 				}
 
 			}
@@ -3333,152 +3337,154 @@ namespace cgra {
 
 			namespace functions {
 
-				// mat add assign
-				template <typename T1, size_t Cols, size_t Rows, typename T2>
-				inline basic_mat<T1, Cols, Rows> & operator+=(basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-					zip_with(detail::op::add_assign(), lhs.as_vec(), rhs.as_vec());
+				// mat add_assign
+				template <typename MatT1, typename MatT2, typename = enable_if_matrix_compatible_t<MatT1, MatT2>>
+				inline MatT1 & operator+=(MatT1 &lhs, const MatT2 &rhs) {
+					zip_with<type_to_mat>(detail::op::add_assign(), lhs, rhs);
 					return lhs;
 				}
 
-				// mat add assign scalar
-				template <typename T1, size_t Cols, size_t Rows, typename T2>
-				inline basic_mat<T1, Cols, Rows> & operator+=(basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-					zip_with(detail::op::add_assign(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec());
+				// mat add_assign scalar
+				template <typename MatT, typename T, typename = enable_if_matrix_scalar_compatible_t<MatT, T>, typename = void>
+				inline MatT & operator+=(MatT &lhs, const T &rhs) {
+					zip_with<type_to_mat>(detail::op::add_assign(), lhs, repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(rhs));
 					return lhs;
 				}
 
-				// mat sub assign
-				template <typename T1, size_t Cols, size_t Rows, typename T2>
-				inline basic_mat<T1, Cols, Rows> & operator-=(basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-					zip_with(detail::op::sub_assign(), lhs.as_vec(), rhs.as_vec());
+				// mat sub_assign
+				template <typename MatT1, typename MatT2, typename = enable_if_matrix_compatible_t<MatT1, MatT2>>
+				inline MatT1 & operator-=(MatT1 &lhs, const MatT2 &rhs) {
+					zip_with<type_to_mat>(detail::op::sub_assign(), lhs, rhs);
 					return lhs;
 				}
 
-				// mat sub assign scalar
-				template <typename T1, size_t Cols, size_t Rows, typename T2>
-				inline basic_mat<T1, Cols, Rows> & operator-=(basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-					zip_with(detail::op::sub_assign(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec());
+				// mat sub_assign scalar
+				template <typename MatT, typename T, typename = enable_if_matrix_scalar_compatible_t<MatT, T>, typename = void>
+				inline MatT & operator-=(MatT &lhs, const T &rhs) {
+					zip_with<type_to_mat>(detail::op::sub_assign(), lhs, repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(rhs));
 					return lhs;
 				}
 
-				// mat mul assign
-				template <typename T1, size_t Cols, size_t Rows, typename T2>
-				inline basic_mat<T1, Cols, Rows> & operator*=(basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Rows, Cols> &rhs) {
-					lhs = lhs * rhs;
+				// mat mul_assign
+				template <typename MatT1, typename MatT2, typename = enable_if_matrix_mul_compatible_t<MatT1, MatT2>>
+				inline MatT1 & operator*=(MatT1 &lhs, const MatT2 &rhs) {
+					return lhs = lhs * rhs;
+				}
+
+				// mat mul_assign scalar
+				template <typename MatT, typename T, typename = enable_if_matrix_scalar_compatible_t<MatT, T>, typename = void>
+				inline MatT & operator*=(MatT &lhs, const T &rhs) {
+					zip_with<type_to_mat>(detail::op::mul_assign(), lhs, repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(rhs));
 					return lhs;
 				}
 
-				// mat mul assign scalar
-				template <typename T1, size_t Cols, size_t Rows, typename T2>
-				inline basic_mat<T1, Cols, Rows> & operator*=(basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-					zip_with(detail::op::mul_assign(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec());
+				// mat div_assign scalar
+				template <typename MatT, typename T, typename = enable_if_matrix_scalar_compatible_t<MatT, T>, typename = void>
+				inline MatT & operator/=(MatT &lhs, const T &rhs) {
+					zip_with<type_to_mat>(detail::op::div_assign(), lhs, repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(rhs));
 					return lhs;
 				}
-
 
 				// mat negate
-				template <typename T, size_t Cols, size_t Rows>
-				inline auto operator-(const basic_mat<T, Cols, Rows> &rhs) {
-					return detail::make_mat(zip_with(detail::op::neg(), rhs.as_vec()));
+				template <typename MatT, typename = enable_if_matrix_t<MatT>>
+				inline auto operator-(const MatT &rhs) {
+					return zip_with<type_to_mat>(detail::op::neg(), rhs);
 				}
 
 				// mat add
-				template <typename T1, typename T2, size_t Cols, size_t Rows>
-				inline auto operator+(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-					return detail::make_mat(zip_with(detail::op::add(), lhs.as_vec(), rhs.as_vec()));
+				template <typename MatT1, typename MatT2, typename = enable_if_matrix_compatible_t<MatT1, MatT2>>
+				inline auto operator+(const MatT1 &lhs, const MatT2 &rhs) {
+					return zip_with<type_to_mat>(detail::op::add(), lhs, rhs);
 				}
 
-				// mat add scalar
-				template <typename T1, size_t Cols, size_t Rows, typename T2>
-				inline auto operator+(const basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-					return detail::make_mat(zip_with(detail::op::add(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec()));
+				// mat add right scalar
+				template <typename MatT, typename T, typename = enable_if_matrix_scalar_compatible_t<MatT, T>, typename = void>
+				inline auto operator+(const MatT &lhs, const T &rhs) {
+					return zip_with<type_to_mat>(detail::op::add(), lhs, repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(rhs));
 				}
 
-				// mat add scalar
-				template <typename T1, typename T2, size_t Cols, size_t Rows>
-				inline auto operator+(const T1 &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-					return detail::make_mat(zip_with(detail::op::add(), basic_mat<T1, Cols, Rows>(lhs).as_vec(), rhs.as_vec()));
+				// mat add left scalar
+				template <typename MatT, typename T, typename = enable_if_matrix_scalar_compatible_t<MatT, T>, typename = void, typename = void>
+				inline auto operator+(const T &lhs, const MatT &rhs) {
+					return zip_with<type_to_mat>(detail::op::add(), repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(lhs), rhs);
 				}
 
 				// mat sub
-				template <typename T1, typename T2, size_t Cols, size_t Rows>
-				inline auto operator-(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-					return detail::make_mat(zip_with(detail::op::sub(), lhs.as_vec(), rhs.as_vec()));
+				template <typename MatT1, typename MatT2, typename = enable_if_matrix_compatible_t<MatT1, MatT2>>
+				inline auto operator-(const MatT1 &lhs, const MatT2 &rhs) {
+					return zip_with<type_to_mat>(detail::op::sub(), lhs, rhs);
 				}
 
-				// mat sub scalar
-				template <typename T1, size_t Cols, size_t Rows, typename T2>
-				inline auto operator-(const basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-					return detail::make_mat(zip_with(detail::op::sub(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec()));
+				// mat sub right scalar
+				template <typename MatT, typename T, typename = enable_if_matrix_scalar_compatible_t<MatT, T>, typename = void>
+				inline auto operator-(const MatT &lhs, const T &rhs) {
+					return zip_with<type_to_mat>(detail::op::sub(), lhs, repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(rhs));
 				}
 
-				// mat sub scalar
-				template <typename T1, typename T2, size_t Cols, size_t Rows>
-				inline auto operator-(const T1 &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-					return detail::make_mat(zip_with(detail::op::sub(), basic_mat<T1, Cols, Rows>(lhs).as_vec(), rhs.as_vec()));
+				// mat sub left scalar
+				template <typename MatT, typename T, typename = enable_if_matrix_scalar_compatible_t<MatT, T>, typename = void, typename = void>
+				inline auto operator-(const T &lhs, const MatT &rhs) {
+					return zip_with<type_to_mat>(detail::op::sub(), repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(lhs), rhs);
 				}
 
 				// mat mul
-				template <typename T1, typename T2, size_t CommonSize, size_t Cols, size_t Rows>
-				inline auto operator*(const basic_mat<T1, CommonSize, Rows> &lhs, const basic_mat<T2, Cols, CommonSize> &rhs) {
-					return detail::make_mat(zip_with([&](auto &&rcol) { return dot(lhs.as_vec(), decltype(rcol)(rcol)); }, rhs.as_vec()));
+				template <typename MatT1, typename MatT2, typename = enable_if_matrix_mul_compatible_t<MatT1, MatT2>>
+				inline auto operator*(const MatT1 &lhs, const MatT2 &rhs) {
+					return zip_with<type_to_mat>([&](auto &rcol) { return dot(lhs, rcol); }, rhs);
 				}
 
-				// mat mul vec
-				template <typename T1, size_t Cols, size_t Rows, typename T2>
-				inline auto operator*(const basic_mat<T1, Cols, Rows> &lhs, const basic_vec<T2, Cols> &rhs) {
-					return dot(lhs.as_vec(), rhs);
-					//return fold(detail::op::add(), basic_vec<T1, Rows>{}, zip_with(detail::op::mul(), lhs.as_vec(), rhs));
+				// mat mul right scalar
+				template <typename MatT, typename T, typename = enable_if_matrix_scalar_compatible_t<MatT, T>, typename = void>
+				inline auto operator*(const MatT &lhs, const T &rhs) {
+					return zip_with<type_to_mat>(detail::op::mul(), lhs, repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(rhs));
 				}
 
-				// mat mul vec
-				template <typename T1, typename T2, size_t Cols, size_t Rows>
-				inline auto operator*(const basic_vec<T1, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-					// TODO vec*mat == ?
-					//return dot(repeat_vec(lhs), rhs.as_vec());
-					return fold(detail::op::add(), basic_vec<T1, Rows>(0), zip_with(detail::op::mul(), detail::repeat_vec<basic_vec<T1, Cols>, Rows>(lhs), rhs.as_vec()));
+				// mat mul left scalar
+				template <typename MatT, typename T, typename = enable_if_matrix_scalar_compatible_t<MatT, T>, typename = void, typename = void>
+				inline auto operator*(const T &lhs, const MatT &rhs) {
+					return zip_with<type_to_mat>(detail::op::mul(), repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(lhs), rhs);
 				}
 
-				// mat mul scalar
-				template <typename T1, size_t Cols, size_t Rows, typename T2>
-				inline auto operator*(const basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-					return detail::make_mat(zip_with(detail::op::mul(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec()));
+				// mat div right scalar
+				template <typename MatT, typename T, typename = enable_if_matrix_scalar_compatible_t<MatT, T>, typename = void>
+				inline auto operator/(const MatT &lhs, const T &rhs) {
+					return zip_with<type_to_mat>(detail::op::div(), lhs, repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(rhs));
 				}
 
-				// mat mul scalar
-				template <typename T1, typename T2, size_t Cols, size_t Rows>
-				inline auto operator*(const T1 &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-					return detail::make_mat(zip_with(detail::op::mul(), basic_mat<T1, Cols, Rows>(lhs).as_vec(), rhs.as_vec()));
+				// mat div left scalar
+				template <typename MatT, typename T, typename = enable_if_matrix_scalar_compatible_t<MatT, T>, typename = void, typename = void>
+				inline auto operator/(const T &lhs, const MatT &rhs) {
+					return lhs * inverse(rhs);
 				}
 
-				// mat div scalar
-				template <typename T1, size_t Cols, size_t Rows, typename T2>
-				inline auto operator/(const basic_mat<T1, Cols, Rows> &lhs, const T2 &rhs) {
-					return detail::make_mat(zip_with(detail::op::div(), lhs.as_vec(), basic_mat<T2, Cols, Rows>(rhs).as_vec()));
+				// mat mul right vec
+				template <typename MatT, typename VecT, typename = enable_if_matrix_mul_col_compatible_t<MatT, VecT>, typename = void, typename = void, typename = void>
+				inline auto operator*(const MatT &lhs, const VecT &rhs) {
+					return dot(lhs, rhs);
 				}
 
-				// mat div scalar
-				template <typename T1, typename T2, size_t Cols, size_t Rows>
-				inline auto operator/(const T1 &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-					// FIXME should do: lhs * inverse(rhs)
-					return detail::make_mat(zip_with(detail::op::div(), basic_mat<T1, Cols, Rows>(lhs).as_vec(), rhs.as_vec()));
+				// mat mul left vec
+				template <typename MatT, typename VecT, typename = enable_if_matrix_mul_row_compatible_t<MatT, VecT>, typename = void, typename = void, typename = void, typename = void>
+				inline auto operator*(const VecT &lhs, const MatT &rhs) {
+					// FIXME vec * mat
+					return lhs;
 				}
-
+				
 				// mat equal
-				template <typename T1, typename T2, size_t Cols, size_t Rows>
-				inline auto operator==(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-					return fold(detail::op::logical_and(), true, detail::make_mat(zip_with(detail::op::equal(), lhs.as_vec(), rhs.as_vec())));
+				template <typename MatT1, typename MatT2, typename = enable_if_matrix_compatible_t<MatT1, MatT2>>
+				inline auto operator==(const MatT1 &lhs, const MatT2 &rhs) {
+					return fold(detail::op::logical_and(), true, zip_with(detail::op::equal(), lhs, rhs));
 				}
 
 				// mat not-equal
-				template <typename T1, typename T2, size_t Cols, size_t Rows>
-				inline auto operator!=(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
-					return fold(detail::op::logical_or(), false, detail::make_mat(zip_with(detail::op::nequal(), lhs.as_vec(), rhs.as_vec())));
+				template <typename MatT1, typename MatT2, typename = enable_if_matrix_compatible_t<MatT1, MatT2>>
+				inline auto operator!=(const MatT1 &lhs, const MatT2 &rhs) {
+					return fold(detail::op::logical_or(), false, zip_with(detail::op::nequal(), lhs, rhs));
 				}
 
 				// mat less-than
-				template <typename T1, typename T2, size_t Cols, size_t Rows>
-				inline auto operator<(const basic_mat<T1, Cols, Rows> &lhs, const basic_mat<T2, Cols, Rows> &rhs) {
+				template <typename MatT1, typename MatT2, typename = enable_if_matrix_compatible_t<MatT1, MatT2>>
+				inline auto operator<(const MatT1 &lhs, const MatT2 &rhs) {
 					return lhs.as_vec() < rhs.as_vec();
 				}
 
