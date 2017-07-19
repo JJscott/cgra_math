@@ -892,6 +892,14 @@ namespace cgra {
 		template <typename N1, typename N2>
 		using meta_sub_t = typename meta_sub<N1, N2>::type;
 
+		template <typename N>
+		struct meta_not {
+			using type = bool_constant<!N::value>;
+		};
+
+		template <typename N>
+		using meta_not_t = typename meta_not<N>::type;
+
 		template <typename N1, typename N2>
 		struct meta_and {
 			using type = bool_constant<(N1::value && N2::value)>;
@@ -1310,9 +1318,14 @@ namespace cgra {
 			>
 		{};
 
-		// single arg -> array only
+		// single arg -> array only, don't compete with default copy/move
 		template <typename CatT, typename ArgT>
-		struct can_have_implicit_magic_ctor<CatT, ArgT> : is_array_compatible<CatT, ArgT, false> {};
+		struct can_have_implicit_magic_ctor<CatT, ArgT> : 
+			meta_and_t<
+				is_array_compatible<CatT, ArgT, false>,
+				meta_not_t<std::is_same<CatT, std::decay_t<ArgT>>>
+			>
+		{};
 
 		template <typename CatT, typename ...ArgTs>
 		struct can_have_explicit_magic_ctor :
@@ -1323,9 +1336,14 @@ namespace cgra {
 			>
 		{};
 
-		// single arg -> array only
+		// single arg -> array only, don't compete with default copy/move
 		template <typename CatT, typename ArgT>
-		struct can_have_explicit_magic_ctor<CatT, ArgT> : is_element_compatible<CatT, ArgT, true> {};
+		struct can_have_explicit_magic_ctor<CatT, ArgT> :
+			meta_and_t<
+				is_element_compatible<CatT, ArgT, true>,
+				meta_not_t<std::is_same<CatT, std::decay_t<ArgT>>>
+			>
+		{};
 
 		template <typename CatT, typename ...ArgTs>
 		struct can_have_any_magic_ctor :
@@ -1917,7 +1935,8 @@ namespace cgra {
 				// vec_exarg_tup_t produces {vec_dead_ctor_tag} for vec0 to avoid conflict with the default ctor
 				// FIXME this needs to be implicit without breaking anything for >2 levels of braces
 				CGRA_CONSTEXPR_FUNCTION explicit basic_vec_ctor_proxy(ExArgTs ...ts) :
-					this_data_t{intellisense_constify(std::move(ts))...} {}
+					this_data_t{intellisense_constify(std::move(ts))...}
+				{}
 
 				// tagged ctor, used by cat
 				// this must use generic forwarding references to avoid being out-competed by the magic ctor
@@ -1962,10 +1981,11 @@ namespace cgra {
 					typename = void
 				>
 				CGRA_CONSTEXPR_FUNCTION explicit basic_vec_ctor_proxy(ArgT0 &&arg0, ArgTs &&...args) :
-					basic_vec_ctor_proxy{intellisense_constify(cat_impl<basic_vec_ctor_proxy>(std::forward<ArgT0>(arg0), std::forward<ArgTs>(args)...))} {}
+					basic_vec_ctor_proxy{intellisense_constify(cat_impl<basic_vec_ctor_proxy>(std::forward<ArgT0>(arg0), std::forward<ArgTs>(args)...))}
+				{}
 
 				// 1-arg magic ctor (implicit)
-				// this is separate from the general magic ctor to restrict a single args to only vectors
+				// this is separate from the general magic ctor to restrict single args to only vectors
 				// ie, it disables implicit conversion of scalars to vectors with the magic ctors
 				// this implicit version checks that the vector sizes are the same and the element types are implicitly convertible
 				template <
@@ -1975,7 +1995,8 @@ namespace cgra {
 					>
 				>
 				CGRA_CONSTEXPR_FUNCTION basic_vec_ctor_proxy(VecT &&v) :
-					basic_vec_ctor_proxy{intellisense_constify((cat_impl<basic_vec_ctor_proxy>(std::forward<VecT>(v))))} {}
+					basic_vec_ctor_proxy{intellisense_constify((cat_impl<basic_vec_ctor_proxy>(std::forward<VecT>(v))))}
+				{}
 
 				// 1-arg magic ctor (explicit)
 				// this explicit version also restricts single args to only vectors, but allows vectors of different sizes
@@ -1990,7 +2011,8 @@ namespace cgra {
 					typename = void
 				>
 				CGRA_CONSTEXPR_FUNCTION explicit basic_vec_ctor_proxy(VecT &&v) :
-					basic_vec_ctor_proxy{intellisense_constify(cat_impl<basic_vec_ctor_proxy>(std::forward<VecT>(v)))} {}
+					basic_vec_ctor_proxy{intellisense_constify(cat_impl<basic_vec_ctor_proxy>(std::forward<VecT>(v)))}
+				{}
 
 			};
 
