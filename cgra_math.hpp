@@ -1936,11 +1936,11 @@ namespace cgra {
 					typename ArgT0,
 					typename ...ArgTs,
 					typename = std::enable_if_t<
-					(sizeof...(ArgTs) >= 1)
-					&& can_have_implicit_magic_ctor<basic_vec_ctor_proxy, ArgT0, ArgTs...>::value
+						(sizeof...(ArgTs) >= 1)
+						&& can_have_implicit_magic_ctor<basic_vec_ctor_proxy, ArgT0, ArgTs...>::value
 					>
 				>
-					CGRA_CONSTEXPR_FUNCTION basic_vec_ctor_proxy(ArgT0 &&arg0, ArgTs &&...args) :
+				CGRA_CONSTEXPR_FUNCTION basic_vec_ctor_proxy(ArgT0 &&arg0, ArgTs &&...args) :
 					// note that cat_impl constructs a basic_vec_ctor_proxy, not a basic_vec
 					// the latter would result in recursively delegating to this ctor
 					// in correct operation, the (default) move ctor is delegated to
@@ -1954,14 +1954,14 @@ namespace cgra {
 					typename ArgT0,
 					typename ...ArgTs,
 					typename = std::enable_if_t<
-					(sizeof...(ArgTs) >= 1)
-					&& can_have_explicit_magic_ctor<basic_vec_ctor_proxy, ArgT0, ArgTs...>::value
-					// second condition needed to not conflict with implicit general magic ctor
-					&& !can_have_implicit_magic_ctor<basic_vec_ctor_proxy, ArgT0, ArgTs...>::value
+						(sizeof...(ArgTs) >= 1)
+						&& can_have_explicit_magic_ctor<basic_vec_ctor_proxy, ArgT0, ArgTs...>::value
+						// second condition needed to not conflict with implicit general magic ctor
+						&& !can_have_implicit_magic_ctor<basic_vec_ctor_proxy, ArgT0, ArgTs...>::value
 					>,
 					typename = void
 				>
-					CGRA_CONSTEXPR_FUNCTION explicit basic_vec_ctor_proxy(ArgT0 &&arg0, ArgTs &&...args) :
+				CGRA_CONSTEXPR_FUNCTION explicit basic_vec_ctor_proxy(ArgT0 &&arg0, ArgTs &&...args) :
 					basic_vec_ctor_proxy{intellisense_constify(cat_impl<basic_vec_ctor_proxy>(std::forward<ArgT0>(arg0), std::forward<ArgTs>(args)...))} {}
 
 				// 1-arg magic ctor (implicit)
@@ -1971,10 +1971,10 @@ namespace cgra {
 				template <
 					typename VecT,
 					typename = std::enable_if_t<
-					can_have_implicit_magic_ctor<basic_vec_ctor_proxy, VecT>::value
+						can_have_implicit_magic_ctor<basic_vec_ctor_proxy, VecT>::value
 					>
 				>
-					CGRA_CONSTEXPR_FUNCTION basic_vec_ctor_proxy(VecT &&v) :
+				CGRA_CONSTEXPR_FUNCTION basic_vec_ctor_proxy(VecT &&v) :
 					basic_vec_ctor_proxy{intellisense_constify((cat_impl<basic_vec_ctor_proxy>(std::forward<VecT>(v))))} {}
 
 				// 1-arg magic ctor (explicit)
@@ -1983,13 +1983,13 @@ namespace cgra {
 				template <
 					typename VecT,
 					typename = std::enable_if_t<
-					can_have_explicit_magic_ctor<basic_vec_ctor_proxy, VecT>::value
-					// second condition needed to not conflict with implicit 1-arg magic ctor
-					&& !can_have_implicit_magic_ctor<basic_vec_ctor_proxy, VecT>::value
+						can_have_explicit_magic_ctor<basic_vec_ctor_proxy, VecT>::value
+						// second condition needed to not conflict with implicit 1-arg magic ctor
+						&& !can_have_implicit_magic_ctor<basic_vec_ctor_proxy, VecT>::value
 					>,
 					typename = void
 				>
-					CGRA_CONSTEXPR_FUNCTION explicit basic_vec_ctor_proxy(VecT &&v) :
+				CGRA_CONSTEXPR_FUNCTION explicit basic_vec_ctor_proxy(VecT &&v) :
 					basic_vec_ctor_proxy{intellisense_constify(cat_impl<basic_vec_ctor_proxy>(std::forward<VecT>(v)))} {}
 
 			};
@@ -2028,8 +2028,8 @@ namespace cgra {
 		// define magic ctor
 		CGRA_DEFINE_MAGIC_CTOR(basic_quat, vec_t, T, 4)
 
-			// make inherited functions visible
-			using vec_t::operator[];
+		// make inherited functions visible
+		using vec_t::operator[];
 
 		// default ctor: the 'one' quaternion
 		CGRA_CONSTEXPR_FUNCTION basic_quat() : vec_t{0, 0, 0, 1} {}
@@ -2093,7 +2093,7 @@ namespace cgra {
 
 	template <typename T>
 	void swap(basic_quat<T> &lhs, basic_quat<T> &rhs) {
-		// TODO c++17: noexcept(std::is_nothrow_swappable<T>::value)
+		// TODO via vec
 		for (size_t i = 0; i < lhs.size; i++) {
 			using std::swap;
 			swap(lhs[i], rhs[i]);
@@ -2481,6 +2481,9 @@ namespace cgra {
 
 	}
 	
+
+
+
 	// 
 	// core functions
 	// 
