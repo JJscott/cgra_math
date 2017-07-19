@@ -2551,7 +2551,7 @@ namespace cgra {
 	};
 
 	// TODO description
-	template <typename TypeMap = type_to_vec, typename F, typename ...ArgTs>
+	template <typename TypeMap = type_to_vec, typename F, typename ...ArgTs, typename = detail::enable_if_array_t<ArgTs...>>
 	CGRA_CONSTEXPR_FUNCTION auto zip_with(F f, ArgTs &&...args) {
 		using value_t = std::decay_t<decltype(f(std::declval<detail::array_value_t<ArgTs>>()...))>;
 		using size = detail::array_min_size<ArgTs...>;
