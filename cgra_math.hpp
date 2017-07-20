@@ -36,6 +36,7 @@
 
 #include <algorithm>
 #include <array>
+#include <complex>
 #include <iomanip>
 #include <iostream>
 #include <limits>
@@ -748,7 +749,7 @@ namespace cgra {
 
 		namespace vectors {
 			template <typename T, size_t N> class repeat_vec;
-			template <typename T, size_t N, typename ArgTupT, typename BaseDataT> class basic_vec_ctor_proxy;
+			template <typename T, size_t N, bool RequireExactSize, typename ArgTupT, typename BaseDataT> class basic_vec_ctor_proxy;
 		}
 
 		template <typename T, size_t N>
@@ -757,8 +758,8 @@ namespace cgra {
 		template <typename T, size_t Cols, size_t Rows>
 		using repeat_vec_vec = repeat_vec<repeat_vec<T, Rows>, Cols>;
 
-		template <typename T, size_t N, typename ArgTupT, typename BaseDataT>
-		using basic_vec_ctor_proxy = vectors::basic_vec_ctor_proxy<T, N, ArgTupT, BaseDataT>;
+		template <typename T, size_t N, bool RequireExactSize, typename ArgTupT, typename BaseDataT>
+		using basic_vec_ctor_proxy = vectors::basic_vec_ctor_proxy<T, N, RequireExactSize, ArgTupT, BaseDataT>;
 
 		// note: msvc has some trouble with expansion of template (type) parameter packs that result in integers,
 		// so we use integral_constant-like types instead (especially for seq_repeat, make_index_sequence).
@@ -805,8 +806,8 @@ namespace cgra {
 		template <typename T, size_t N>
 		struct array_traits<repeat_vec<T, N>> : array_traits<basic_vec<T, N>> {};
 
-		template <typename T, size_t N, typename ExArgTupT, typename BaseDataT>
-		struct array_traits<basic_vec_ctor_proxy<T, N, ExArgTupT, BaseDataT>> : array_traits<basic_vec<T, N>> {};
+		template <typename T, size_t N, bool RequireExactSize, typename ExArgTupT, typename BaseDataT>
+		struct array_traits<basic_vec_ctor_proxy<T, N, RequireExactSize, ExArgTupT, BaseDataT>> : array_traits<basic_vec<T, N>> {};
 
 		template <typename T, size_t Cols, size_t Rows>
 		struct array_traits<basic_mat<T, Cols, Rows>> : array_traits<basic_vec<basic_vec<T, Rows>, Cols>> {
@@ -1327,20 +1328,32 @@ namespace cgra {
 			>
 		{};
 
-		template <typename CatT, typename ...ArgTs>
+		template <typename CatT, bool RequireExactSize, typename ...ArgTs>
 		struct can_have_explicit_magic_ctor :
 			meta_fold_t<
 				meta_quote2<meta_and>,
 				std::true_type,
-				std::tuple<is_cat_compatible<CatT, ArgTs, false>...>
+				std::tuple<
+					bool_constant<
+						!RequireExactSize
+						|| array_size<CatT>::value == cat_arg_vec_total_size<CatT, ArgTs...>::value
+					>,
+					is_cat_compatible<CatT, ArgTs, false>...
+				>
 			>
 		{};
 
 		// single arg -> array only, don't compete with default copy/move
-		template <typename CatT, typename ArgT>
-		struct can_have_explicit_magic_ctor<CatT, ArgT> :
+		template <typename CatT, bool RequireExactSize, typename ArgT>
+		struct can_have_explicit_magic_ctor<CatT, RequireExactSize, ArgT> :
 			meta_and_t<
-				is_element_compatible<CatT, ArgT, true>,
+				meta_and_t<
+					bool_constant<
+						!RequireExactSize
+						|| array_size<CatT>::value == array_size<ArgT>::value
+					>,
+					is_element_compatible<CatT, ArgT, true>
+				>,
 				meta_not_t<std::is_same<CatT, std::decay_t<ArgT>>>
 			>
 		{};
@@ -1348,7 +1361,7 @@ namespace cgra {
 		template <typename CatT, typename ...ArgTs>
 		struct can_have_any_magic_ctor :
 			meta_or_t<
-				can_have_explicit_magic_ctor<CatT, ArgTs...>,
+				can_have_explicit_magic_ctor<CatT, false, ArgTs...>,
 				can_have_implicit_magic_ctor<CatT, ArgTs...>
 			>
 		{};
@@ -1974,13 +1987,14 @@ namespace cgra {
 				}
 			};
 
-			template <typename T, size_t N, typename ArgTupT, typename BaseDataT>
+			template <typename T, size_t N, bool RequireExactSize, typename ArgTupT, typename BaseDataT>
 			class basic_vec_ctor_proxy {};
 
-			template <typename T, size_t N, typename ...ExArgTs, typename BaseDataT>
-			class basic_vec_ctor_proxy<T, N, std::tuple<ExArgTs...>, BaseDataT> : protected BaseDataT {
+			template <typename T, size_t N, bool RequireExactSize, typename ...ExArgTs, typename BaseDataT>
+			class basic_vec_ctor_proxy<T, N, RequireExactSize, std::tuple<ExArgTs...>, BaseDataT> : protected BaseDataT {
 			private:
 				using base_data_t = BaseDataT;
+				static constexpr bool require_exact_size = RequireExactSize;
 
 				static_assert(
 					std::is_nothrow_move_constructible<base_data_t>::value == std::is_nothrow_move_constructible<T>::value,
@@ -2054,7 +2068,7 @@ namespace cgra {
 					typename ...ArgTs,
 					typename = std::enable_if_t<
 						(sizeof...(ArgTs) >= 1)
-						&& can_have_explicit_magic_ctor<basic_vec_ctor_proxy, ArgT0, ArgTs...>::value
+						&& can_have_explicit_magic_ctor<basic_vec_ctor_proxy, require_exact_size, ArgT0, ArgTs...>::value
 						// second condition needed to not conflict with implicit general magic ctor
 						&& !can_have_implicit_magic_ctor<basic_vec_ctor_proxy, ArgT0, ArgTs...>::value
 					>,
@@ -2075,7 +2089,7 @@ namespace cgra {
 					>
 				>
 				CGRA_CONSTEXPR_FUNCTION basic_vec_ctor_proxy(VecT &&v) :
-					basic_vec_ctor_proxy{intellisense_constify((cat_impl<basic_vec_ctor_proxy>(std::forward<VecT>(v))))}
+					basic_vec_ctor_proxy{intellisense_constify(cat_impl<basic_vec_ctor_proxy>(std::forward<VecT>(v)))}
 				{}
 
 				// 1-arg magic ctor (explicit)
@@ -2084,7 +2098,7 @@ namespace cgra {
 				template <
 					typename VecT,
 					typename = std::enable_if_t<
-						can_have_explicit_magic_ctor<basic_vec_ctor_proxy, VecT>::value
+						can_have_explicit_magic_ctor<basic_vec_ctor_proxy, require_exact_size, VecT>::value
 						// second condition needed to not conflict with implicit 1-arg magic ctor
 						&& !can_have_implicit_magic_ctor<basic_vec_ctor_proxy, VecT>::value
 					>,
@@ -2231,9 +2245,9 @@ namespace cgra {
 
 			// size N vector of type T
 			template <typename T, size_t N>
-			class basic_vec : protected detail::basic_vec_ctor_proxy<T, N, detail::vec_exarg_tup_t<T, N>, detail::basic_vec_data<T, N>> {
+			class basic_vec : protected detail::basic_vec_ctor_proxy<T, N, false, detail::vec_exarg_tup_t<T, N>, detail::basic_vec_data<T, N>> {
 			private:
-				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, N, detail::vec_exarg_tup_t<T, N>, detail::basic_vec_data<T, N>>;
+				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, N, false, detail::vec_exarg_tup_t<T, N>, detail::basic_vec_data<T, N>>;
 
 			public:
 				using value_t = T;
@@ -2256,9 +2270,9 @@ namespace cgra {
 			};
 
 			template <typename T>
-			class basic_vec<T, 0> : protected detail::basic_vec_ctor_proxy<T, 0, detail::vec_exarg_tup_t<T, 0>, detail::basic_vec_data<T, 0>> {
+			class basic_vec<T, 0> : protected detail::basic_vec_ctor_proxy<T, 0, false, detail::vec_exarg_tup_t<T, 0>, detail::basic_vec_data<T, 0>> {
 			private:
-				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 0, detail::vec_exarg_tup_t<T, 0>, detail::basic_vec_data<T, 0>>;
+				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 0, false, detail::vec_exarg_tup_t<T, 0>, detail::basic_vec_data<T, 0>>;
 
 			public:
 				using value_t = T;
@@ -2280,9 +2294,9 @@ namespace cgra {
 			};
 
 			template <typename T>
-			class basic_vec<T, 1> : protected detail::basic_vec_ctor_proxy<T, 1, detail::vec_exarg_tup_t<T, 1>, detail::basic_vec_data<T, 1>> {
+			class basic_vec<T, 1> : protected detail::basic_vec_ctor_proxy<T, 1, false, detail::vec_exarg_tup_t<T, 1>, detail::basic_vec_data<T, 1>> {
 			private:
-				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 1, detail::vec_exarg_tup_t<T, 1>, detail::basic_vec_data<T, 1>>;
+				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 1, false, detail::vec_exarg_tup_t<T, 1>, detail::basic_vec_data<T, 1>>;
 
 			public:
 				using value_t = T;
@@ -2307,9 +2321,9 @@ namespace cgra {
 			};
 
 			template <typename T>
-			class basic_vec<T, 2> : protected detail::basic_vec_ctor_proxy<T, 2, detail::vec_exarg_tup_t<T, 2>, detail::basic_vec_data<T, 2>> {
+			class basic_vec<T, 2> : protected detail::basic_vec_ctor_proxy<T, 2, false, detail::vec_exarg_tup_t<T, 2>, detail::basic_vec_data<T, 2>> {
 			private:
-				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 2, detail::vec_exarg_tup_t<T, 2>, detail::basic_vec_data<T, 2>>;
+				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 2, false, detail::vec_exarg_tup_t<T, 2>, detail::basic_vec_data<T, 2>>;
 
 			public:
 				using value_t = T;
@@ -2339,9 +2353,9 @@ namespace cgra {
 			};
 
 			template <typename T>
-			class basic_vec<T, 3> : protected detail::basic_vec_ctor_proxy<T, 3, detail::vec_exarg_tup_t<T, 3>, detail::basic_vec_data<T, 3>> {
+			class basic_vec<T, 3> : protected detail::basic_vec_ctor_proxy<T, 3, false, detail::vec_exarg_tup_t<T, 3>, detail::basic_vec_data<T, 3>> {
 			private:
-				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 3, detail::vec_exarg_tup_t<T, 3>, detail::basic_vec_data<T, 3>>;
+				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 3, false, detail::vec_exarg_tup_t<T, 3>, detail::basic_vec_data<T, 3>>;
 
 			public:
 				using value_t = T;
@@ -2374,9 +2388,9 @@ namespace cgra {
 			};
 
 			template <typename T>
-			class basic_vec<T, 4> : protected detail::basic_vec_ctor_proxy<T, 4, detail::vec_exarg_tup_t<T, 4>, detail::basic_vec_data<T, 4>> {
+			class basic_vec<T, 4> : protected detail::basic_vec_ctor_proxy<T, 4, false, detail::vec_exarg_tup_t<T, 4>, detail::basic_vec_data<T, 4>> {
 			private:
-				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 4, detail::vec_exarg_tup_t<T, 4>, detail::basic_vec_data<T, 4>>;
+				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 4, false, detail::vec_exarg_tup_t<T, 4>, detail::basic_vec_data<T, 4>>;
 
 			public:
 				using value_t = T;

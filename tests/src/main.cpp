@@ -71,7 +71,7 @@ int main() {
 	cout << m6 << endl;
 	cout << (m5 * m6) << endl;
 
-	constexpr quat q1;
+	constexpr quat q1{v5};
 
 	cout << q1 << endl;
 
