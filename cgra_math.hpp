@@ -748,7 +748,7 @@ namespace cgra {
 
 		namespace vectors {
 			template <typename T, size_t N> class repeat_vec;
-			template <typename T, size_t N, typename ArgTupT> class basic_vec_ctor_proxy;
+			template <typename T, size_t N, typename ArgTupT, typename BaseDataT> class basic_vec_ctor_proxy;
 		}
 
 		template <typename T, size_t N>
@@ -757,8 +757,8 @@ namespace cgra {
 		template <typename T, size_t Cols, size_t Rows>
 		using repeat_vec_vec = repeat_vec<repeat_vec<T, Rows>, Cols>;
 
-		template <typename T, size_t N, typename ArgTupT>
-		using basic_vec_ctor_proxy = vectors::basic_vec_ctor_proxy<T, N, ArgTupT>;
+		template <typename T, size_t N, typename ArgTupT, typename BaseDataT>
+		using basic_vec_ctor_proxy = vectors::basic_vec_ctor_proxy<T, N, ArgTupT, BaseDataT>;
 
 		// note: msvc has some trouble with expansion of template (type) parameter packs that result in integers,
 		// so we use integral_constant-like types instead (especially for seq_repeat, make_index_sequence).
@@ -805,8 +805,8 @@ namespace cgra {
 		template <typename T, size_t N>
 		struct array_traits<repeat_vec<T, N>> : array_traits<basic_vec<T, N>> {};
 
-		template <typename T, size_t N, typename ExArgTupT>
-		struct array_traits<basic_vec_ctor_proxy<T, N, ExArgTupT>> : array_traits<basic_vec<T, N>> {};
+		template <typename T, size_t N, typename ExArgTupT, typename BaseDataT>
+		struct array_traits<basic_vec_ctor_proxy<T, N, ExArgTupT, BaseDataT>> : array_traits<basic_vec<T, N>> {};
 
 		template <typename T, size_t Cols, size_t Rows>
 		struct array_traits<basic_mat<T, Cols, Rows>> : array_traits<basic_vec<basic_vec<T, Rows>, Cols>> {
@@ -1407,16 +1407,86 @@ namespace cgra {
 			}
 		};
 
+		// base type for quaternion data storage
+		template <typename T, typename = void>
+		class basic_quat_data {
+		public:
+			T w, x, y, z;
+
+			CGRA_CONSTEXPR_FUNCTION explicit basic_quat_data(T w_, T x_, T y_, T z_) :
+				w{std::move(w_)}, x{std::move(x_)}, y{std::move(y_)}, z{std::move(z_)} {}
+
+			const T & operator[](size_t i) const {
+				assert(i < 4);
+				return *(&w + i);
+			}
+
+			T & operator[](size_t i) {
+				assert(i < 4);
+				return *(&w + i);
+			}
+
+			CGRA_CONSTEXPR_FUNCTION const T * data() const {
+				return &w;
+			}
+
+			CGRA_CONSTEXPR_FUNCTION T * data() {
+				return &w;
+			}
+		};
+
+		template <typename T>
+		class basic_quat_data<T, std::enable_if_t<std::is_trivially_destructible<T>::value>> {
+		public:
+			union {
+				simple_array<T, 4> m_data;
+				struct { T w; T x; T y; T z; };
+			};
+
+			CGRA_CONSTEXPR_FUNCTION basic_quat_data() : m_data{} {}
+
+			CGRA_CONSTEXPR_FUNCTION basic_quat_data(const basic_quat_data &other) : m_data{other.m_data} {}
+
+			CGRA_CONSTEXPR_FUNCTION basic_quat_data(basic_quat_data &&other) noexcept(std::is_nothrow_move_constructible<T>::value) :
+				m_data{std::move(other.m_data)} {}
+
+			CGRA_CONSTEXPR_FUNCTION basic_quat_data & operator=(const basic_quat_data &other) {
+				m_data = other.m_data;
+				return *this;
+			}
+
+			CGRA_CONSTEXPR_FUNCTION basic_quat_data & operator=(basic_quat_data &&other) noexcept(std::is_nothrow_move_assignable<T>::value) {
+				m_data = std::move(other.m_data);
+				return *this;
+			}
+
+			template <typename ...ArgTs, typename = std::enable_if_t<can_have_element_ctor<T, ArgTs...>::value>>
+			CGRA_CONSTEXPR_FUNCTION basic_quat_data(ArgTs &&...args) : m_data{intellisense_constify(std::forward<ArgTs>(args))...} {}
+
+			CGRA_CONSTEXPR_FUNCTION T & operator[](size_t i) {
+				assert(i < 4);
+				return m_data[i];
+			}
+
+			CGRA_CONSTEXPR_FUNCTION const T & operator[](size_t i) const {
+				assert(i < 4);
+				return m_data[i];
+			}
+
+			CGRA_CONSTEXPR_FUNCTION T * data() { return &m_data[0]; }
+
+			CGRA_CONSTEXPR_FUNCTION const T * data() const { return &m_data[0]; }
+		};
+
 		// base type for vector data storage
 		// specializations must be default constructible, copyable, movable and destructible;
 		// this means care must be taken to handle unions correctly.
 		template <typename T, size_t N, typename = void>
 		class basic_vec_data {
-		protected:
+		public:
 			// not using std::array for better constexpr behaviour
 			simple_array<T, N> m_data;
 
-		public:
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data() : m_data{} {}
 
 			template <typename ...ArgTs, typename = std::enable_if_t<can_have_element_ctor<T, ArgTs...>::value>>
@@ -1686,7 +1756,7 @@ namespace cgra {
 
 		template <typename T>
 		class basic_vec_data<T, 1, std::enable_if_t<std::is_trivially_destructible<T>::value>> {
-		protected:
+		public:
 			union {
 				simple_array<T, 1> m_data;
 				struct { T x; };
@@ -1694,7 +1764,6 @@ namespace cgra {
 				struct { T s; };
 			};
 
-		public:
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data() : m_data{} {}
 
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data(const basic_vec_data &other) : m_data{other.m_data} {}
@@ -1732,7 +1801,7 @@ namespace cgra {
 
 		template <typename T>
 		class basic_vec_data<T, 2, std::enable_if_t<std::is_trivially_destructible<T>::value>> {
-		protected:
+		public:
 			union {
 				simple_array<T, 2> m_data;
 				struct { T x; T y; };
@@ -1740,7 +1809,6 @@ namespace cgra {
 				struct { T s; T t; };
 			};
 
-		public:
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data() : m_data{} {}
 
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data(const basic_vec_data &other) : m_data{other.m_data} {}
@@ -1778,7 +1846,7 @@ namespace cgra {
 
 		template <typename T>
 		class basic_vec_data<T, 3, std::enable_if_t<std::is_trivially_destructible<T>::value>> {
-		protected:
+		public:
 			union {
 				simple_array<T, 3> m_data;
 				struct { T x; T y; T z; };
@@ -1786,7 +1854,6 @@ namespace cgra {
 				struct { T s; T t; T p; };
 			};
 
-		public:
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data() : m_data{} {}
 
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data(const basic_vec_data &other) : m_data{other.m_data} {}
@@ -1824,7 +1891,7 @@ namespace cgra {
 
 		template <typename T>
 		class basic_vec_data<T, 4, std::enable_if_t<std::is_trivially_destructible<T>::value>> {
-		protected:
+		public:
 			union {
 				simple_array<T, 4> m_data;
 				struct { T x; T y; T z; T w; };
@@ -1832,7 +1899,6 @@ namespace cgra {
 				struct { T s; T t; T p; T q; };
 			};
 
-		public:
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data() : m_data{} {}
 
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data(const basic_vec_data &other) : m_data{other.m_data} {}
@@ -1908,21 +1974,21 @@ namespace cgra {
 				}
 			};
 
-			template <typename T, size_t N, typename ArgTupT>
+			template <typename T, size_t N, typename ArgTupT, typename BaseDataT>
 			class basic_vec_ctor_proxy {};
 
-			template <typename T, size_t N, typename ...ExArgTs>
-			class basic_vec_ctor_proxy<T, N, std::tuple<ExArgTs...>> : protected basic_vec_data<T, N> {
+			template <typename T, size_t N, typename ...ExArgTs, typename BaseDataT>
+			class basic_vec_ctor_proxy<T, N, std::tuple<ExArgTs...>, BaseDataT> : protected BaseDataT {
 			private:
-				using this_data_t = basic_vec_data<T, N>;
+				using base_data_t = BaseDataT;
 
 				static_assert(
-					std::is_nothrow_move_constructible<this_data_t>::value == std::is_nothrow_move_constructible<T>::value,
+					std::is_nothrow_move_constructible<base_data_t>::value == std::is_nothrow_move_constructible<T>::value,
 					"basic_vec_data should be as nothrow-move-constructible as its elements"
 				);
 
 				static_assert(
-					std::is_nothrow_move_assignable<this_data_t>::value == std::is_nothrow_move_assignable<T>::value,
+					std::is_nothrow_move_assignable<base_data_t>::value == std::is_nothrow_move_assignable<T>::value,
 					"basic_vec_data should be as nothrow-move-assignable as its elements"
 				);
 
@@ -1930,14 +1996,14 @@ namespace cgra {
 				using value_t = T;
 				static constexpr size_t size = N;
 
-				using this_data_t::operator[];
-				using this_data_t::data;
+				using base_data_t::operator[];
+				using base_data_t::data;
 
 				// default ctor
 				// explictly defining this to delegate to the superclass prevents MSVC in VS2015
 				// from silently producing bad code in a certain case, and instead causes an ICE
 				// the bit of our code that caused this (in the general magic ctor) is now fixed
-				CGRA_CONSTEXPR_FUNCTION basic_vec_ctor_proxy() : this_data_t{} {}
+				CGRA_CONSTEXPR_FUNCTION basic_vec_ctor_proxy() : base_data_t{} {}
 
 				// explictly default the copy and move ops to ensure the base class supplies them
 				CGRA_CONSTEXPR_FUNCTION basic_vec_ctor_proxy(const basic_vec_ctor_proxy &other) = default;
@@ -1949,14 +2015,14 @@ namespace cgra {
 				// vec_exarg_tup_t produces {vec_dead_ctor_tag} for vec0 to avoid conflict with the default ctor
 				// FIXME this needs to be implicit without breaking anything for >2 levels of braces
 				CGRA_CONSTEXPR_FUNCTION explicit basic_vec_ctor_proxy(ExArgTs ...ts) :
-					this_data_t{intellisense_constify(std::move(ts))...}
+					base_data_t{intellisense_constify(std::move(ts))...}
 				{}
 
 				// tagged ctor, used by cat
 				// this must use generic forwarding references to avoid being out-competed by the magic ctor
 				template <typename ...ArgTs>
 				CGRA_CONSTEXPR_FUNCTION explicit basic_vec_ctor_proxy(vec_element_ctor_tag, ArgTs &&...args) :
-					this_data_t{intellisense_constify(static_cast<T>(std::forward<ArgTs>(args)))...}
+					base_data_t{intellisense_constify(static_cast<T>(std::forward<ArgTs>(args)))...}
 				{}
 
 				// general magic ctor (implicit)
@@ -2165,9 +2231,9 @@ namespace cgra {
 
 			// size N vector of type T
 			template <typename T, size_t N>
-			class basic_vec : protected detail::basic_vec_ctor_proxy<T, N, detail::vec_exarg_tup_t<T, N>> {
+			class basic_vec : protected detail::basic_vec_ctor_proxy<T, N, detail::vec_exarg_tup_t<T, N>, detail::basic_vec_data<T, N>> {
 			private:
-				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, N, detail::vec_exarg_tup_t<T, N>>;
+				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, N, detail::vec_exarg_tup_t<T, N>, detail::basic_vec_data<T, N>>;
 
 			public:
 				using value_t = T;
@@ -2190,9 +2256,9 @@ namespace cgra {
 			};
 
 			template <typename T>
-			class basic_vec<T, 0> : protected detail::basic_vec_ctor_proxy<T, 0, detail::vec_exarg_tup_t<T, 0>> {
+			class basic_vec<T, 0> : protected detail::basic_vec_ctor_proxy<T, 0, detail::vec_exarg_tup_t<T, 0>, detail::basic_vec_data<T, 0>> {
 			private:
-				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 0, detail::vec_exarg_tup_t<T, 0>>;
+				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 0, detail::vec_exarg_tup_t<T, 0>, detail::basic_vec_data<T, 0>>;
 
 			public:
 				using value_t = T;
@@ -2214,9 +2280,9 @@ namespace cgra {
 			};
 
 			template <typename T>
-			class basic_vec<T, 1> : protected detail::basic_vec_ctor_proxy<T, 1, detail::vec_exarg_tup_t<T, 1>> {
+			class basic_vec<T, 1> : protected detail::basic_vec_ctor_proxy<T, 1, detail::vec_exarg_tup_t<T, 1>, detail::basic_vec_data<T, 1>> {
 			private:
-				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 1, detail::vec_exarg_tup_t<T, 1>>;
+				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 1, detail::vec_exarg_tup_t<T, 1>, detail::basic_vec_data<T, 1>>;
 
 			public:
 				using value_t = T;
@@ -2241,9 +2307,9 @@ namespace cgra {
 			};
 
 			template <typename T>
-			class basic_vec<T, 2> : protected detail::basic_vec_ctor_proxy<T, 2, detail::vec_exarg_tup_t<T, 2>> {
+			class basic_vec<T, 2> : protected detail::basic_vec_ctor_proxy<T, 2, detail::vec_exarg_tup_t<T, 2>, detail::basic_vec_data<T, 2>> {
 			private:
-				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 2, detail::vec_exarg_tup_t<T, 2>>;
+				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 2, detail::vec_exarg_tup_t<T, 2>, detail::basic_vec_data<T, 2>>;
 
 			public:
 				using value_t = T;
@@ -2273,9 +2339,9 @@ namespace cgra {
 			};
 
 			template <typename T>
-			class basic_vec<T, 3> : protected detail::basic_vec_ctor_proxy<T, 3, detail::vec_exarg_tup_t<T, 3>> {
+			class basic_vec<T, 3> : protected detail::basic_vec_ctor_proxy<T, 3, detail::vec_exarg_tup_t<T, 3>, detail::basic_vec_data<T, 3>> {
 			private:
-				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 3, detail::vec_exarg_tup_t<T, 3>>;
+				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 3, detail::vec_exarg_tup_t<T, 3>, detail::basic_vec_data<T, 3>>;
 
 			public:
 				using value_t = T;
@@ -2308,9 +2374,9 @@ namespace cgra {
 			};
 
 			template <typename T>
-			class basic_vec<T, 4> : protected detail::basic_vec_ctor_proxy<T, 4, detail::vec_exarg_tup_t<T, 4>> {
+			class basic_vec<T, 4> : protected detail::basic_vec_ctor_proxy<T, 4, detail::vec_exarg_tup_t<T, 4>, detail::basic_vec_data<T, 4>> {
 			private:
-				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 4, detail::vec_exarg_tup_t<T, 4>>;
+				using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 4, detail::vec_exarg_tup_t<T, 4>, detail::basic_vec_data<T, 4>>;
 
 			public:
 				using value_t = T;
