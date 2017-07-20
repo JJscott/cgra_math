@@ -1395,7 +1395,7 @@ namespace cgra {
 		using vec_exarg_tup_t = typename vec_exarg_tup<T, N>::type;
 
 		template <typename T, size_t N>
-		struct basic_array {
+		struct simple_array {
 			T data[N];
 
 			CGRA_CONSTEXPR_FUNCTION const T & operator[](size_t i) const {
@@ -1414,7 +1414,7 @@ namespace cgra {
 		class basic_vec_data {
 		protected:
 			// not using std::array for better constexpr behaviour
-			basic_array<T, N> m_data;
+			simple_array<T, N> m_data;
 
 		public:
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data() : m_data{} {}
@@ -1462,7 +1462,7 @@ namespace cgra {
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data(const basic_vec_data &other) :
 				x{other.x} {}
 
-			CGRA_CONSTEXPR_FUNCTION basic_vec_data(basic_vec_data &&other) :
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(basic_vec_data &&other) noexcept(std::is_nothrow_move_constructible<T>::value) :
 				x{std::move(other.x)} {}
 
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(const basic_vec_data &other) {
@@ -1470,7 +1470,7 @@ namespace cgra {
 				return *this;
 			}
 
-			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(basic_vec_data &&other) {
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(basic_vec_data &&other) noexcept(std::is_nothrow_move_assignable<T>::value) {
 				x = std::move(other.x);
 				return *this;
 			}
@@ -1512,7 +1512,7 @@ namespace cgra {
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data(const basic_vec_data &other) :
 				x{other.x}, y{other.y} {}
 
-			CGRA_CONSTEXPR_FUNCTION basic_vec_data(basic_vec_data &&other) :
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(basic_vec_data &&other) noexcept(std::is_nothrow_move_constructible<T>::value) :
 				x{std::move(other.x)}, y{std::move(other.y)} {}
 
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(const basic_vec_data &other) {
@@ -1521,7 +1521,7 @@ namespace cgra {
 				return *this;
 			}
 
-			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(basic_vec_data &&other) {
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(basic_vec_data &&other) noexcept(std::is_nothrow_move_assignable<T>::value) {
 				x = std::move(other.x);
 				y = std::move(other.y);
 				return *this;
@@ -1566,7 +1566,7 @@ namespace cgra {
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data(const basic_vec_data &other) :
 				x{other.x}, y{other.y}, z{other.z} {}
 
-			CGRA_CONSTEXPR_FUNCTION basic_vec_data(basic_vec_data &&other) :
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(basic_vec_data &&other) noexcept(std::is_nothrow_move_constructible<T>::value) :
 				x{std::move(other.x)}, y{std::move(other.y)}, z{std::move(other.z)} {}
 
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(const basic_vec_data &other) {
@@ -1576,7 +1576,7 @@ namespace cgra {
 				return *this;
 			}
 
-			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(basic_vec_data &&other) {
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(basic_vec_data &&other) noexcept(std::is_nothrow_move_assignable<T>::value) {
 				x = std::move(other.x);
 				y = std::move(other.y);
 				z = std::move(other.z);
@@ -1624,7 +1624,7 @@ namespace cgra {
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data(const basic_vec_data &other) :
 				x{other.x}, y{other.y}, z{other.z}, w{other.w} {}
 
-			CGRA_CONSTEXPR_FUNCTION basic_vec_data(basic_vec_data &&other) :
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(basic_vec_data &&other) noexcept(std::is_nothrow_move_constructible<T>::value) :
 				x{std::move(other.x)}, y{std::move(other.y)}, z{std::move(other.z)}, w{std::move(other.w)} {}
 
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(const basic_vec_data &other) {
@@ -1635,7 +1635,7 @@ namespace cgra {
 				return *this;
 			}
 
-			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(basic_vec_data &&other) {
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(basic_vec_data &&other) noexcept(std::is_nothrow_move_assignable<T>::value) {
 				x = std::move(other.x);
 				y = std::move(other.y);
 				z = std::move(other.z);
@@ -1688,7 +1688,7 @@ namespace cgra {
 		class basic_vec_data<T, 1, std::enable_if_t<std::is_trivially_destructible<T>::value>> {
 		protected:
 			union {
-				basic_array<T, 1> m_data;
+				simple_array<T, 1> m_data;
 				struct { T x; };
 				struct { T r; };
 				struct { T s; };
@@ -1699,14 +1699,15 @@ namespace cgra {
 
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data(const basic_vec_data &other) : m_data{other.m_data} {}
 
-			CGRA_CONSTEXPR_FUNCTION basic_vec_data(basic_vec_data &&other) : m_data{std::move(other.m_data)} {}
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(basic_vec_data &&other) noexcept(std::is_nothrow_move_constructible<T>::value) :
+				m_data{std::move(other.m_data)} {}
 
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(const basic_vec_data &other) {
 				m_data = other.m_data;
 				return *this;
 			}
 
-			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(basic_vec_data &&other) {
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(basic_vec_data &&other) noexcept(std::is_nothrow_move_assignable<T>::value) {
 				m_data = std::move(other.m_data);
 				return *this;
 			}
@@ -1733,7 +1734,7 @@ namespace cgra {
 		class basic_vec_data<T, 2, std::enable_if_t<std::is_trivially_destructible<T>::value>> {
 		protected:
 			union {
-				basic_array<T, 2> m_data;
+				simple_array<T, 2> m_data;
 				struct { T x; T y; };
 				struct { T r; T g; };
 				struct { T s; T t; };
@@ -1744,14 +1745,15 @@ namespace cgra {
 
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data(const basic_vec_data &other) : m_data{other.m_data} {}
 
-			CGRA_CONSTEXPR_FUNCTION basic_vec_data(basic_vec_data &&other) : m_data{std::move(other.m_data)} {}
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(basic_vec_data &&other) noexcept(std::is_nothrow_move_constructible<T>::value) :
+				m_data{std::move(other.m_data)} {}
 
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(const basic_vec_data &other) {
 				m_data = other.m_data;
 				return *this;
 			}
 
-			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(basic_vec_data &&other) {
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(basic_vec_data &&other) noexcept(std::is_nothrow_move_assignable<T>::value) {
 				m_data = std::move(other.m_data);
 				return *this;
 			}
@@ -1778,7 +1780,7 @@ namespace cgra {
 		class basic_vec_data<T, 3, std::enable_if_t<std::is_trivially_destructible<T>::value>> {
 		protected:
 			union {
-				basic_array<T, 3> m_data;
+				simple_array<T, 3> m_data;
 				struct { T x; T y; T z; };
 				struct { T r; T g; T b; };
 				struct { T s; T t; T p; };
@@ -1789,14 +1791,15 @@ namespace cgra {
 
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data(const basic_vec_data &other) : m_data{other.m_data} {}
 
-			CGRA_CONSTEXPR_FUNCTION basic_vec_data(basic_vec_data &&other) : m_data{std::move(other.m_data)} {}
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(basic_vec_data &&other) noexcept(std::is_nothrow_move_constructible<T>::value) :
+				m_data{std::move(other.m_data)} {}
 
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(const basic_vec_data &other) {
 				m_data = other.m_data;
 				return *this;
 			}
 
-			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(basic_vec_data &&other) {
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(basic_vec_data &&other) noexcept(std::is_nothrow_move_assignable<T>::value) {
 				m_data = std::move(other.m_data);
 				return *this;
 			}
@@ -1823,7 +1826,7 @@ namespace cgra {
 		class basic_vec_data<T, 4, std::enable_if_t<std::is_trivially_destructible<T>::value>> {
 		protected:
 			union {
-				basic_array<T, 4> m_data;
+				simple_array<T, 4> m_data;
 				struct { T x; T y; T z; T w; };
 				struct { T r; T g; T b; T a; };
 				struct { T s; T t; T p; T q; };
@@ -1834,14 +1837,15 @@ namespace cgra {
 
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data(const basic_vec_data &other) : m_data{other.m_data} {}
 
-			CGRA_CONSTEXPR_FUNCTION basic_vec_data(basic_vec_data &&other) : m_data{std::move(other.m_data)} {}
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data(basic_vec_data &&other) noexcept(std::is_nothrow_move_constructible<T>::value) :
+				m_data{std::move(other.m_data)} {}
 
 			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(const basic_vec_data &other) {
 				m_data = other.m_data;
 				return *this;
 			}
 
-			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(basic_vec_data &&other) {
+			CGRA_CONSTEXPR_FUNCTION basic_vec_data & operator=(basic_vec_data &&other) noexcept(std::is_nothrow_move_assignable<T>::value) {
 				m_data = std::move(other.m_data);
 				return *this;
 			}
@@ -1911,6 +1915,16 @@ namespace cgra {
 			class basic_vec_ctor_proxy<T, N, std::tuple<ExArgTs...>> : protected basic_vec_data<T, N> {
 			private:
 				using this_data_t = basic_vec_data<T, N>;
+
+				static_assert(
+					std::is_nothrow_move_constructible<this_data_t>::value == std::is_nothrow_move_constructible<T>::value,
+					"basic_vec_data should be as nothrow-move-constructible as its elements"
+				);
+
+				static_assert(
+					std::is_nothrow_move_assignable<this_data_t>::value == std::is_nothrow_move_assignable<T>::value,
+					"basic_vec_data should be as nothrow-move-assignable as its elements"
+				);
 
 			public:
 				using value_t = T;
