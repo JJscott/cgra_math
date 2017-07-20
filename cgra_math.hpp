@@ -2128,30 +2128,29 @@ namespace cgra {
 
 	// quaternion of type T
 	template <typename T>
-	class basic_quat : protected basic_vec<T, 4> {
+	class basic_quat : protected detail::basic_vec_ctor_proxy<T, 4, true, detail::vec_exarg_tup_t<T, 4>, detail::basic_quat_data<T>> {
 	private:
-		using vec_t = basic_vec<T, 4>;
+		// not basic_vec anymore, so we don't inherit a scalar broadcast ctor and therefore don't need to delete it
+		using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 4, true, detail::vec_exarg_tup_t<T, 4>, detail::basic_quat_data<T>>;
 
 	public:
 		using value_t = T;
 		static constexpr size_t size = 4;
 
-		using basic_vec<T, 4>::x;
-		using basic_vec<T, 4>::y;
-		using basic_vec<T, 4>::z;
-		using basic_vec<T, 4>::w;
+		// TODO are these actually good names for the quaternion members?
+		using detail::basic_quat_data<T>::w;
+		using detail::basic_quat_data<T>::x;
+		using detail::basic_quat_data<T>::y;
+		using detail::basic_quat_data<T>::z;
 
 		// define magic ctor
-		CGRA_DEFINE_MAGIC_CTOR(basic_quat, vec_t, T, 4)
+		CGRA_DEFINE_MAGIC_CTOR(basic_quat, ctor_proxy_t, T, 4)
 
 		// make inherited functions visible
-		using vec_t::operator[];
+		using ctor_proxy_t::operator[];
 
 		// default ctor: the 'one' quaternion
-		CGRA_CONSTEXPR_FUNCTION basic_quat() : vec_t{0, 0, 0, 1} {}
-
-		// delete the inherited scalar broadcast ctor
-		CGRA_CONSTEXPR_FUNCTION explicit basic_quat(const T &) = delete;
+		CGRA_CONSTEXPR_FUNCTION basic_quat() : ctor_proxy_t{0, 0, 0, 1} {}
 
 		// basic_mat<U, 3, 3> converter
 		template <typename U>
@@ -2201,9 +2200,9 @@ namespace cgra {
 			return m;
 		}
 
-		CGRA_CONSTEXPR_FUNCTION vec_t & as_vec() { return *this; }
+		CGRA_CONSTEXPR_FUNCTION ctor_proxy_t & as_vec() { return *this; }
 
-		CGRA_CONSTEXPR_FUNCTION const vec_t & as_vec() const { return *this; }
+		CGRA_CONSTEXPR_FUNCTION const ctor_proxy_t & as_vec() const { return *this; }
 
 	};
 
@@ -2218,7 +2217,7 @@ namespace cgra {
 
 	template <typename T>
 	inline std::ostream & operator<<(std::ostream &out, const basic_quat<T> &v) {
-		return out << '(' << v.x << "i + " << v.y << "j + " << v.z << "k + " << v.w << ')';
+		return out << '(' << v.w << " + " << v.x << "i + " << v.y << "j + " << v.z << "k)";
 	}
 
 	template <typename T>

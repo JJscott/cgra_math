@@ -71,9 +71,10 @@ int main() {
 	cout << m6 << endl;
 	cout << (m5 * m6) << endl;
 
-	constexpr quat q1{v5};
+	constexpr quat q1{vec4(v5)};
 
 	cout << q1 << endl;
+	cout << q1[0] << endl;
 
 	basic_vec<foobar, 2> fb;
 
