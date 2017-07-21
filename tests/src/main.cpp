@@ -75,6 +75,7 @@ int main() {
 
 	cout << q1 << endl;
 	cout << q1[0] << endl;
+	cout << (axisangle<quat>(vec3(0, 0, 1), pi / 2) * vec3(1, 0, 0)) << endl;
 
 	basic_vec<foobar, 2> fb;
 

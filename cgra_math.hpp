@@ -1338,7 +1338,7 @@ namespace cgra {
 						!RequireExactSize
 						|| array_size<CatT>::value == cat_arg_vec_total_size<CatT, ArgTs...>::value
 					>,
-					is_cat_compatible<CatT, ArgTs, false>...
+					is_cat_compatible<CatT, ArgTs, true>...
 				>
 			>
 		{};
@@ -1446,49 +1446,6 @@ namespace cgra {
 			CGRA_CONSTEXPR_FUNCTION T * data() {
 				return &w;
 			}
-		};
-
-		template <typename T>
-		class basic_quat_data<T, std::enable_if_t<std::is_trivially_destructible<T>::value>> {
-		public:
-			union {
-				simple_array<T, 4> m_data;
-				struct { T w; T x; T y; T z; };
-			};
-
-			CGRA_CONSTEXPR_FUNCTION basic_quat_data() : m_data{} {}
-
-			CGRA_CONSTEXPR_FUNCTION basic_quat_data(const basic_quat_data &other) : m_data{other.m_data} {}
-
-			CGRA_CONSTEXPR_FUNCTION basic_quat_data(basic_quat_data &&other) noexcept(std::is_nothrow_move_constructible<T>::value) :
-				m_data{std::move(other.m_data)} {}
-
-			CGRA_CONSTEXPR_FUNCTION basic_quat_data & operator=(const basic_quat_data &other) {
-				m_data = other.m_data;
-				return *this;
-			}
-
-			CGRA_CONSTEXPR_FUNCTION basic_quat_data & operator=(basic_quat_data &&other) noexcept(std::is_nothrow_move_assignable<T>::value) {
-				m_data = std::move(other.m_data);
-				return *this;
-			}
-
-			template <typename ...ArgTs, typename = std::enable_if_t<can_have_element_ctor<T, ArgTs...>::value>>
-			CGRA_CONSTEXPR_FUNCTION basic_quat_data(ArgTs &&...args) : m_data{intellisense_constify(std::forward<ArgTs>(args))...} {}
-
-			CGRA_CONSTEXPR_FUNCTION T & operator[](size_t i) {
-				assert(i < 4);
-				return m_data[i];
-			}
-
-			CGRA_CONSTEXPR_FUNCTION const T & operator[](size_t i) const {
-				assert(i < 4);
-				return m_data[i];
-			}
-
-			CGRA_CONSTEXPR_FUNCTION T * data() { return &m_data[0]; }
-
-			CGRA_CONSTEXPR_FUNCTION const T * data() const { return &m_data[0]; }
 		};
 
 		// base type for vector data storage
@@ -1768,6 +1725,49 @@ namespace cgra {
 #endif
 
 		template <typename T>
+		class basic_quat_data<T, std::enable_if_t<std::is_trivially_destructible<T>::value>> {
+		public:
+			union {
+				simple_array<T, 4> m_data;
+				struct { T w; T x; T y; T z; };
+			};
+
+			CGRA_CONSTEXPR_FUNCTION basic_quat_data() : m_data{} {}
+
+			CGRA_CONSTEXPR_FUNCTION basic_quat_data(const basic_quat_data &other) : m_data{other.m_data} {}
+
+			CGRA_CONSTEXPR_FUNCTION basic_quat_data(basic_quat_data &&other) noexcept(std::is_nothrow_move_constructible<T>::value) :
+				m_data{std::move(other.m_data)} {}
+
+			CGRA_CONSTEXPR_FUNCTION basic_quat_data & operator=(const basic_quat_data &other) {
+				m_data = other.m_data;
+				return *this;
+			}
+
+			CGRA_CONSTEXPR_FUNCTION basic_quat_data & operator=(basic_quat_data &&other) noexcept(std::is_nothrow_move_assignable<T>::value) {
+				m_data = std::move(other.m_data);
+				return *this;
+			}
+
+			template <typename ...ArgTs, typename = std::enable_if_t<can_have_element_ctor<T, ArgTs...>::value>>
+			CGRA_CONSTEXPR_FUNCTION basic_quat_data(ArgTs &&...args) : m_data{intellisense_constify(std::forward<ArgTs>(args))...} {}
+
+			CGRA_CONSTEXPR_FUNCTION T & operator[](size_t i) {
+				assert(i < 4);
+				return m_data[i];
+			}
+
+			CGRA_CONSTEXPR_FUNCTION const T & operator[](size_t i) const {
+				assert(i < 4);
+				return m_data[i];
+			}
+
+			CGRA_CONSTEXPR_FUNCTION T * data() { return &m_data[0]; }
+
+			CGRA_CONSTEXPR_FUNCTION const T * data() const { return &m_data[0]; }
+		};
+
+		template <typename T>
 		class basic_vec_data<T, 1, std::enable_if_t<std::is_trivially_destructible<T>::value>> {
 		public:
 			union {
@@ -1994,7 +1994,6 @@ namespace cgra {
 			class basic_vec_ctor_proxy<T, N, RequireExactSize, std::tuple<ExArgTs...>, BaseDataT> : protected BaseDataT {
 			private:
 				using base_data_t = BaseDataT;
-				static constexpr bool require_exact_size = RequireExactSize;
 
 				static_assert(
 					std::is_nothrow_move_constructible<base_data_t>::value == std::is_nothrow_move_constructible<T>::value,
@@ -2009,6 +2008,9 @@ namespace cgra {
 			public:
 				using value_t = T;
 				static constexpr size_t size = N;
+
+				// MSVC VS2017: this has to be public (compiler bug?)
+				static constexpr bool require_exact_size = RequireExactSize;
 
 				using base_data_t::operator[];
 				using base_data_t::data;
@@ -2117,6 +2119,246 @@ namespace cgra {
 
 
 
+	// 
+	// operator function classes
+	// 
+	// 
+	// 
+	// 
+	// 
+	//=================
+
+	namespace detail {
+
+		// used in place of a void return to be usable with zip_with
+		struct nothing {};
+
+		namespace op {
+
+			struct neg {
+				template <typename T>
+				CGRA_CONSTEXPR_FUNCTION auto operator()(T &&t) const {
+					return -std::forward<T>(t);
+				}
+			};
+
+			struct add {
+				template <typename T1, typename T2>
+				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
+					return std::forward<T1>(t1) + std::forward<T2>(t2);
+				}
+			};
+
+			struct sub {
+				template <typename T1, typename T2>
+				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
+					return std::forward<T1>(t1) - std::forward<T2>(t2);
+				}
+			};
+
+			struct mul {
+				template <typename T1, typename T2>
+				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
+					return std::forward<T1>(t1) * std::forward<T2>(t2);
+				}
+			};
+
+			struct div {
+				template <typename T1, typename T2>
+				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
+					return std::forward<T1>(t1) / std::forward<T2>(t2);
+				}
+			};
+
+			struct mod {
+				template <typename T1, typename T2>
+				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
+					return std::forward<T1>(t1) % std::forward<T2>(t2);
+				}
+			};
+
+
+			struct add_assign {
+				template <typename T1, typename T2>
+				CGRA_CONSTEXPR_FUNCTION nothing operator()(T1 &&t1, T2 &&t2) const {
+					std::forward<T1>(t1) += std::forward<T2>(t2); return{};
+				}
+			};
+
+			struct sub_assign {
+				template <typename T1, typename T2>
+				CGRA_CONSTEXPR_FUNCTION nothing operator()(T1 &&t1, T2 &&t2) const {
+					std::forward<T1>(t1) -= std::forward<T2>(t2); return{};
+				}
+			};
+
+			struct mul_assign {
+				template <typename T1, typename T2>
+				CGRA_CONSTEXPR_FUNCTION nothing operator()(T1 &&t1, T2 &&t2) const {
+					std::forward<T1>(t1) *= std::forward<T2>(t2); return{};
+				}
+			};
+
+			struct div_assign {
+				template <typename T1, typename T2>
+				CGRA_CONSTEXPR_FUNCTION nothing operator()(T1 &&t1, T2 &&t2) const {
+					std::forward<T1>(t1) /= std::forward<T2>(t2); return{};
+				}
+			};
+
+			struct mod_assign {
+				template <typename T1, typename T2>
+				CGRA_CONSTEXPR_FUNCTION nothing operator()(T1 &&t1, T2 &&t2) const {
+					std::forward<T1>(t1) %= std::forward<T2>(t2); return{};
+				}
+			};
+
+			struct lshift {
+				template <typename T1, typename T2>
+				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
+					return std::forward<T1>(t1) << std::forward<T2>(t2);
+				}
+			};
+
+			struct rshift {
+				template <typename T1, typename T2>
+				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
+					return std::forward<T1>(t1) >> std::forward<T2>(t2);
+				}
+			};
+
+			struct lshift_assign {
+				template <typename T1, typename T2>
+				CGRA_CONSTEXPR_FUNCTION nothing operator()(T1 &&t1, T2 &&t2) const {
+					std::forward<T1>(t1) <<= std::forward<T2>(t2); return{};
+				}
+			};
+
+			struct rshift_assign {
+				template <typename T1, typename T2>
+				CGRA_CONSTEXPR_FUNCTION nothing operator()(T1 &&t1, T2 &&t2) const {
+					std::forward<T1>(t1) >>= std::forward<T2>(t2); return{};
+				}
+			};
+
+			struct logical_not {
+				template <typename T>
+				CGRA_CONSTEXPR_FUNCTION auto operator()(T &&t) const {
+					return !std::forward<T>(t);
+				}
+			};
+
+			struct logical_or {
+				template <typename T1, typename T2>
+				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
+					return std::forward<T1>(t1) || std::forward<T2>(t2);
+				}
+			};
+
+			struct logical_and {
+				template <typename T1, typename T2>
+				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
+					return std::forward<T1>(t1) && std::forward<T2>(t2);
+				}
+			};
+
+			struct bitwise_not {
+				template <typename T>
+				CGRA_CONSTEXPR_FUNCTION auto operator()(T &&t) const {
+					return ~std::forward<T>(t);
+				}
+			};
+
+			struct bitwise_or {
+				template <typename T1, typename T2>
+				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
+					return std::forward<T1>(t1) | std::forward<T2>(t2);
+				}
+			};
+
+			struct bitwise_xor {
+				template <typename T1, typename T2>
+				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
+					return std::forward<T1>(t1) ^ std::forward<T2>(t2);
+				}
+			};
+
+			struct bitwise_and {
+				template <typename T1, typename T2>
+				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
+					return std::forward<T1>(t1) & std::forward<T2>(t2);
+				}
+			};
+
+			struct bitwise_or_assign {
+				template <typename T1, typename T2>
+				CGRA_CONSTEXPR_FUNCTION nothing operator()(T1 &&t1, T2 &&t2) const {
+					std::forward<T1>(t1) |= std::forward<T2>(t2); return{};
+				}
+			};
+
+			struct bitwise_xor_assign {
+				template <typename T1, typename T2>
+				CGRA_CONSTEXPR_FUNCTION nothing operator()(T1 &&t1, T2 &&t2) const {
+					std::forward<T1>(t1) ^= std::forward<T2>(t2); return{};
+				}
+			};
+
+			struct bitwise_and_assign {
+				template <typename T1, typename T2>
+				CGRA_CONSTEXPR_FUNCTION nothing operator()(T1 &&t1, T2 &&t2) const {
+					std::forward<T1>(t1) &= std::forward<T2>(t2); return{};
+				}
+			};
+
+			struct equal {
+				template <typename T1, typename T2>
+				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
+					return std::forward<T1>(t1) == std::forward<T2>(t2);
+				}
+			};
+
+			struct nequal {
+				template <typename T1, typename T2>
+				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
+					return std::forward<T1>(t1) != std::forward<T2>(t2);
+				}
+			};
+
+			struct less {
+				template <typename T1, typename T2>
+				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
+					return std::forward<T1>(t1) < std::forward<T2>(t2);
+				}
+			};
+
+			struct greater {
+				template <typename T1, typename T2>
+				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
+					return std::forward<T1>(t1) > std::forward<T2>(t2);
+				}
+			};
+
+			struct less_equal {
+				template <typename T1, typename T2>
+				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
+					return std::forward<T1>(t1) <= std::forward<T2>(t2);
+				}
+			};
+
+			struct greater_equal {
+				template <typename T1, typename T2>
+				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
+					return std::forward<T1>(t1) >= std::forward<T2>(t2);
+				}
+			};
+
+		}
+	}
+
+
+
+
 	//   _______       ___   .___________.    ___              _______.___________..______       __    __    ______ .___________. __    __  .______       _______     _______.  //
 	//  |       \     /   \  |           |   /   \            /       |           ||   _  \     |  |  |  |  /      ||           ||  |  |  | |   _  \     |   ____|   /       |  //
 	//  |  .--.  |   /  ^  \ `---|  |----`  /  ^  \          |   (----`---|  |----`|  |_)  |    |  |  |  | |  ,----'`---|  |----`|  |  |  | |  |_)  |    |  |__     |   (----`  //
@@ -2143,14 +2385,19 @@ namespace cgra {
 		using detail::basic_quat_data<T>::y;
 		using detail::basic_quat_data<T>::z;
 
+		// define default ctor
+		CGRA_DEFINE_DEFAULT_CTOR(basic_quat, ctor_proxy_t, T, 4)
+
 		// define magic ctor
 		CGRA_DEFINE_MAGIC_CTOR(basic_quat, ctor_proxy_t, T, 4)
 
 		// make inherited functions visible
 		using ctor_proxy_t::operator[];
 
-		// default ctor: the 'one' quaternion
-		CGRA_CONSTEXPR_FUNCTION basic_quat() : ctor_proxy_t{0, 0, 0, 1} {}
+		// real ctor
+		CGRA_CONSTEXPR_FUNCTION explicit basic_quat(T t) : ctor_proxy_t{std::move(t), detail::repeat_vec<T, 3>(T())} {}
+
+		// TODO complex ctor?
 
 		// basic_mat<U, 3, 3> converter
 		template <typename U>
@@ -2668,7 +2915,7 @@ namespace cgra {
 	// TODO description
 	template <typename TypeMap = type_to_vec, typename F, typename ...ArgTs, typename = detail::enable_if_array_t<ArgTs...>>
 	CGRA_CONSTEXPR_FUNCTION auto zip_with(F f, ArgTs &&...args) {
-		using value_t = std::decay_t<decltype(f(std::declval<detail::array_value_t<ArgTs>>()...))>;
+		using value_t = std::decay_t<decltype(f(detail::array_traits<std::decay_t<ArgTs>>::template get<0>(std::forward<ArgTs>(args))...))>;
 		using size = detail::array_min_size<ArgTs...>;
 		using vec_t = typename TypeMap::template apply<basic_vec<value_t, size::value>>::type;
 		using iseq = std::make_index_sequence<size::value>;
@@ -2741,234 +2988,6 @@ namespace cgra {
 	//                                                                                                                                                                                                        //
 	//========================================================================================================================================================================================================//
 
-	namespace detail {
-
-		// used in place of a void return to be usable with zip_with
-		struct nothing {};
-
-		namespace op {
-
-			struct neg {
-				template <typename T>
-				CGRA_CONSTEXPR_FUNCTION auto operator()(T &&t) const {
-					return -std::forward<T>(t);
-				}
-			};
-
-			struct add {
-				template <typename T1, typename T2>
-				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
-					return std::forward<T1>(t1) + std::forward<T2>(t2);
-				}
-			};
-
-			struct sub {
-				template <typename T1, typename T2>
-				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
-					return std::forward<T1>(t1) - std::forward<T2>(t2);
-				}
-			};
-
-			struct mul {
-				template <typename T1, typename T2>
-				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
-					return std::forward<T1>(t1) * std::forward<T2>(t2);
-				}
-			};
-
-			struct div {
-				template <typename T1, typename T2>
-				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
-					return std::forward<T1>(t1) / std::forward<T2>(t2);
-				}
-			};
-
-			struct mod {
-				template <typename T1, typename T2>
-				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
-					return std::forward<T1>(t1) % std::forward<T2>(t2);
-				}
-			};
-
-
-			struct add_assign {
-				template <typename T1, typename T2>
-				CGRA_CONSTEXPR_FUNCTION nothing operator()(T1 &&t1, T2 &&t2) const {
-					std::forward<T1>(t1) += std::forward<T2>(t2); return{};
-				}
-			};
-
-			struct sub_assign {
-				template <typename T1, typename T2>
-				CGRA_CONSTEXPR_FUNCTION nothing operator()(T1 &&t1, T2 &&t2) const {
-					std::forward<T1>(t1) -= std::forward<T2>(t2); return{};
-				}
-			};
-
-			struct mul_assign {
-				template <typename T1, typename T2>
-				CGRA_CONSTEXPR_FUNCTION nothing operator()(T1 &&t1, T2 &&t2) const {
-					std::forward<T1>(t1) *= std::forward<T2>(t2); return{};
-				}
-			};
-
-			struct div_assign {
-				template <typename T1, typename T2>
-				CGRA_CONSTEXPR_FUNCTION nothing operator()(T1 &&t1, T2 &&t2) const {
-					std::forward<T1>(t1) /= std::forward<T2>(t2); return{};
-				}
-			};
-
-			struct mod_assign {
-				template <typename T1, typename T2>
-				CGRA_CONSTEXPR_FUNCTION nothing operator()(T1 &&t1, T2 &&t2) const {
-					std::forward<T1>(t1) %= std::forward<T2>(t2); return{};
-				}
-			};
-			
-			struct lshift {
-				template <typename T1, typename T2>
-				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
-					return std::forward<T1>(t1) << std::forward<T2>(t2);
-				}
-			};
-
-			struct rshift {
-				template <typename T1, typename T2>
-				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
-					return std::forward<T1>(t1) >> std::forward<T2>(t2);
-				}
-			};
-
-			struct lshift_assign {
-				template <typename T1, typename T2>
-				CGRA_CONSTEXPR_FUNCTION nothing operator()(T1 &&t1, T2 &&t2) const {
-					std::forward<T1>(t1) <<= std::forward<T2>(t2); return{};
-				}
-			};
-
-			struct rshift_assign {
-				template <typename T1, typename T2>
-				CGRA_CONSTEXPR_FUNCTION nothing operator()(T1 &&t1, T2 &&t2) const {
-					std::forward<T1>(t1) >>= std::forward<T2>(t2); return{};
-				}
-			};
-
-			struct logical_not {
-				template <typename T>
-				CGRA_CONSTEXPR_FUNCTION auto operator()(T &&t) const {
-					return !std::forward<T>(t);
-				}
-			};
-
-			struct logical_or {
-				template <typename T1, typename T2>
-				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
-					return std::forward<T1>(t1) || std::forward<T2>(t2);
-				}
-			};
-
-			struct logical_and {
-				template <typename T1, typename T2>
-				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
-					return std::forward<T1>(t1) && std::forward<T2>(t2);
-				}
-			};
-
-			struct bitwise_not {
-				template <typename T>
-				CGRA_CONSTEXPR_FUNCTION auto operator()(T &&t) const {
-					return ~std::forward<T>(t);
-				}
-			};
-
-			struct bitwise_or {
-				template <typename T1, typename T2>
-				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
-					return std::forward<T1>(t1) | std::forward<T2>(t2);
-				}
-			};
-
-			struct bitwise_xor {
-				template <typename T1, typename T2>
-				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
-					return std::forward<T1>(t1) ^ std::forward<T2>(t2);
-				}
-			};
-
-			struct bitwise_and {
-				template <typename T1, typename T2>
-				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
-					return std::forward<T1>(t1) & std::forward<T2>(t2);
-				}
-			};
-
-			struct bitwise_or_assign  {
-				template <typename T1, typename T2>
-				CGRA_CONSTEXPR_FUNCTION nothing operator()(T1 &&t1, T2 &&t2) const {
-					std::forward<T1>(t1) |= std::forward<T2>(t2); return{};
-				}
-			};
-
-			struct bitwise_xor_assign {
-				template <typename T1, typename T2>
-				CGRA_CONSTEXPR_FUNCTION nothing operator()(T1 &&t1, T2 &&t2) const {
-					std::forward<T1>(t1) ^= std::forward<T2>(t2); return{};
-				}
-			};
-
-			struct bitwise_and_assign {
-				template <typename T1, typename T2>
-				CGRA_CONSTEXPR_FUNCTION nothing operator()(T1 &&t1, T2 &&t2) const {
-					std::forward<T1>(t1) &= std::forward<T2>(t2); return{};
-				}
-			};
-
-			struct equal {
-				template <typename T1, typename T2>
-				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
-					return std::forward<T1>(t1) == std::forward<T2>(t2);
-				}
-			};
-
-			struct nequal {
-				template <typename T1, typename T2>
-				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
-					return std::forward<T1>(t1) != std::forward<T2>(t2);
-				}
-			};
-
-			struct less {
-				template <typename T1, typename T2>
-				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
-					return std::forward<T1>(t1) < std::forward<T2>(t2);
-				}
-			};
-
-			struct greater {
-				template <typename T1, typename T2>
-				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
-					return std::forward<T1>(t1) > std::forward<T2>(t2);
-				}
-			};
-
-			struct less_equal {
-				template <typename T1, typename T2>
-				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
-					return std::forward<T1>(t1) <= std::forward<T2>(t2);
-				}
-			};
-
-			struct greater_equal {
-				template <typename T1, typename T2>
-				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
-					return std::forward<T1>(t1) >= std::forward<T2>(t2);
-				}
-			};
-
-		}
-	}
-
 	// quat add assign
 	template <typename T1, typename T2>
 	inline basic_quat<T1> & operator+=(basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
@@ -3036,10 +3055,12 @@ namespace cgra {
 	// quat mul vector
 	template <typename T1, typename T2>
 	inline auto operator*(const basic_quat<T1> &lhs, const basic_vec<T2, 3> &rhs) {
+		// FIXME do this nicely
 		using common_t = std::common_type_t<T1, T2>;
 		basic_quat<common_t> q = lhs;
-		basic_quat<common_t> p(rhs, 0);
-		return basic_vec<common_t, 3>(q * p * inverse(q));
+		basic_quat<common_t> p(common_t(), rhs);
+		p = q * p * inverse(q);
+		return basic_vec<common_t, 3>(p.x, p.y, p.z);
 	}
 
 	// quat mul scalar
@@ -4505,226 +4526,234 @@ namespace cgra {
 	//=================================================================================================================================================================//
 
 	namespace detail {
-		template <typename T>
-		inline T det2x2(
-			T e00, T e01,
-			T e10, T e11
-		) {
-			return e00 * e11 - e10 * e01;
-		}
 
-		template <typename T>
-		inline T det3x3(
-			T e00, T e01, T e02,
-			T e10, T e11, T e12,
-			T e20, T e21, T e22
-		) {
-			T d = 0;
-			d += e00 * e11 * e22;
-			d += e01 * e12 * e20;
-			d += e02 * e10 * e21;
-			d -= e00 * e12 * e21;
-			d -= e01 * e10 * e22;
-			d -= e02 * e11 * e20;
-			return d;
-		}
-	}
+		namespace matrices {
 
+			namespace functions {
 
-	// inverse of matrix (error if not invertible)
-	// generic case
-	// TODO description
-	template <typename T, size_t Cols, size_t Rows>
-	inline basic_mat<T, Cols, Rows> inverse(const basic_mat<T, Cols, Rows> &m) {
-		static_assert(Cols == Rows, "only square matrices are invertible");
-		using std::abs;
-		basic_mat<T, Cols, Rows> mtemp{ m };
-		basic_mat<T, Cols, Rows> mr{ 1 }; // @josh this needs an identity ctor
-										  // run column-wise gauss-jordan elimination on mtemp, apply same ops to mr
-		size_t col = 0;
-		for (size_t r = 0; r < Rows; r++) {
-			// swap cols so (r, col) is as large in magnitude as possible
-			size_t swcol = col;
-			T swmax = abs(mtemp[col][r]);
-			for (size_t j = col + 1; j < Cols; j++) {
-				T t = abs(mtemp[j][r]);
-				if (t > swmax) {
-					swmax = t;
-					swcol = j;
+				template <typename T>
+				inline T det2x2(
+					T e00, T e01,
+					T e10, T e11
+				) {
+					return e00 * e11 - e10 * e01;
 				}
-			}
-			if (col != swcol) {
-				// found something to swap with
-				swap(mr[col], mr[swcol]);
-				swap(mtemp[col], mtemp[swcol]);
-			}
-			if (swmax > 0) {
-				// largest usable abs value was > 0, continue => zero rest of row
-				T q = T(1) / mtemp[col][r];
-				for (size_t j = 0; j < Cols; j++) {
-					if (j != col && abs(mtemp[j][r]) > 0) {
-						T f = mtemp[j][r] * q;
-						mr[j] -= mr[col] * f;
-						mtemp[j] -= mtemp[col] * f;
+
+				template <typename T>
+				inline T det3x3(
+					T e00, T e01, T e02,
+					T e10, T e11, T e12,
+					T e20, T e21, T e22
+				) {
+					T d = 0;
+					d += e00 * e11 * e22;
+					d += e01 * e12 * e20;
+					d += e02 * e10 * e21;
+					d -= e00 * e12 * e21;
+					d -= e01 * e10 * e22;
+					d -= e02 * e11 * e20;
+					return d;
+				}
+
+
+
+				// inverse of matrix (error if not invertible)
+				// generic case
+				// TODO description
+				template <typename T, size_t Cols, size_t Rows>
+				inline basic_mat<T, Cols, Rows> inverse(const basic_mat<T, Cols, Rows> &m) {
+					static_assert(Cols == Rows, "only square matrices are invertible");
+					using std::abs;
+					basic_mat<T, Cols, Rows> mtemp{m};
+					basic_mat<T, Cols, Rows> mr{1};
+					// run column-wise gauss-jordan elimination on mtemp, apply same ops to mr
+					size_t col = 0;
+					for (size_t r = 0; r < Rows; r++) {
+						// swap cols so (r, col) is as large in magnitude as possible
+						size_t swcol = col;
+						T swmax = abs(mtemp[col][r]);
+						for (size_t j = col + 1; j < Cols; j++) {
+							T t = abs(mtemp[j][r]);
+							if (t > swmax) {
+								swmax = t;
+								swcol = j;
+							}
+						}
+						if (col != swcol) {
+							// found something to swap with
+							swap(mr[col], mr[swcol]);
+							swap(mtemp[col], mtemp[swcol]);
+						}
+						if (swmax > 0) {
+							// largest usable abs value was > 0, continue => zero rest of row
+							T q = T(1) / mtemp[col][r];
+							for (size_t j = 0; j < Cols; j++) {
+								if (j != col && abs(mtemp[j][r]) > 0) {
+									T f = mtemp[j][r] * q;
+									mr[j] -= mr[col] * f;
+									mtemp[j] -= mtemp[col] * f;
+								}
+							}
+							// get leading 1 in this col
+							mr[col] *= q;
+							mtemp[col] *= q;
+							// pivot isolated, move to next col
+							col++;
+						}
 					}
+					// after above routine, col == rank
+					assert(Cols == col && "singular matrix");
+					// mr is now the inverse
+					return mr;
 				}
-				// get leading 1 in this col
-				mr[col] *= q;
-				mtemp[col] *= q;
-				// pivot isolated, move to next col
-				col++;
+
+				// inverse of matrix (error if not invertible)
+				template <typename T>
+				inline basic_mat<T, 1, 1> inverse(const basic_mat<T, 1, 1> &m) {
+					// TODO (error if not invertible)
+					return {{fill<T>(1) / m[0][0]}};
+				}
+
+				// inverse of matrix (error if not invertible)
+				template <typename T>
+				inline basic_mat<T, 2, 2> inverse(const basic_mat<T, 2, 2> &m) {
+					basic_mat<T, 2, 2> r;
+					T invdet = 1 / determinant(m);
+					// FIXME proper detect infinite determinant
+					assert(!isinf(invdet) && invdet == invdet && invdet != 0);
+					r[0][0] = m[1][1] * invdet;
+					r[0][1] = -m[0][1] * invdet;
+					r[1][0] = -m[1][0] * invdet;
+					r[1][1] = m[0][0] * invdet;
+					return r;
+				}
+
+				// inverse of matrix (error if not invertible)
+				template <typename T>
+				inline basic_mat<T, 3, 3> inverse(const basic_mat<T, 3, 3> &m) {
+					basic_mat<T, 3, 3> r;
+					// first column of cofactors, can use for determinant
+					T c00 = det2x2(m[1][1], m[1][2], m[2][1], m[2][2]);
+					T c01 = -det2x2(m[1][0], m[1][2], m[2][0], m[2][2]);
+					T c02 = det2x2(m[1][0], m[1][1], m[2][0], m[2][1]);
+					// get determinant by expanding about first column
+					T invdet = 1 / (m[0][0] * c00 + m[0][1] * c01 + m[0][2] * c02);
+					// FIXME proper detect infinite determinant
+					assert(!isinf(invdet) && invdet == invdet && invdet != 0);
+					// transpose of cofactor matrix * (1 / det)
+					r[0][0] = c00 * invdet;
+					r[1][0] = c01 * invdet;
+					r[2][0] = c02 * invdet;
+					r[0][1] = -det2x2(m[0][1], m[0][2], m[2][1], m[2][2]) * invdet;
+					r[1][1] = det2x2(m[0][0], m[0][2], m[2][0], m[2][2]) * invdet;
+					r[2][1] = -det2x2(m[0][0], m[0][1], m[2][0], m[2][1]) * invdet;
+					r[0][2] = det2x2(m[0][1], m[0][2], m[1][1], m[1][2]) * invdet;
+					r[1][2] = -det2x2(m[0][0], m[0][2], m[1][0], m[1][2]) * invdet;
+					r[2][2] = det2x2(m[0][0], m[0][1], m[1][0], m[1][1]) * invdet;
+					return r;
+				}
+
+
+				// inverse of matrix (error if not invertible)
+				template <typename T>
+				inline basic_mat<T, 4, 4> inverse(const basic_mat<T, 4, 4> &m) {
+					basic_mat<T, 4, 4> r;
+					// first column of cofactors, can use for determinant
+					T c0 = det3x3(m[1][1], m[1][2], m[1][3], m[2][1], m[2][2], m[2][3], m[3][1], m[3][2], m[3][3]);
+					T c1 = -det3x3(m[1][0], m[1][2], m[1][3], m[2][0], m[2][2], m[2][3], m[3][0], m[3][2], m[3][3]);
+					T c2 = det3x3(m[1][0], m[1][1], m[1][3], m[2][0], m[2][1], m[2][3], m[3][0], m[3][1], m[3][3]);
+					T c3 = -det3x3(m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2], m[3][0], m[3][1], m[3][2]);
+					// get determinant by expanding about first column
+					T invdet = 1 / (m[0][0] * c0 + m[0][1] * c1 + m[0][2] * c2 + m[0][3] * c3);
+					// FIXME proper detect infinite determinant
+					assert(!isinf(invdet) && invdet == invdet && invdet != 0);
+					// transpose of cofactor matrix * (1 / det)
+					r[0][0] = c0 * invdet;
+					r[1][0] = c1 * invdet;
+					r[2][0] = c2 * invdet;
+					r[3][0] = c3 * invdet;
+					r[0][1] = -det3x3(m[0][1], m[0][2], m[0][3], m[2][1], m[2][2], m[2][3], m[3][1], m[3][2], m[3][3]) * invdet;
+					r[1][1] = det3x3(m[0][0], m[0][2], m[0][3], m[2][0], m[2][2], m[2][3], m[3][0], m[3][2], m[3][3]) * invdet;
+					r[2][1] = -det3x3(m[0][0], m[0][1], m[0][3], m[2][0], m[2][1], m[2][3], m[3][0], m[3][1], m[3][3]) * invdet;
+					r[3][1] = det3x3(m[0][0], m[0][1], m[0][2], m[2][0], m[2][1], m[2][2], m[3][0], m[3][1], m[3][2]) * invdet;
+					r[0][2] = det3x3(m[0][1], m[0][2], m[0][3], m[1][1], m[1][2], m[1][3], m[3][1], m[3][2], m[3][3]) * invdet;
+					r[1][2] = -det3x3(m[0][0], m[0][2], m[0][3], m[1][0], m[1][2], m[1][3], m[3][0], m[3][2], m[3][3]) * invdet;
+					r[2][2] = det3x3(m[0][0], m[0][1], m[0][3], m[1][0], m[1][1], m[1][3], m[3][0], m[3][1], m[3][3]) * invdet;
+					r[3][2] = -det3x3(m[0][0], m[0][1], m[0][2], m[1][0], m[1][1], m[1][2], m[3][0], m[3][1], m[3][2]) * invdet;
+					r[0][3] = -det3x3(m[0][1], m[0][2], m[0][3], m[1][1], m[1][2], m[1][3], m[2][1], m[2][2], m[2][3]) * invdet;
+					r[1][3] = det3x3(m[0][0], m[0][2], m[0][3], m[1][0], m[1][2], m[1][3], m[2][0], m[2][2], m[2][3]) * invdet;
+					r[2][3] = -det3x3(m[0][0], m[0][1], m[0][3], m[1][0], m[1][1], m[1][3], m[2][0], m[2][1], m[2][3]) * invdet;
+					r[3][3] = det3x3(m[0][0], m[0][1], m[0][2], m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2]) * invdet;
+					return r;
+				}
+
+
+				// determinant of matrix
+				template <typename T>
+				inline T determinant(const basic_mat<T, 2, 2> &m) {
+					return m[0][0] * m[1][1] - m[1][0] * m[0][1];
+				}
+
+				// determinant of matrix
+				template <typename T>
+				inline T determinant(const basic_mat<T, 3, 3> &m) {
+					T d = 0;
+					d += m[0][0] * m[1][1] * m[2][2];
+					d += m[0][1] * m[1][2] * m[2][0];
+					d += m[0][2] * m[1][0] * m[2][1];
+					d -= m[0][0] * m[1][2] * m[2][1];
+					d -= m[0][1] * m[1][0] * m[2][2];
+					d -= m[0][2] * m[1][1] * m[2][0];
+					return d;
+				}
+
+				//TODO
+				// determinant of matrix
+				template <typename T>
+				inline T determinant(const basic_mat<T, 4, 4> &m) {
+					T d = 0;
+					// expand about first column
+					d += m[0][0] * det3x3(m[1][1], m[1][2], m[1][3], m[2][1], m[2][2], m[2][3], m[3][1], m[3][2], m[3][3]);
+					d -= m[0][1] * det3x3(m[1][0], m[1][2], m[1][3], m[2][0], m[2][2], m[2][3], m[3][0], m[3][2], m[3][3]);
+					d += m[0][2] * det3x3(m[1][0], m[1][1], m[1][3], m[2][0], m[2][1], m[2][3], m[3][0], m[3][1], m[3][3]);
+					d -= m[0][3] * det3x3(m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2], m[3][0], m[3][1], m[3][2]);
+					return d;
+				}
+
+
+				// transpose of matrix
+				// TODO
+				template <typename T, size_t Cols, size_t Rows>
+				inline basic_mat<T, Rows, Cols> transpose(const basic_mat<T, Rows, Cols> &m) {
+					basic_mat<T, Rows, Cols> r;
+					for (size_t j = 0; j < Cols; ++j)
+						for (size_t i = 0; i < Rows; ++i)
+							r[i][j] = m[j][i];
+					return r;
+				}
+
+				// component-wise multiplication 
+				// see (*) operator overload for matrix product
+				// TODO
+				template <typename T1, typename T2, size_t Rows, size_t Cols>
+				inline auto matrixCompMult(const basic_mat<T1, Rows, Cols> &lhs, const basic_mat<T2, Rows, Cols> &rhs) {
+					return zip_with(detail::op::mul(), lhs.as_vec(), rhs.as_vec());
+				}
+
+				// outerProduct
+				// TODO
+				template <typename T1, typename T2, size_t N>
+				inline auto outerProduct(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
+					basic_mat<std::common_type_t<T1, T2>, N, N> r;
+					for (size_t j = 0; j < N; ++j)
+						for (size_t i = 0; i < N; ++i)
+							r[j][i] = lhs[j] * rhs[i];
+					return r;
+				}
+
 			}
 		}
-		// after above routine, col == rank
-		assert(Cols == col && "singular matrix");
-		// mr is now the inverse
-		return mr;
 	}
-
-	// inverse of matrix (error if not invertible)
-	template <typename T>
-	inline basic_mat<T, 1, 1> inverse(const basic_mat<T, 1, 1> &m) {
-		// TODO (error if not invertible)
-		return 1 / m;
-	}
-
-	// inverse of matrix (error if not invertible)
-	template <typename T>
-	inline basic_mat<T, 2, 2> inverse(const basic_mat<T, 2, 2> &m) {
-		basic_mat<T, 2, 2> r;
-		T invdet = 1 / determinant(m);
-		// FIXME proper detect infinite determinant
-		assert(!isinf(invdet) && invdet == invdet && invdet != 0);
-		r[0][0] =  m[1][1] * invdet;
-		r[0][1] = -m[0][1] * invdet;
-		r[1][0] = -m[1][0] * invdet;
-		r[1][1] =  m[0][0] * invdet;
-		return r;
-	}
-
-	// inverse of matrix (error if not invertible)
-	template <typename T>
-	inline basic_mat<T, 3, 3> inverse(const basic_mat<T, 3, 3> &m) {
-		basic_mat<T, 3, 3> r;
-		// first column of cofactors, can use for determinant
-		T c00 =  detail::det2x2(m[1][1], m[1][2], m[2][1], m[2][2]);
-		T c01 = -detail::det2x2(m[1][0], m[1][2], m[2][0], m[2][2]);
-		T c02 =  detail::det2x2(m[1][0], m[1][1], m[2][0], m[2][1]);
-		// get determinant by expanding about first column
-		T invdet = 1 / (m[0][0] * c00 + m[0][1] * c01 + m[0][2] * c02);
-		// FIXME proper detect infinite determinant
-		assert(!isinf(invdet) && invdet == invdet && invdet != 0);
-		// transpose of cofactor matrix * (1 / det)
-		r[0][0] = c00 * invdet;
-		r[1][0] = c01 * invdet;
-		r[2][0] = c02 * invdet;
-		r[0][1] = -detail::det2x2(m[0][1], m[0][2], m[2][1], m[2][2]) * invdet;
-		r[1][1] =  detail::det2x2(m[0][0], m[0][2], m[2][0], m[2][2]) * invdet;
-		r[2][1] = -detail::det2x2(m[0][0], m[0][1], m[2][0], m[2][1]) * invdet;
-		r[0][2] =  detail::det2x2(m[0][1], m[0][2], m[1][1], m[1][2]) * invdet;
-		r[1][2] = -detail::det2x2(m[0][0], m[0][2], m[1][0], m[1][2]) * invdet;
-		r[2][2] =  detail::det2x2(m[0][0], m[0][1], m[1][0], m[1][1]) * invdet;
-		return r;
-	}
-
-
-	// inverse of matrix (error if not invertible)
-	template <typename T>
-	inline basic_mat<T, 4, 4> inverse(const basic_mat<T, 4, 4> &m) {
-		basic_mat<T, 4, 4> r;
-		// first column of cofactors, can use for determinant
-		T c0 =  detail::det3x3(m[1][1], m[1][2], m[1][3], m[2][1], m[2][2], m[2][3], m[3][1], m[3][2], m[3][3]);
-		T c1 = -detail::det3x3(m[1][0], m[1][2], m[1][3], m[2][0], m[2][2], m[2][3], m[3][0], m[3][2], m[3][3]);
-		T c2 =  detail::det3x3(m[1][0], m[1][1], m[1][3], m[2][0], m[2][1], m[2][3], m[3][0], m[3][1], m[3][3]);
-		T c3 = -detail::det3x3(m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2], m[3][0], m[3][1], m[3][2]);
-		// get determinant by expanding about first column
-		T invdet = 1 / (m[0][0] * c0 + m[0][1] * c1 + m[0][2] * c2 + m[0][3] * c3);
-		// FIXME proper detect infinite determinant
-		assert(!isinf(invdet) && invdet == invdet && invdet != 0);
-		// transpose of cofactor matrix * (1 / det)
-		r[0][0] = c0 * invdet;
-		r[1][0] = c1 * invdet;
-		r[2][0] = c2 * invdet;
-		r[3][0] = c3 * invdet;
-		r[0][1] = -detail::det3x3(m[0][1], m[0][2], m[0][3], m[2][1], m[2][2], m[2][3], m[3][1], m[3][2], m[3][3]) * invdet;
-		r[1][1] =  detail::det3x3(m[0][0], m[0][2], m[0][3], m[2][0], m[2][2], m[2][3], m[3][0], m[3][2], m[3][3]) * invdet;
-		r[2][1] = -detail::det3x3(m[0][0], m[0][1], m[0][3], m[2][0], m[2][1], m[2][3], m[3][0], m[3][1], m[3][3]) * invdet;
-		r[3][1] =  detail::det3x3(m[0][0], m[0][1], m[0][2], m[2][0], m[2][1], m[2][2], m[3][0], m[3][1], m[3][2]) * invdet;
-		r[0][2] =  detail::det3x3(m[0][1], m[0][2], m[0][3], m[1][1], m[1][2], m[1][3], m[3][1], m[3][2], m[3][3]) * invdet;
-		r[1][2] = -detail::det3x3(m[0][0], m[0][2], m[0][3], m[1][0], m[1][2], m[1][3], m[3][0], m[3][2], m[3][3]) * invdet;
-		r[2][2] =  detail::det3x3(m[0][0], m[0][1], m[0][3], m[1][0], m[1][1], m[1][3], m[3][0], m[3][1], m[3][3]) * invdet;
-		r[3][2] = -detail::det3x3(m[0][0], m[0][1], m[0][2], m[1][0], m[1][1], m[1][2], m[3][0], m[3][1], m[3][2]) * invdet;
-		r[0][3] = -detail::det3x3(m[0][1], m[0][2], m[0][3], m[1][1], m[1][2], m[1][3], m[2][1], m[2][2], m[2][3]) * invdet;
-		r[1][3] =  detail::det3x3(m[0][0], m[0][2], m[0][3], m[1][0], m[1][2], m[1][3], m[2][0], m[2][2], m[2][3]) * invdet;
-		r[2][3] = -detail::det3x3(m[0][0], m[0][1], m[0][3], m[1][0], m[1][1], m[1][3], m[2][0], m[2][1], m[2][3]) * invdet;
-		r[3][3] =  detail::det3x3(m[0][0], m[0][1], m[0][2], m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2]) * invdet;
-		return r;
-	}
-
-
-	// determinant of matrix
-	template <typename T>
-	inline T determinant(const basic_mat<T, 2, 2> &m) {
-		return m[0][0] * m[1][1] - m[1][0] * m[0][1];
-	}
-
-	// determinant of matrix
-	template <typename T>
-	inline T determinant(const basic_mat<T, 3, 3> &m) {
-		T d = 0;
-		d += m[0][0] * m[1][1] * m[2][2];
-		d += m[0][1] * m[1][2] * m[2][0];
-		d += m[0][2] * m[1][0] * m[2][1];
-		d -= m[0][0] * m[1][2] * m[2][1];
-		d -= m[0][1] * m[1][0] * m[2][2];
-		d -= m[0][2] * m[1][1] * m[2][0];
-		return d;
-	}
-
-	//TODO
-	// determinant of matrix
-	template <typename T>
-	inline T determinant(const basic_mat<T, 4, 4> &m) {
-		T d = 0;
-		// expand about first column
-		d += m[0][0] * detail::det3x3(m[1][1], m[1][2], m[1][3], m[2][1], m[2][2], m[2][3], m[3][1], m[3][2], m[3][3]);
-		d -= m[0][1] * detail::det3x3(m[1][0], m[1][2], m[1][3], m[2][0], m[2][2], m[2][3], m[3][0], m[3][2], m[3][3]);
-		d += m[0][2] * detail::det3x3(m[1][0], m[1][1], m[1][3], m[2][0], m[2][1], m[2][3], m[3][0], m[3][1], m[3][3]);
-		d -= m[0][3] * detail::det3x3(m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2], m[3][0], m[3][1], m[3][2]);
-		return d;
-	}
-
-
-	// transpose of matrix
-	// TODO
-	template <typename T, size_t Cols, size_t Rows>
-	inline basic_mat<T, Rows, Cols> transpose(const basic_mat<T, Rows, Cols> &m) {
-		basic_mat<T, Rows, Cols> r;
-		for (size_t j = 0; j < Cols; ++j)
-			for (size_t i = 0; i < Rows; ++i)
-				r[i][j] = m[j][i];
-		return r;
-	}
-
-	// component-wise multiplication 
-	// see (*) operator overload for matrix product
-	// TODO
-	template <typename T1, typename T2, size_t Rows, size_t Cols>
-	inline auto matrixCompMult(const basic_mat<T1, Rows, Cols> &lhs, const basic_mat<T2, Rows, Cols> &rhs) {
-		return zip_with(detail::op::mul(), lhs.as_vec(), rhs.as_vec());
-	}
-
-	// outerProduct
-	// TODO
-	template <typename T1, typename T2, size_t N>
-	inline auto outerProduct(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-		basic_mat<std::common_type_t<T1, T2>, N, N> r;
-		for (size_t j = 0; j < N; ++j)
-			for (size_t i = 0; i < N; ++i)
-				r[j][i] = lhs[j] * rhs[i];
-		return r;
-	}
-
 
 
 
@@ -5066,7 +5095,7 @@ namespace cgra {
 		basic_vec<typename QuatT::value_t, 3> a = normalize(axis);
 		typename QuatT::value_t s = sin(angle / 2);
 
-		return QuatT(s * a, cos(angle / 2));
+		return QuatT(cos(angle / 2), s * a);
 	}
 
 	// rotation around a given axis using axis's magnitude as angle
@@ -5077,7 +5106,7 @@ namespace cgra {
 		typename QuatT::value_t s = sin(angle / 2);
 		basic_vec<typename QuatT::value_t, 3> a = axis / angle; // normalize
 
-		return QuatT(s * a, cos(angle / 2));
+		return QuatT(cos(angle / 2), s * a);
 	}
 
 	// rotation between 2 vectors
@@ -5088,7 +5117,7 @@ namespace cgra {
 		typename QuatT::value_t s = sin(angle / 2);
 		basic_vec<typename QuatT::value_t, 3> a = normalize(cross(from, to));
 
-		return QuatT(s * a, cos(angle / 2));
+		return QuatT(cos(angle / 2), s * a);
 	}
 
 	// dot product
@@ -5100,12 +5129,13 @@ namespace cgra {
 	// inverse rotation
 	template <typename T>
 	inline auto conjugate(const basic_quat<T>& q) {
-		return basic_quat<T>{ -q.x, -q.y, -q.z, q.w };
+		return basic_quat<T>{q.w, -q.x, -q.y, -q.z};
 	}
 
 	// multiplicative inverse
 	template <typename T>
 	inline auto inverse(const basic_quat<T>& q) {
+		// FIXME quat inverse
 		T ilen2 = 1 / dot(q, q);
 		return conjugate(q) * ilen2;
 	}
