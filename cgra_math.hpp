@@ -7,12 +7,12 @@
 
 
 
-/**
-=================
-	  TODO
-=================
+/*
+//-----------------
+//      TODO
+//-----------------
 
-- FIXME it would be better if quat had w first
+- FIXME quat should not be an array-like type
 - FIXME reimplement vec/mat ops/functions more generically
 - FIXME unbreak constexpr for msvc and intellisense
 - test is_vector_compatible etc with static asserts
@@ -26,6 +26,8 @@
 - implement alternatives to body-3-2-1 euler rotation
 	http://www.geometrictools.com/Documentation/EulerAngles.pdf
 - noexceptness
+
+
 */
 
 #pragma once
@@ -815,12 +817,6 @@ namespace cgra {
 			static constexpr bool is_mat = true;
 		};
 
-		template <typename T>
-		struct array_traits<basic_quat<T>> : array_traits<basic_vec<T, 4>> {
-			static constexpr bool is_vec = false;
-			static constexpr bool is_mat = false;
-		};
-
 		// TODO array_traits for std::array, std::tuple
 
 		template <typename T>
@@ -1420,34 +1416,6 @@ namespace cgra {
 			}
 		};
 
-		// base type for quaternion data storage
-		template <typename T, typename = void>
-		class basic_quat_data {
-		public:
-			T w, x, y, z;
-
-			CGRA_CONSTEXPR_FUNCTION explicit basic_quat_data(T w_, T x_, T y_, T z_) :
-				w{std::move(w_)}, x{std::move(x_)}, y{std::move(y_)}, z{std::move(z_)} {}
-
-			const T & operator[](size_t i) const {
-				assert(i < 4);
-				return *(&w + i);
-			}
-
-			T & operator[](size_t i) {
-				assert(i < 4);
-				return *(&w + i);
-			}
-
-			CGRA_CONSTEXPR_FUNCTION const T * data() const {
-				return &w;
-			}
-
-			CGRA_CONSTEXPR_FUNCTION T * data() {
-				return &w;
-			}
-		};
-
 		// base type for vector data storage
 		// specializations must be default constructible, copyable, movable and destructible;
 		// this means care must be taken to handle unions correctly.
@@ -1723,49 +1691,6 @@ namespace cgra {
 #pragma warning(push)
 #pragma warning(disable: 4201)
 #endif
-
-		template <typename T>
-		class basic_quat_data<T, std::enable_if_t<std::is_trivially_destructible<T>::value>> {
-		public:
-			union {
-				simple_array<T, 4> m_data;
-				struct { T w; T x; T y; T z; };
-			};
-
-			CGRA_CONSTEXPR_FUNCTION basic_quat_data() : m_data{} {}
-
-			CGRA_CONSTEXPR_FUNCTION basic_quat_data(const basic_quat_data &other) : m_data{other.m_data} {}
-
-			CGRA_CONSTEXPR_FUNCTION basic_quat_data(basic_quat_data &&other) noexcept(std::is_nothrow_move_constructible<T>::value) :
-				m_data{std::move(other.m_data)} {}
-
-			CGRA_CONSTEXPR_FUNCTION basic_quat_data & operator=(const basic_quat_data &other) {
-				m_data = other.m_data;
-				return *this;
-			}
-
-			CGRA_CONSTEXPR_FUNCTION basic_quat_data & operator=(basic_quat_data &&other) noexcept(std::is_nothrow_move_assignable<T>::value) {
-				m_data = std::move(other.m_data);
-				return *this;
-			}
-
-			template <typename ...ArgTs, typename = std::enable_if_t<can_have_element_ctor<T, ArgTs...>::value>>
-			CGRA_CONSTEXPR_FUNCTION basic_quat_data(ArgTs &&...args) : m_data{intellisense_constify(std::forward<ArgTs>(args))...} {}
-
-			CGRA_CONSTEXPR_FUNCTION T & operator[](size_t i) {
-				assert(i < 4);
-				return m_data[i];
-			}
-
-			CGRA_CONSTEXPR_FUNCTION const T & operator[](size_t i) const {
-				assert(i < 4);
-				return m_data[i];
-			}
-
-			CGRA_CONSTEXPR_FUNCTION T * data() { return &m_data[0]; }
-
-			CGRA_CONSTEXPR_FUNCTION const T * data() const { return &m_data[0]; }
-		};
 
 		template <typename T>
 		class basic_vec_data<T, 1, std::enable_if_t<std::is_trivially_destructible<T>::value>> {
@@ -2370,36 +2295,27 @@ namespace cgra {
 
 	// quaternion of type T
 	template <typename T>
-	class basic_quat : protected detail::basic_vec_ctor_proxy<T, 4, true, detail::vec_exarg_tup_t<T, 4>, detail::basic_quat_data<T>> {
-	private:
-		// not basic_vec anymore, so we don't inherit a scalar broadcast ctor and therefore don't need to delete it
-		using ctor_proxy_t = detail::basic_vec_ctor_proxy<T, 4, true, detail::vec_exarg_tup_t<T, 4>, detail::basic_quat_data<T>>;
-
+	class basic_quat {
 	public:
 		using value_t = T;
-		static constexpr size_t size = 4;
 
-		// TODO are these actually good names for the quaternion members?
-		using detail::basic_quat_data<T>::w;
-		using detail::basic_quat_data<T>::x;
-		using detail::basic_quat_data<T>::y;
-		using detail::basic_quat_data<T>::z;
+		T w, x, y, z;
 
-		// define default ctor
-		CGRA_DEFINE_DEFAULT_CTOR(basic_quat, ctor_proxy_t, T, 4)
-
-		// define magic ctor
-		CGRA_DEFINE_MAGIC_CTOR(basic_quat, ctor_proxy_t, T, 4)
-
-		// make inherited functions visible
-		using ctor_proxy_t::operator[];
+		// default ctor
+		CGRA_CONSTEXPR_FUNCTION basic_quat() :
+			w(T()), x(T()), y(T()), z(T()) {}
 
 		// real ctor
-		CGRA_CONSTEXPR_FUNCTION explicit basic_quat(T t) : ctor_proxy_t{std::move(t), detail::repeat_vec<T, 3>(T())} {}
+		CGRA_CONSTEXPR_FUNCTION basic_quat(T t) :
+			w(std::move(t)), x(T()), y(T()), z(T()) {}
+
+		// real + vector ctor
+		CGRA_CONSTEXPR_FUNCTION basic_quat(T w_, basic_vec<T, 3> xyz) :
+			w(std::move(w_)), x(std::move(xyz.x)), y(std::move(xyz.y)), z(std::move(xyz.y)) {}
 
 		// TODO complex ctor?
 
-		// basic_mat<U, 3, 3> converter
+		// basic_mat<U, 3, 3> conversion
 		template <typename U>
 		CGRA_CONSTEXPR_FUNCTION explicit operator basic_mat<U, 3, 3>() const {
 			basic_mat<U, 3, 3> m;
@@ -2419,7 +2335,7 @@ namespace cgra {
 			return m;
 		}
 
-		// basic_mat<U, 4, 4> converter
+		// basic_mat<U, 4, 4> conversion
 		template <typename U>
 		CGRA_CONSTEXPR_FUNCTION explicit operator basic_mat<U, 4, 4>() const {
 			basic_mat<U, 4, 4> m;
@@ -2446,20 +2362,15 @@ namespace cgra {
 
 			return m;
 		}
-
-		CGRA_CONSTEXPR_FUNCTION ctor_proxy_t & as_vec() { return *this; }
-
-		CGRA_CONSTEXPR_FUNCTION const ctor_proxy_t & as_vec() const { return *this; }
-
 	};
 
 	template <typename T>
-	void swap(basic_quat<T> &lhs, basic_quat<T> &rhs) {
-		// TODO via vec
-		for (size_t i = 0; i < lhs.size; i++) {
-			using std::swap;
-			swap(lhs[i], rhs[i]);
-		}
+	CGRA_CONSTEXPR_FUNCTION inline void swap(basic_quat<T> &lhs, basic_quat<T> &rhs) {
+		// TODO noexcept
+		swap(lhs.w, rhs.w);
+		swap(lhs.x, rhs.x);
+		swap(lhs.y, rhs.y);
+		swap(lhs.z, rhs.z);
 	}
 
 	template <typename T>
