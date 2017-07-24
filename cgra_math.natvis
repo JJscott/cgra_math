@@ -50,7 +50,7 @@
       </ArrayItems>
     </Expand>
   </Type>
-  <Type Name="cgra::detail::basic_quat_data&lt;*,*&gt;">
+  <Type Name="cgra::basic_quat&lt;*&gt;">
     <DisplayString>{{{w} + {x}i + {y}j + {z}k}}</DisplayString>
     <Expand>
       <ArrayItems>

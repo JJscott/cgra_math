@@ -12,12 +12,16 @@
 //      TODO
 //-----------------
 
-- FIXME quat should not be an array-like type
+- FIXME constrain fold/fill to array-like types
+- FIXME constrain things using scalars to be appropriately scalar
+- FIXME revisit transform matrix factory functions (re: homogeneous coords, explicit types)
+- FIXME revisit quat factory functions (re: explicit types)
+- FIXME examine all advanced quat functions for correctness
 - FIXME reimplement vec/mat ops/functions more generically
 - FIXME unbreak constexpr for msvc and intellisense
 - test is_vector_compatible etc with static asserts
 - move random section to bottom of file
-- make mat inverse error by exception
+- FIXME make mat inverse error by exception
 - constexpr everything
 - clean up common function definitions and remove duplicates
 - implement generic cat functions
@@ -2309,11 +2313,24 @@ namespace cgra {
 		CGRA_CONSTEXPR_FUNCTION basic_quat(T t) :
 			w(std::move(t)), x(T()), y(T()), z(T()) {}
 
-		// real + vector ctor
+		// real + vector imag ctor
 		CGRA_CONSTEXPR_FUNCTION basic_quat(T w_, basic_vec<T, 3> xyz) :
 			w(std::move(w_)), x(std::move(xyz.x)), y(std::move(xyz.y)), z(std::move(xyz.y)) {}
 
 		// TODO complex ctor?
+
+		// all values ctor (prefer the real + vector imag ctor)
+		CGRA_CONSTEXPR_FUNCTION explicit basic_quat(T w_, T x_, T y_, T z_) :
+			w(std::move(w_)), x(std::move(x_)), y(std::move(y_)), z(std::move(z_)) {}
+
+		CGRA_CONSTEXPR_FUNCTION explicit basic_quat(basic_vec<T, 4> v) :
+			w(std::move(v[0])), x(std::move(v[1])), y(std::move(v[2])), z(std::move(v[3])) {}
+
+		CGRA_CONSTEXPR_FUNCTION explicit operator basic_vec<T, 4>() const {
+			return {w, x, y, z};
+		}
+
+		// TODO proper access to real/imag components
 
 		// basic_mat<U, 3, 3> conversion
 		template <typename U>
@@ -2377,24 +2394,6 @@ namespace cgra {
 	inline std::ostream & operator<<(std::ostream &out, const basic_quat<T> &v) {
 		return out << '(' << v.w << " + " << v.x << "i + " << v.y << "j + " << v.z << "k)";
 	}
-
-	template <typename T>
-	inline T * begin(basic_quat<T> &q) { return q.data(); }
-
-	template <typename T>
-	inline const T * begin(const basic_quat<T> &q) { return q.data(); }
-
-	template <typename T>
-	inline const T * cbegin(const basic_quat<T> &q) { return q.data(); }
-
-	template <typename T>
-	inline T * end(basic_quat<T> &q) { return begin(q) + 4; }
-
-	template <typename T>
-	inline const T * end(const basic_quat<T> &q) { return begin(q) + 4; }
-
-	template <typename T>
-	inline const T * cend(const basic_quat<T> &q) { return begin(q) + 4; }
 
 	namespace detail {
 
@@ -2799,14 +2798,6 @@ namespace cgra {
 		};
 	}
 
-	// metafunction class: convert array-like type to quaternion
-	struct type_to_quat {
-		template <typename VecT>
-		struct apply {
-			using type = basic_quat<detail::array_value_t<VecT>>;
-		};
-	};
-
 	// metafunction class: convert array-like type to vector
 	struct type_to_vec {
 		template <typename VecT>
@@ -2902,106 +2893,115 @@ namespace cgra {
 	// quat add assign
 	template <typename T1, typename T2>
 	inline basic_quat<T1> & operator+=(basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
-		zip_with(detail::op::add_assign(), lhs.as_vec(), rhs.as_vec());
+		lhs.w += rhs.w;
+		lhs.x += rhs.x;
+		lhs.y += rhs.y;
+		lhs.z += rhs.z;
 		return lhs;
 	}
 
 	// quat sub assign
 	template <typename T1, typename T2>
 	inline basic_quat<T1> & operator-=(basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
-		zip_with(detail::op::sub_assign(), lhs.as_vec(), rhs.as_vec());
+		lhs.w -= rhs.w;
+		lhs.x -= rhs.x;
+		lhs.y -= rhs.y;
+		lhs.z -= rhs.z;
 		return lhs;
 	}
 
 	// quat mul assign
 	template <typename T1, typename T2>
 	inline basic_quat<T1> & operator*=(basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
-		// TODO implement quat *= in terms of *
-		using common_t = std::common_type_t<T1, T2>;
-		common_t x = lhs.w * rhs.x + lhs.x * rhs.w + lhs.y * rhs.z - lhs.z * rhs.y;
-		common_t y = lhs.w * rhs.y - lhs.x * rhs.z + lhs.y * rhs.w + lhs.z * rhs.x;
-		common_t z = lhs.w * rhs.z + lhs.x * rhs.y - lhs.y * rhs.x + lhs.z * rhs.w;
-		common_t w = lhs.w * rhs.w - lhs.x * rhs.x - lhs.y * rhs.y - lhs.z * rhs.z;
-		lhs.x = x;
-		lhs.y = y;
-		lhs.z = z;
-		lhs.w = w;
-		return lhs;
+		return lhs = basic_quat<T1>{lhs * rhs};
 	}
 
 	// quat mul assign scalar
 	template <typename T1, typename T2>
 	inline basic_quat<T1> & operator*=(basic_quat<T1> &lhs, const T2 &rhs) {
-		zip_with(detail::op::mul_assign(), lhs.as_vec(), basic_vec<T2, 4>(rhs));
+		lhs.w *= rhs;
+		lhs.x *= rhs;
+		lhs.y *= rhs;
+		lhs.z *= rhs;
 		return lhs;
 	}
 
 	// quat negate
 	template <typename T>
 	inline auto operator-(const basic_quat<T> &rhs) {
-		// TODO negate is not conjugate damnit josh
-		return conjugate(rhs);
+		basic_quat<T> q;
+		q.w =- rhs.w;
+		q.x =- rhs.x;
+		q.y =- rhs.y;
+		q.z =- rhs.z;
+		return q;
 	}
 
 	// quat add
 	template <typename T1, typename T2>
 	inline auto operator+(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
-		return basic_quat<T1>(zip_with(detail::op::add(), lhs.as_vec(), rhs.as_vec()));
+		basic_quat<decltype(T1() + T2())> q{lhs};
+		return q += rhs;
 	}
 
 	// quat sub
 	template <typename T1, typename T2>
 	inline auto operator-(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
-		return basic_quat<T1>(zip_with(detail::op::sub(), lhs.as_vec(), rhs.as_vec()));
+		basic_quat<decltype(T1() - T2())> q{lhs};
+		return q -= rhs;
 	}
 
 	// quat mul
 	template <typename T1, typename T2>
 	inline auto operator*(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
-		basic_quat<std::common_type_t<T1, T2>> r = lhs;
-		r *= rhs;
-		return r;
+		basic_quat<decltype(T1() * T2())> q{lhs};
+		q.w = lhs.w * rhs.w - lhs.x * rhs.x - lhs.y * rhs.y - lhs.z * rhs.z;
+		q.x = lhs.w * rhs.x + lhs.x * rhs.w + lhs.y * rhs.z - lhs.z * rhs.y;
+		q.y = lhs.w * rhs.y - lhs.x * rhs.z + lhs.y * rhs.w + lhs.z * rhs.x;
+		q.z = lhs.w * rhs.z + lhs.x * rhs.y - lhs.y * rhs.x + lhs.z * rhs.w;
+		return q;
 	}
 
-	// quat mul vector
+	// quat mul vec3 (rotate vec3 by quat)
+	// TODO allow other vector types
 	template <typename T1, typename T2>
 	inline auto operator*(const basic_quat<T1> &lhs, const basic_vec<T2, 3> &rhs) {
-		// FIXME do this nicely
-		using common_t = std::common_type_t<T1, T2>;
-		basic_quat<common_t> q = lhs;
-		basic_quat<common_t> p(common_t(), rhs);
-		p = q * p * inverse(q);
+		using common_t = decltype(T1() * T2());
+		basic_quat<common_t> p{common_t{}, rhs};
+		p = lhs * p * inverse(lhs);
 		return basic_vec<common_t, 3>(p.x, p.y, p.z);
 	}
 
 	// quat mul scalar
 	template <typename T1, typename T2>
 	inline auto operator*(const basic_quat<T1> &lhs, const T2 &rhs) {
-		return basic_quat<std::common_type_t<T1, T2>>(zip_with(detail::op::mul(), lhs.as_vec(), detail::repeat_vec<T2, 4>(rhs)));
+		basic_quat<decltype(T1() * T2())> q{lhs};
+		return q *= rhs;
 	}
 
 	// quat mul scalar
 	template <typename T1, typename T2>
 	inline auto operator*(const T1 &lhs, const basic_quat<T2> &rhs) {
-		return basic_quat<std::common_type_t<T1, T2>>(zip_with(detail::op::mul(), detail::repeat_vec<T1, 4>(lhs), rhs.as_vec()));
+		basic_quat<decltype(T1() * T2())> q{rhs};
+		return q *= lhs;
 	}
 
 	// quat equal
 	template <typename T1, typename T2>
 	inline auto operator==(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
-		return fold(detail::op::logical_and(), true, zip_with(detail::op::equal(), lhs.as_vec(), rhs.as_vec()));
+		return std::tie(lhs.w, lhs.x, lhs.y, lhs.z) == std::tie(rhs.w, rhs.x, rhs.y, rhs.z);
 	}
 
 	// quat not-equal
 	template <typename T1, typename T2>
 	inline auto operator!=(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
-		return fold(detail::op::logical_or(), false, zip_with(detail::op::nequal(), lhs.as_vec(), rhs.as_vec()));
+		return !(lhs == rhs);
 	}
 
 	// quat less-than
 	template <typename T1, typename T2>
 	inline auto operator<(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
-		return lhs.as_vec() < rhs.as_vec();
+		return std::tie(lhs.w, lhs.x, lhs.y, lhs.z) < std::tie(rhs.w, rhs.x, rhs.y, rhs.z);
 	}
 
 	namespace detail {
@@ -4890,15 +4890,8 @@ namespace cgra {
 	inline auto rotate3(const basic_quat<typename MatT::value_t> &q) {
 		static_assert(MatT::cols >= 3, "Matrix type must have 3 or more columns");
 		static_assert(MatT::rows >= 3, "Matrix type must have 3 or more rows");
-		basic_mat<typename MatT::value_t, 4, 4> rotation(q);
-		MatT r{ 1 };
-
-		// copy rotation part of the quaternion matrix over
-		for (int j = 0; j < MatT::cols && j < rotation.cols; ++j)
-			for (int i = 0; i < MatT::rows && i < rotation.rows; ++i)
-				r[j][i] = rotation[j][i];
-
-		return r;
+		basic_mat<typename MatT::value_t, 4, 4> m{q};
+		return MatT{m};
 	}
 
 
@@ -5012,7 +5005,7 @@ namespace cgra {
 	// rotation around a given axis using axis's magnitude as angle
 	// TODO nan checking
 	template <typename QuatT, typename U>
-	inline auto axisangle(const basic_vec<U, 3>& axis) {
+	inline auto axisangle(const basic_vec<U, 3> &axis) {
 		typename QuatT::value_t angle = length(axis);
 		typename QuatT::value_t s = sin(angle / 2);
 		basic_vec<typename QuatT::value_t, 3> a = axis / angle; // normalize
@@ -5031,24 +5024,24 @@ namespace cgra {
 		return QuatT(cos(angle / 2), s * a);
 	}
 
-	// dot product
+	// quat dot product
 	template <typename T1, typename T2>
 	inline auto dot(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
-		return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z + lhs.w * rhs.w;
+		return lhs.w * rhs.w + lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
 	}
 
-	// inverse rotation
+	// quat conjugate (== inverse for unit quat)
 	template <typename T>
-	inline auto conjugate(const basic_quat<T>& q) {
+	inline auto conjugate(const basic_quat<T> &q) {
+		// TODO rename to 'conj'
 		return basic_quat<T>{q.w, -q.x, -q.y, -q.z};
 	}
 
-	// multiplicative inverse
+	// quat inverse
 	template <typename T>
-	inline auto inverse(const basic_quat<T>& q) {
-		// FIXME quat inverse
-		T ilen2 = 1 / dot(q, q);
-		return conjugate(q) * ilen2;
+	inline auto inverse(const basic_quat<T> &q) {
+		// yes, this should indeed be the square of the norm
+		return conjugate(q) * (T{1} / dot(q, q));
 	}
 
 	template <typename T>
@@ -5057,10 +5050,10 @@ namespace cgra {
 		T theta = acos(q.w / qm);
 		T ivm = 1 / sqrt(q.x * q.x + q.y * q.y + q.z * q.z);
 
-		if (isinf(ivm)) return basic_quat<T>() * pow(qm, power);
+		if (isinf(ivm)) return basic_quat<T>{1} * pow(qm, power);
 
 		T ivm_power_theta = ivm * power * theta;
-		basic_quat<T> p(0, q.x * ivm_power_theta, q.y * ivm_power_theta, q.z * ivm_power_theta);
+		basic_quat<T> p{0, q.x * ivm_power_theta, q.y * ivm_power_theta, q.z * ivm_power_theta};
 		return exp(p) * pow(qm, power);
 	}
 
@@ -5071,10 +5064,10 @@ namespace cgra {
 		T vm = sqrt(q.x * q.x + q.y * q.y + q.z * q.z);
 		T ivm = 1 / vm;
 
-		if (isinf(ivm)) return basic_quat<T>(expw * cos(vm), 0, 0, 0);
+		if (isinf(ivm)) return basic_quat<T>{expw * cos(vm)};
 
 		T vf = expw * sin(vm) * ivm;
-		return basic_quat<T>(expw * cos(vm), q.x * vf, q.y * vf, q.z * vf);
+		return basic_quat<T>{expw * cos(vm), q.x * vf, q.y * vf, q.z * vf};
 	}
 
 	template <typename T>
@@ -5085,7 +5078,7 @@ namespace cgra {
 		if (isinf(ivm)) return basic_quat<T>(log(qm), 0, 0, 0);
 
 		T vf = acos(q.w / qm) * ivm;
-		return basic_quat<T>(log(qm), q.x * vf, q.y * vf, q.z * vf);
+		return basic_quat<T>{log(qm), q.x * vf, q.y * vf, q.z * vf};
 	}
 
 	// length/magnitude of vector from quaternion
@@ -5100,17 +5093,17 @@ namespace cgra {
 		return q / length(q);
 	}
 
-	// normalized linear interpolation
-	// linear blend of quaternions : x*(1-a) + y*a
+	// quat linear interpolation (lerp) : x*(1-t) + y*t
+	// TODO quat nlerp?
 	template <typename T1, typename T2, typename T3>
-	inline auto mix(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs, T3 a) {
-		using common_t = std::common_type_t<T1, T2, T3>;
-		return lhs*(common_t(1) - a) + rhs*a;
+	inline auto mix(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs, const T3 &t) {
+		using common_t = decltype(T1() * T2() * T3());
+		return lhs * (common_t(1) - t) + rhs * t;
 	}
 
-	// spherical linear interpolation
+	// quat spherical linear interpolation (slerp)
 	template <typename T1, typename T2, typename T3>
-	inline auto slerp(const basic_quat<T1>& lhs, const basic_quat<T2>& rhs, T3 a) {
+	inline auto slerp(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs, const T3 &t) {
 		using common_t = std::common_type_t<T1, T2, T3>;
 		basic_quat<common_t> q = normalize(lhs);
 		basic_quat<common_t> p = normalize(rhs);
@@ -5122,19 +5115,19 @@ namespace cgra {
 
 		if ((common_t(1) - dpq) > epsilon) {
 			common_t w = acos(dpq);
-			return ((sin((common_t(1) - a) * w) * p) + (sin(a * w) * q)) / sin(w);
+			return ((sin((common_t(1) - t) * w) * p) + (sin(t * w) * q)) / sin(w);
 		}
 
-		return (common_t(1) - a) * p + a * q;
+		return (common_t(1) - t) * p + t * q;
 	}
 
 
 	// returns the rotation (in radians) of the quaternion around a given axis
 	template <typename T1, typename T2>
-	inline auto project(const basic_quat<T1> &q, const basic_vec<T2, 3> &v) {
+	inline auto project(const basic_quat<T1> &q, const basic_vec<T2, 3> &axis) {
 		using common_t = std::common_type_t<T1, T2>;
 
-		basic_vec<common_t, 3> nv = normalize(v);
+		basic_vec<common_t, 3> nv = normalize(axis);
 
 		// find the the tangent to nv
 		basic_vec<common_t, 3> tangent{ 1, 0, 0 };

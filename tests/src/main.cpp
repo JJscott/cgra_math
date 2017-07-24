@@ -38,6 +38,7 @@ int main() {
 
 	auto v3 = vec3(vec4(7));
 	v3.y = 4;
+	v3 = {8, 5, 8};
 
 	vec4 v4{vec0(), vec4(5), vec0(), vec4()};
 
@@ -74,7 +75,7 @@ int main() {
 	constexpr quat q1{vec4(v5)};
 
 	cout << q1 << endl;
-	cout << q1[0] << endl;
+	cout << q1.w << endl;
 	cout << (axisangle<quat>(vec3(0, 0, 1), pi / 2) * vec3(1, 0, 0)) << endl;
 
 	basic_vec<foobar, 2> fb;
