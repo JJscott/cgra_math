@@ -12,7 +12,6 @@
 //      TODO
 //-----------------
 
-- FIXME constrain fold/fill to array-like types
 - FIXME constrain things using scalars to be appropriately scalar
 - FIXME revisit transform matrix factory functions (re: homogeneous coords, explicit types)
 - FIXME revisit quat factory functions (re: explicit types)
@@ -2796,6 +2795,31 @@ namespace cgra {
 				return std::forward<T1>(t1);
 			}
 		};
+
+		// fill, but as a repeat_vec
+		template <typename VecT, typename T>
+		CGRA_CONSTEXPR_FUNCTION auto fill_repeat(const T &);
+
+		template <typename VecT, typename T, typename = void>
+		struct fill_impl {
+			CGRA_CONSTEXPR_FUNCTION static auto go(const T &t) {
+				auto val = fill_repeat<array_value_t<VecT>>(t);
+				return repeat_vec<decltype(val), detail::array_size<VecT>::value>(std::move(val));
+			}
+		};
+
+		template <typename VecT, typename T>
+		struct fill_impl<VecT, T, std::enable_if_t<detail::is_array_compatible<VecT, T>::value>> {
+			CGRA_CONSTEXPR_FUNCTION static auto go(const T &t) {
+				return VecT(t);
+			}
+		};
+
+		template <typename VecT, typename T>
+		CGRA_CONSTEXPR_FUNCTION inline auto fill_repeat(const T &t) {
+			return fill_impl<VecT, T>::go(t);
+		}
+
 	}
 
 	// metafunction class: convert array-like type to vector
@@ -2828,35 +2852,16 @@ namespace cgra {
 	// Produce a scalar by applying f(T1,T2) -> T3 to adjacent pairs of elements
 	// from vector a in left-to-right order starting with f(z, v[0])
 	// Typically T1 = T3 and T2 is a vector of some T
-	template <typename F, typename T1, typename ArgT>
-	CGRA_CONSTEXPR_FUNCTION auto fold(F f, T1 &&t1, ArgT &&v) {
-		return detail::fold_impl<0, std::decay_t<ArgT>::size>::apply(f, std::forward<T1>(t1), std::forward<ArgT>(v));
-	}
-
-	template <typename VecT, typename T>
-	CGRA_CONSTEXPR_FUNCTION VecT fill(const T &);
-
-	namespace detail {
-		template <typename VecT, typename T, typename = void>
-		struct fill_impl {
-			CGRA_CONSTEXPR_FUNCTION static VecT go(const T &t) {
-				using val_t = array_value_t<VecT>;
-				return VecT{detail::repeat_vec<val_t, detail::array_traits<VecT>::size>(fill<val_t>(t))};
-			}
-		};
-
-		template <typename VecT, typename T>
-		struct fill_impl<VecT, T, std::enable_if_t<detail::is_array_compatible<VecT, T>::value>> {
-			CGRA_CONSTEXPR_FUNCTION static VecT go(const T &t) {
-				return VecT(t);
-			}
-		};
+	template <typename F, typename T1, typename VecT, typename = detail::enable_if_array_t<VecT>>
+	CGRA_CONSTEXPR_FUNCTION auto fold(F f, T1 &&t1, VecT &&v) {
+		return detail::fold_impl<0, detail::array_size<VecT>::value>::apply(f, std::forward<T1>(t1), std::forward<VecT>(v));
 	}
 
 	// fill an array-like type VecT with copies of a (relatively) scalar-like value of type T
 	template <typename VecT, typename T>
 	CGRA_CONSTEXPR_FUNCTION inline VecT fill(const T &t) {
-		return detail::fill_impl<VecT, T>::go(t);
+		// VecT should not be constrained to just arrays: fill<float>() etc should work
+		return VecT{detail::fill_repeat<VecT>(t)};
 	}
 
 	// sum of all x in v, i.e., v[0] + v[1] + ...
