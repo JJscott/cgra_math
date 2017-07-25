@@ -752,20 +752,6 @@ namespace cgra {
 	
 	namespace detail {
 
-		namespace vectors {
-			template <typename T, size_t N> class repeat_vec;
-			template <typename T, size_t N, bool RequireExactSize, typename ArgTupT, typename BaseDataT> class basic_vec_ctor_proxy;
-		}
-
-		template <typename T, size_t N>
-		using repeat_vec = vectors::repeat_vec<T, N>;
-
-		template <typename T, size_t Cols, size_t Rows>
-		using repeat_vec_vec = repeat_vec<repeat_vec<T, Rows>, Cols>;
-
-		template <typename T, size_t N, bool RequireExactSize, typename ArgTupT, typename BaseDataT>
-		using basic_vec_ctor_proxy = vectors::basic_vec_ctor_proxy<T, N, RequireExactSize, ArgTupT, BaseDataT>;
-
 		// note: msvc has some trouble with expansion of template (type) parameter packs that result in integers,
 		// so we use integral_constant-like types instead (especially for seq_repeat, make_index_sequence).
 		// however, this breaks specialization for specific values in the context of inheritance,
@@ -783,24 +769,61 @@ namespace cgra {
 		struct vec_element_ctor_tag {};
 		struct vec_dead_ctor_tag {};
 
+		namespace vectors {
+			template <typename T, size_t N> class repeat_vec;
+			template <typename T, size_t N, bool RequireExactSize, typename ArgTupT, typename BaseDataT> class basic_vec_ctor_proxy;
+		}
+
+		template <typename T, size_t N>
+		using repeat_vec = vectors::repeat_vec<T, N>;
+
+		template <typename T, size_t Cols, size_t Rows>
+		using repeat_vec_vec = repeat_vec<repeat_vec<T, Rows>, Cols>;
+
+		template <typename T, size_t N, bool RequireExactSize, typename ArgTupT, typename BaseDataT>
+		using basic_vec_ctor_proxy = vectors::basic_vec_ctor_proxy<T, N, RequireExactSize, ArgTupT, BaseDataT>;
+
+		template <typename T, typename = void>
+		struct scalar_traits {
+			static constexpr bool is_scalar = false;
+		};
+
 		template <typename T>
+		struct scalar_traits<T, std::enable_if_t<std::numeric_limits<T>::is_specialized>> {
+			static constexpr bool is_scalar = true;
+		};
+
+		template <typename T>
+		struct scalar_traits<std::complex<T>, void> {
+			static constexpr bool is_scalar = true;
+		};
+
+		template <typename T>
+		struct scalar_traits<basic_quat<T>, void> {
+			static constexpr bool is_scalar = true;
+		};
+
+		template <typename T>
+		struct is_scalar : bool_constant<scalar_traits<std::decay_t<T>>::is_scalar> {};
+
+		template <typename T, typename = void>
 		struct array_traits {
 			// cannot have value_t type; absence required for sfinae
 			static constexpr size_t size = 0;
 
-			static constexpr bool is_arr = false;
-			static constexpr bool is_vec = false;
-			static constexpr bool is_mat = false;
+			static constexpr bool is_array = false;
+			static constexpr bool is_vector = false;
+			static constexpr bool is_matrix = false;
 		};
 
 		template <typename T, size_t N>
-		struct array_traits<basic_vec<T, N>> {
+		struct array_traits<basic_vec<T, N>, void> {
 			using value_t = T;
 			static constexpr size_t size = N;
 
-			static constexpr bool is_arr = true;
-			static constexpr bool is_vec = true;
-			static constexpr bool is_mat = false;
+			static constexpr bool is_array = true;
+			static constexpr bool is_vector = true;
+			static constexpr bool is_matrix = false;
 
 			template <size_t I, typename VecT>
 			CGRA_CONSTEXPR_FUNCTION static decltype(auto) get(VecT &&v) {
@@ -809,27 +832,27 @@ namespace cgra {
 		};
 
 		template <typename T, size_t N>
-		struct array_traits<repeat_vec<T, N>> : array_traits<basic_vec<T, N>> {};
+		struct array_traits<repeat_vec<T, N>, void> : array_traits<basic_vec<T, N>> {};
 
 		template <typename T, size_t N, bool RequireExactSize, typename ExArgTupT, typename BaseDataT>
-		struct array_traits<basic_vec_ctor_proxy<T, N, RequireExactSize, ExArgTupT, BaseDataT>> : array_traits<basic_vec<T, N>> {};
+		struct array_traits<basic_vec_ctor_proxy<T, N, RequireExactSize, ExArgTupT, BaseDataT>, void> : array_traits<basic_vec<T, N>> {};
 
 		template <typename T, size_t Cols, size_t Rows>
-		struct array_traits<basic_mat<T, Cols, Rows>> : array_traits<basic_vec<basic_vec<T, Rows>, Cols>> {
-			static constexpr bool is_vec = false;
-			static constexpr bool is_mat = true;
+		struct array_traits<basic_mat<T, Cols, Rows>, void> : array_traits<basic_vec<basic_vec<T, Rows>, Cols>> {
+			static constexpr bool is_vector = false;
+			static constexpr bool is_matrix = true;
 		};
 
 		// TODO array_traits for std::array, std::tuple
 
 		template <typename T>
-		struct is_arr : bool_constant<array_traits<std::decay_t<T>>::is_arr> {};
+		struct is_array : bool_constant<array_traits<std::decay_t<T>>::is_array> {};
 
 		template <typename T>
-		struct is_vec : bool_constant<array_traits<std::decay_t<T>>::is_vec> {};
+		struct is_vector : bool_constant<array_traits<std::decay_t<T>>::is_vector> {};
 
 		template <typename T>
-		struct is_mat : bool_constant<array_traits<std::decay_t<T>>::is_mat> {};
+		struct is_matrix : bool_constant<array_traits<std::decay_t<T>>::is_matrix> {};
 
 		template <template <typename T1, typename T2> class F>
 		struct meta_quote2 {
@@ -955,6 +978,10 @@ namespace cgra {
 		struct is_mutually_constructible :
 			bool_constant<std::is_constructible<T1, T2>::value && std::is_constructible<T2, T1>::value> {};
 
+		template <typename T1, typename T2>
+		struct is_scalar_compatible :
+			bool_constant<is_mutually_convertible<T1, T2>::value && is_scalar<T1>::value && is_scalar<T2>::value> {};
+
 		// is T a compatible scalar type for array VecT?
 		template <typename VecT, typename T, bool Explicit = false, typename = void>
 		struct is_array_scalar_compatible : std::false_type {};
@@ -1014,12 +1041,12 @@ namespace cgra {
 
 		template <typename VecT0, typename VecT1>
 		struct is_vector_compatible :
-			bool_constant<is_array_compatible<VecT0, VecT1>::value && is_vec<VecT0>::value && is_vec<VecT1>::value>
+			bool_constant<is_array_compatible<VecT0, VecT1>::value && is_vector<VecT0>::value && is_vector<VecT1>::value>
 		{};
 
 		template <typename VecT, typename T>
 		struct is_vector_scalar_compatible :
-			bool_constant<is_array_scalar_compatible<VecT, T>::value && is_vec<VecT>::value>
+			bool_constant<is_array_scalar_compatible<VecT, T>::value && is_vector<VecT>::value>
 		{};
 
 		template <typename MatT0, typename MatT1>
@@ -1027,8 +1054,8 @@ namespace cgra {
 			bool_constant<
 				is_array_compatible<MatT0, MatT1>::value
 				&& is_array_compatible<array_value_or_void_t<MatT0>, array_value_or_void_t<MatT1>>::value
-				&& is_mat<MatT0>::value
-				&& is_mat<MatT1>::value
+				&& is_matrix<MatT0>::value
+				&& is_matrix<MatT1>::value
 			>
 		{};
 
@@ -1037,14 +1064,14 @@ namespace cgra {
 			bool_constant<
 				is_element_compatible<array_value_or_void_t<MatT0>, array_value_or_void_t<MatT1>>::value
 				&& mat_cols<MatT0>::value == mat_rows<MatT1>::value
-				&& is_mat<MatT0>::value
-				&& is_mat<MatT1>::value
+				&& is_matrix<MatT0>::value
+				&& is_matrix<MatT1>::value
 			>
 		{};
 
 		template <typename MatT, typename T>
 		struct is_matrix_scalar_compatible :
-			bool_constant<is_array_scalar_compatible<array_value_or_void_t<MatT>, T>::value && is_mat<MatT>::value>
+			bool_constant<is_array_scalar_compatible<array_value_or_void_t<MatT>, T>::value && is_matrix<MatT>::value>
 		{};
 
 		template <typename MatT, typename VecT>
@@ -1052,8 +1079,8 @@ namespace cgra {
 			bool_constant<
 				is_element_compatible<array_value_or_void_t<MatT>, VecT>::value
 				&& mat_cols<MatT>::value == array_size<VecT>::value
-				&& is_mat<MatT>::value
-				&& is_vec<VecT>::value
+				&& is_matrix<MatT>::value
+				&& is_vector<VecT>::value
 			>
 		{};
 
@@ -1062,19 +1089,25 @@ namespace cgra {
 			bool_constant<
 			is_element_compatible<array_value_or_void_t<MatT>, VecT>::value
 			&& mat_rows<MatT>::value == array_size<VecT>::value
-			&& is_mat<MatT>::value
-			&& is_vec<VecT>::value
+			&& is_matrix<MatT>::value
+			&& is_vector<VecT>::value
 			>
 		{};
 
-		template <typename ...VecTs>
-		using enable_if_array_t = std::enable_if_t<meta_fold_t<meta_quote2<meta_and>, std::true_type, std::tuple<is_arr<VecTs>...>>::value>;
+		template <typename ...Ts>
+		using enable_if_scalar_t = std::enable_if_t<meta_fold_t<meta_quote2<meta_and>, std::true_type, std::tuple<is_scalar<Ts>...>>::value>;
 
 		template <typename ...VecTs>
-		using enable_if_vector_t = std::enable_if_t<meta_fold_t<meta_quote2<meta_and>, std::true_type, std::tuple<is_vec<VecTs>...>>::value>;
+		using enable_if_array_t = std::enable_if_t<meta_fold_t<meta_quote2<meta_and>, std::true_type, std::tuple<is_array<VecTs>...>>::value>;
+
+		template <typename ...VecTs>
+		using enable_if_vector_t = std::enable_if_t<meta_fold_t<meta_quote2<meta_and>, std::true_type, std::tuple<is_vector<VecTs>...>>::value>;
 
 		template <typename ...MatTs>
-		using enable_if_matrix_t = std::enable_if_t<meta_fold_t<meta_quote2<meta_and>, std::true_type, std::tuple<is_mat<MatTs>...>>::value>;
+		using enable_if_matrix_t = std::enable_if_t<meta_fold_t<meta_quote2<meta_and>, std::true_type, std::tuple<is_matrix<MatTs>...>>::value>;
+
+		template <typename T0, typename T1>
+		using enable_if_scalar_compatible_t = std::enable_if_t<is_scalar_compatible<T0, T1>::value>;
 
 		template <typename VecT0, typename VecT1>
 		using enable_if_vector_compatible_t = std::enable_if_t<is_vector_compatible<VecT0, VecT1>::value>;
