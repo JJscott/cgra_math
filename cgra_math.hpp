@@ -18,6 +18,7 @@
 - FIXME examine all advanced quat functions for correctness
 - FIXME reimplement vec/mat ops/functions more generically
 - FIXME unbreak constexpr for msvc and intellisense
+- TODO use non-type template arg sfinae to avoid extra dummy params
 - test is_vector_compatible etc with static asserts
 - move random section to bottom of file
 - FIXME make mat inverse error by exception
@@ -1102,7 +1103,6 @@ namespace cgra {
 
 		template <typename ...VecTs>
 		using enable_if_vector_t = std::enable_if_t<meta_fold_t<meta_quote2<meta_and>, std::true_type, std::tuple<is_vector<VecTs>...>>::value>;
-
 		template <typename ...MatTs>
 		using enable_if_matrix_t = std::enable_if_t<meta_fold_t<meta_quote2<meta_and>, std::true_type, std::tuple<is_matrix<MatTs>...>>::value>;
 
@@ -3609,249 +3609,343 @@ namespace cgra {
 
 
 
-	//       ___      .__   __.   _______  __       _______     ___.___________..______       __    _______     _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
-	//      /   \     |  \ |  |  /  _____||  |     |   ____|   /  /|           ||   _  \     |  |  /  _____|   |   ____||  |  |  | |  \ |  |  /      ||           ||  |  /  __  \  |  \ |  |     /       |  //
-	//     /  ^  \    |   \|  | |  |  __  |  |     |  |__     /  / `---|  |----`|  |_)  |    |  | |  |  __     |  |__   |  |  |  | |   \|  | |  ,----'`---|  |----`|  | |  |  |  | |   \|  |    |   (----`  //
-	//    /  /_\  \   |  . `  | |  | |_ | |  |     |   __|   /  /      |  |     |      /     |  | |  | |_ |    |   __|  |  |  |  | |  . `  | |  |         |  |     |  | |  |  |  | |  . `  |     \   \      //
-	//   /  _____  \  |  |\   | |  |__| | |  `----.|  |____ /  /       |  |     |  |\  \----.|  | |  |__| |    |  |     |  `--'  | |  |\   | |  `----.    |  |     |  | |  `--'  | |  |\   | .----)   |     //
-	//  /__/     \__\ |__| \__|  \______| |_______||_______/__/        |__|     | _| `._____||__|  \______|    |__|      \______/  |__| \__|  \______|    |__|     |__|  \______/  |__| \__| |_______/      //
-	//                                                                                                                                                                                                      //
-	//======================================================================================================================================================================================================//
-
-	// Converts degrees to radians, i.e., degrees * pi/180
-	template <typename T> inline T radians(T x) {
-		return x * T(pi / 180.0);
-	}
-
-	// Converts radians to degrees, i.e., radians * 180/pi
-	template <typename T> inline T degrees(T x) {
-		return x * T(180.0 / pi);
-	}
-
-	// Returns the angle between 2 vectors in radians
-	template <typename T1, typename T2, size_t N>
-	inline auto angle(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-		return acos(dot(v1, v2) / (length(v1) * length(v2)));
-	}
+	// .___________..______       __    _______     _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
+	// |           ||   _  \     |  |  /  _____|   |   ____||  |  |  | |  \ |  |  /      ||           ||  |  /  __  \  |  \ |  |     /       |  //
+	// `---|  |----`|  |_)  |    |  | |  |  __     |  |__   |  |  |  | |   \|  | |  ,----'`---|  |----`|  | |  |  |  | |   \|  |    |   (----`  //
+	//     |  |     |      /     |  | |  | |_ |    |   __|  |  |  |  | |  . `  | |  |         |  |     |  | |  |  |  | |  . `  |     \   \      //
+	//     |  |     |  |\  \----.|  | |  |__| |    |  |     |  `--'  | |  |\   | |  `----.    |  |     |  | |  `--'  | |  |\   | .----)   |     //
+	//     |__|     | _| `._____||__|  \______|    |__|      \______/  |__| \__|  \______|    |__|     |__|  \______/  |__| \__| |_______/      //
+	//                                                                                                                                          //
+	//==========================================================================================================================================//
 
 	using std::sin;
-
-	// Element-wise function for x in v
-	// The standard trigonometric sine function
-	template <typename T, size_t N>
-	inline basic_vec<T, N> sin(const basic_vec<T, N> &v) {
-		return zip_with([](auto &&x) { return sin(decltype(x)(x)); }, v);
-	}
-
 	using std::cos;
-
-	// Element-wise function for x in v
-	// The standard trigonometric cosine function
-	template <typename T, size_t N>
-	inline basic_vec<T, N> cos(const basic_vec<T, N> &v) {
-		return zip_with([](auto &&x) { return cos(decltype(x)(x)); }, v);
-	}
-
 	using std::tan;
-
-	// Element-wise function for x in v
-	// The standard trigonometric tangent
-	template <typename T, size_t N>
-	inline basic_vec<T, N> tan(const basic_vec<T, N> &v) {
-		return zip_with([](auto &&x) { return tan(decltype(x)(x)); }, v);
-	}
-
 	using std::asin;
-
-	// Element-wise function for x in v
-	// Arc sine. Returns an angle whose sine is x
-	// The range of values returned by this function is [-pi/2, pi/2]
-	// Results are undefined if ∣x∣>1
-	template <typename T, size_t N>
-	inline basic_vec<T, N> asin(const basic_vec<T, N> &v) {
-		return zip_with([](auto &&x) { return asin(decltype(x)(x)); }, v);
-	}
-
 	using std::acos;
-
-	// Element-wise function for x in v
-	// Arc cosine. Returns an angle whose cosine is x
-	// The range of values returned by this function is [0, p]
-	// Results are undefined if ∣x∣>1
-	template <typename T, size_t N>
-	inline basic_vec<T, N> acos(const basic_vec<T, N> &v) {
-		return zip_with([](auto &&x) { return acos(decltype(x)(x)); }, v);
-	}
-
-	// Arc tangent. Returns an angle whose tangent is y/x
-	// The signs of x and y are used to determine what quadrant the angle is in
-	// The range of values returned by this function is [−pi, pi]
-	// Results are undefined if x and y are both 0
-	template <typename T>
-	inline auto atan(const T &y, const T &x) -> std::enable_if_t<std::is_arithmetic<T>::value, T> {
-		return std::atan2(y, x);
-	}
-
-	// Element-wise function for y in v1 and x in v2
-	// Arc tangent. Returns an angle whose tangent is y/x
-	// The signs of x and y are used to determine what quadrant the angle is in
-	// The range of values returned by this function is [−pi, pi]
-	// Results are undefined if x and y are both 0
-	template <typename T1, typename T2, size_t N>
-	inline auto atan(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-		// FIXME atan use?
-		return zip_with([](auto &&x, auto &&y) { return atan2(decltype(x)(x), decltype(y)(y)); }, v2, v1);
-	}
-
 	using std::atan;
-
-	// Element-wise function for x in v
-	// Arc tangent. Returns an angle whose tangent is y_over_x.
-	// The range of values returned by this function is [-pi/2, pi/2] 
-	template <typename T, size_t N>
-	inline basic_vec<T, N> atan(const basic_vec<T, N> &v) {
-		return zip_with([](auto &&x) { return atan(decltype(x)(x)); }, v);
-	}
-
 	using std::sinh;
-
-	// Element-wise function for x in v
-	// Returns the hyperbolic sine function (e^x - e^-x)/2
-	template <typename T, size_t N>
-	inline basic_vec<T, N> sinh(const basic_vec<T, N> &v) {
-		return zip_with([](auto &&x) { return sinh(decltype(x)(x)); }, v);
-	}
-
 	using std::cosh;
-
-	// Element-wise function for x in v
-	// Returns the hyperbolic cosine function (e^x + e^-x)/2
-	template <typename T, size_t N>
-	inline basic_vec<T, N> cosh(const basic_vec<T, N> &v) {
-		return zip_with([](auto &&x) { return cosh(decltype(x)(x)); }, v);
-	}
-
 	using std::tanh;
-
-	// Element-wise function for x in v
-	// Returns the hyperbolic tangent function sinh(x)/cosh(x)
-	template <typename T, size_t N>
-	inline basic_vec<T, N> tanh(const basic_vec<T, N> &v) {
-		return zip_with([](auto &&x) { return tanh(decltype(x)(x)); }, v);
-	}
-
 	using std::asinh;
-
-	// Element-wise function for x in v
-	// Arc hyperbolic sine; returns the inverse of sinh(x)
-	template <typename T, size_t N>
-	inline basic_vec<T, N> asinh(const basic_vec<T, N> &v) {
-		return zip_with([](auto &&x) { return asinh(decltype(x)(x)); }, v);
-	}
-
 	using std::acosh;
-
-	// Element-wise function for x in v
-	// Arc hyperbolic cosine; returns the non-negative inverse of cosh(x)
-	// Results are undefined if x < 1
-	template <typename T, size_t N>
-	inline basic_vec<T, N> acosh(const basic_vec<T, N> &v) {
-		return zip_with([](auto &&x) { return acosh(decltype(x)(x)); }, v);
-	}
-
 	using std::atanh;
 
-	// Element-wise function for x in v
-	// Arc hyperbolic tangent; returns the inverse of tanh(x)
-	// Results are undefined if ∣x∣>=1
-	template <typename T, size_t N>
-	inline basic_vec<T, N> atanh(const basic_vec<T, N> &v) {
-		return zip_with([](auto &&x) { return atanh(decltype(x)(x)); }, v);
-	}
-
-	//TODO
-	// description
-	// csc for both scalar x or elements in vector x
-	template <typename T> inline T csc(const T &x) {
-		return T(1) / sin(x);
-	}
-
-	//TODO
-	// description
-	// sec for both scalar x or elements in vector x
-	template <typename T> inline T sec(const T &x) {
+	// secant
+	template <typename T, typename = detail::enable_if_scalar_t<T>>
+	inline T sec(const T &x) {
 		return T(1) / cos(x);
 	}
 
-	//TODO
-	// description
-	// cot for both scalar x or elements in vector x
-	template <typename T> inline T cot(const T &x) {
-		return T(1) / tan(x);
+	// cosecant
+	template <typename T, typename = detail::enable_if_scalar_t<T>>
+	inline T csc(const T &x) {
+		return T(1) / sin(x);
 	}
 
-	//TODO
-	// description
-	// acsc for both scalar x or elements in vector x
-	template <typename T> inline T acsc(const T &x) {
-		return asin(T(1) / x);
+	// cotangent
+	template <typename T, typename = detail::enable_if_scalar_t<T>>
+	inline T cot(const T &x) {
+		return cos(x) / sin(x);
 	}
 
-	//TODO
-	// description
-	// asec for both scalar x or elements in vector x
-	template <typename T> inline T asec(const T &x) {
+	// inverse secant 
+	template <typename T, typename = detail::enable_if_scalar_t<T>>
+	inline T asec(const T &x) {
 		return acos(T(1) / x);
 	}
 
-	//TODO
-	// description
-	// acot for both scalar x or elements in vector x
-	template <typename T> inline T acot(const T &x) {
+	// inverse cosecant
+	template <typename T, typename = detail::enable_if_scalar_t<T>>
+	inline T acsc(const T &x) {
+		return asin(T(1) / x);
+	}
+
+	// inverse cotangent
+	template <typename T, typename = detail::enable_if_scalar_t<T>>
+	inline T acot(const T &x) {
 		return atan(T(1) / x);
 	}
 
-	//TODO
-	// description
-	// csch for both scalar x or elements in vector x
-	template <typename T> inline T csch(const T &x) {
-		return T(1) / sinh(x);
-	}
-	
-	//TODO
-	// description
-	// sech for both scalar x or elements in vector x
-	template <typename T> inline T sech(const T &x) {
+	// hyperbolic secant
+	template <typename T, typename = detail::enable_if_scalar_t<T>>
+	inline T sech(const T &x) {
 		return T(1) / cosh(x);
 	}
-	
-	//TODO
-	// description
-	// coth for both scalar x or elements in vector x
-	template <typename T> inline T coth(const T &x) {
+
+	// hyperbolic cosecant
+	template <typename T, typename = detail::enable_if_scalar_t<T>>
+	inline T csch(const T &x) {
+		return T(1) / sinh(x);
+	}
+
+	// hyperbolic cotangent
+	template <typename T, typename = detail::enable_if_scalar_t<T>>
+	inline T coth(const T &x) {
 		return cosh(x) / sinh(x);
 	}
 
-	//TODO
-	// description
-	// acsch for both scalar x or elements in vector x
-	template <typename T> inline T acsch(const T &x) {
-		return log(T(1) / x + sqrt((x*x) + T(1)) / abs(x));
+	// inverse hyperbolic secant
+	template <typename T, typename = detail::enable_if_scalar_t<T>>
+	inline T asech(const T &x) {
+		return acosh(T(1) / x);
+	}
+
+	// inverse hyperbolic cosecant
+	template <typename T, typename = detail::enable_if_scalar_t<T>>
+	inline T acsch(const T &x) {
+		return asinh(T(1) / x);
+	}
+
+	// inverse hyperbolic cotangent
+	template <typename T, typename = detail::enable_if_scalar_t<T>>
+	inline T acoth(const T &x) {
+		return atanh(T(1) / x);
+	}
+
+	// Converts degrees to radians, i.e., x * pi/180
+	template <typename T, typename = detail::enable_if_scalar_t<T>>
+	inline T radians(const T &x) {
+		return x * T(pi / 180.0);
+	}
+
+	// Converts radians to degrees, i.e., x * 180/pi
+	template <typename T, typename = detail::enable_if_scalar_t<T>>
+	inline T degrees(const T &x) {
+		return x * T(180.0 / pi);
+	}
+
+	// Arc tangent. Returns an angle whose tangent is y/x
+	// The signs of x and y are used to determine what quadrant the angle is in
+	// The range of values returned by this function is [−pi, pi]
+	// Results are undefined if x and y are both 0
+	template <typename T, typename = detail::enable_if_scalar_t<T>>
+	inline T atan(const T &y, const T &x) {
+		return std::atan2(y, x);
+	}
+
+	namespace detail {
+		namespace vectors {
+			namespace functions {
+
+				// FIXME find a nicer way to un-hide the scalar functions than throwing usings everywhere
+				// possibly: put scalar functions into cgra::functions and using-namespace them in
+
+				// Returns the angle between 2 vectors in radians
+				template <typename VecT1, typename VecT2, typename = detail::enable_if_vector_compatible_t<VecT1, VecT2>>
+				inline auto angle(const VecT1 &v1, const VecT2 &v2) {
+					using cgra::acos;
+					// TODO use asin and |v1 x v2| for vec3, vec2 (its a lot more precise for small angles)
+					return acos(dot(v1, v2) / (length(v1) * length(v2)));
+				}
+
+				// vec sin
+				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				inline auto sin(const VecT &v) {
+					using cgra::sin;
+					return zip_with([](const auto &x) { return sin(x); }, v);
+				}
+
+				// vec cosine
+				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				inline auto cos(const VecT &v) {
+					using cgra::cos;
+					return zip_with([](const auto &x) { return cos(x); }, v);
+				}
+
+				// vec tangent
+				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				inline auto tan(const VecT &v) {
+					using cgra::tan;
+					return zip_with([](const auto &x) { return tan(x); }, v);
+				}
+
+				// vec secant
+				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				inline auto sec(const VecT &v) {
+					using cgra::sec;
+					return zip_with([](const auto &x) { return sec(x); }, v);
+				}
+
+				// vec cosecant
+				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				inline auto csc(const VecT &v) {
+					using cgra::csc;
+					return zip_with([](const auto &x) { return csc(x); }, v);
+				}
+
+				// vec cotangent
+				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				inline auto cot(const VecT &v) {
+					using cgra::cot;
+					return zip_with([](const auto &x) { return cot(x); }, v);
+				}
+
+				// vec inverse sin
+				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				inline auto asin(const VecT &v) {
+					using cgra::asin;
+					return zip_with([](const auto &x) { return asin(x); }, v);
+				}
+
+				// vec inverse cosine
+				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				inline auto acos(const VecT &v) {
+					using cgra::acos;
+					return zip_with([](const auto &x) { return acos(x); }, v);
+				}
+
+				// vec inverse tangent
+				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				inline auto atan(const VecT &v) {
+					using cgra::atan;
+					return zip_with([](const auto &x) { return atan(x); }, v);
+				}
+
+				// vec inverse secant
+				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				inline auto asec(const VecT &v) {
+					using cgra::asec;
+					return zip_with([](const auto &x) { return asec(x); }, v);
+				}
+
+				// vec inverse cosecant
+				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				inline auto acsc(const VecT &v) {
+					using cgra::acsc;
+					return zip_with([](const auto &x) { return acsc(x); }, v);
+				}
+
+				// vec inverse cotangent
+				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				inline auto acot(const VecT &v) {
+					using cgra::acot;
+					return zip_with([](const auto &x) { return acot(x); }, v);
+				}
+
+				// vec hyperbolic sin
+				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				inline auto sinh(const VecT &v) {
+					using cgra::sinh;
+					return zip_with([](const auto &x) { return sinh(x); }, v);
+				}
+
+				// vec hyperbolic cosine
+				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				inline auto cosh(const VecT &v) {
+					using cgra::cosh;
+					return zip_with([](const auto &x) { return cosh(x); }, v);
+				}
+
+				// vec hyperbolic tangent
+				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				inline auto tanh(const VecT &v) {
+					using cgra::tanh;
+					return zip_with([](const auto &x) { return tanh(x); }, v);
+				}
+
+				// vec hyperbolic secant
+				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				inline auto sech(const VecT &v) {
+					using cgra::sech;
+					return zip_with([](const auto &x) { return sech(x); }, v);
+				}
+
+				// vec hyperbolic cosecant
+				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				inline auto csch(const VecT &v) {
+					using cgra::csch;
+					return zip_with([](const auto &x) { return csch(x); }, v);
+				}
+
+				// vec hyperbolic cotangent
+				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				inline auto coth(const VecT &v) {
+					using cgra::coth;
+					return zip_with([](const auto &x) { return coth(x); }, v);
+				}
+
+				// vec inverse hyperbolic sin
+				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				inline auto asinh(const VecT &v) {
+					using cgra::asinh;
+					return zip_with([](const auto &x) { return asinh(x); }, v);
+				}
+
+				// vec inverse hyperbolic cosine
+				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				inline auto acosh(const VecT &v) {
+					using cgra::acosh;
+					return zip_with([](const auto &x) { return acosh(x); }, v);
+				}
+
+				// vec inverse hyperbolic tangent
+				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				inline auto atanh(const VecT &v) {
+					using cgra::atanh;
+					return zip_with([](const auto &x) { return atanh(x); }, v);
+				}
+
+				// vec inverse hyperbolic secant
+				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				inline auto asech(const VecT &v) {
+					using cgra::asech;
+					return zip_with([](const auto &x) { return asech(x); }, v);
+				}
+
+				// vec inverse hyperbolic cosecant
+				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				inline auto acsch(const VecT &v) {
+					using cgra::acsch;
+					return zip_with([](const auto &x) { return acsch(x); }, v);
+				}
+
+				// vec inverse hyperbolic cotangent
+				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				inline auto acoth(const VecT &v) {
+					using cgra::acoth;
+					return zip_with([](const auto &x) { return acoth(x); }, v);
+				}
+
+				// vec degrees to radians
+				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				inline auto radians(const VecT &v) {
+					using cgra::radians;
+					return zip_with([](const auto &x) { return radians(x); }, v);
+				}
+
+				// vec radians to degrees
+				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				inline auto degrees(const VecT &v) {
+					using cgra::degrees;
+					return zip_with([](const auto &x) { return degrees(x); }, v);
+				}
+
+				// vec inverse tangent (2-arg)
+				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				inline auto atan(const VecT1 &vy, const VecT2 &vx) {
+					using cgra::atan;
+					return zip_with([](const auto &xy, const auto &xx) { return atan(xy, xx); }, vy, vx);
+				}
+
+				// vec inverse tangent (2-arg) right scalar
+				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void>
+				inline auto atan(const VecT &vy, const T &x) {
+					using cgra::atan;
+					return zip_with([&](const auto &xy) { return atan(xy, x); }, vy);
+				}
+
+				// vec inverse tangent (2-arg) left scalar
+				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void, typename = void>
+				inline auto atan(const T &y, const VecT &vx) {
+					using cgra::atan;
+					return zip_with([&](const auto &xx) { return atan(y, xx); }, vx);
+				}
+
+			}
+		}
 	}
 	
-	//TODO
-	// description
-	// asech for both scalar x or elements in vector x
-	template <typename T> inline T asech(const T &x) {
-		return log(T(1) / x + sqrt(T(1) - (x*x)) / x);
-	}
-	
-	//TODO
-	// description
-	// acoth for both scalar x or elements in vector x
-	template <typename T> inline T acoth(const T &x) {
-		return T(0.5) * log((x + T(1)) / (x - T(1)));
-	}
 
 
 
