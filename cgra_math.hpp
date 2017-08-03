@@ -12,13 +12,17 @@
 //      TODO
 //-----------------
 
-- FIXME constrain things using scalars to be appropriately scalar
+- ? mod vs fmod : name vs behaviour
 - FIXME revisit transform matrix factory functions (re: homogeneous coords, explicit types)
 - FIXME revisit quat factory functions (re: explicit types)
 - FIXME examine all advanced quat functions for correctness
-- FIXME reimplement vec/mat ops/functions more generically
+- [...] FIXME reimplement vec/mat ops/functions more generically
+- FIXME min/max for vectors vs std (overloading only for basic_vec is dangerous)
 - FIXME unbreak constexpr for msvc and intellisense
-- TODO use non-type template arg sfinae to avoid extra dummy params
+- 'conjugate' -> 'conj' (others?)
+- vector etc comparison result magic
+- [...] use non-type template arg sfinae to avoid extra dummy params
+- defend more things against vectors of vectors (scalar compatibility?)
 - test is_vector_compatible etc with static asserts
 - move random section to bottom of file
 - FIXME make mat inverse error by exception
@@ -30,7 +34,6 @@
 - implement alternatives to body-3-2-1 euler rotation
 	http://www.geometrictools.com/Documentation/EulerAngles.pdf
 - noexceptness
-
 
 */
 
@@ -103,23 +106,33 @@ CGRA_CONSTEXPR_FUNCTION thisclass_t() : baseclass_t{} {};
 
 namespace cgra {
 
-	template <typename T> class not_nan;
-	template <typename T> class basic_quat;
-
 	namespace detail {
+		namespace scalars {
+			template <typename T> class not_nan;
+			template <typename T> class basic_quat;
+			inline namespace functions {
+				// inline for ADL
+			}
+		}
 		namespace vectors {
 			template <typename T, size_t N> class basic_vec;
 			inline namespace functions {
-				// inline so functions in here can be found by ADL for types in the parent namespace
+				// inline for ADL
 			}
 		}
 		namespace matrices {
 			template <typename T, size_t Cols, size_t Rows> class basic_mat;
 			inline namespace functions {
-				// inline so functions in here can be found by ADL for types in the parent namespace
+				// inline for ADL
 			}
 		}
 	}
+
+	template <typename T>
+	using not_nan = detail::scalars::not_nan<T>;
+
+	template <typename T>
+	using basic_quat = detail::scalars::basic_quat<T>;
 
 	template <typename T, size_t N>
 	using basic_vec = detail::vectors::basic_vec<T, N>;
@@ -127,8 +140,12 @@ namespace cgra {
 	template <typename T, size_t Cols, size_t Rows>
 	using basic_mat = detail::matrices::basic_mat<T, Cols, Rows>;
 
+	using namespace detail::scalars::functions;
 	using namespace detail::vectors::functions;
 	using namespace detail::matrices::functions;
+
+	using nnfloat = not_nan<float>;
+	using nndouble = not_nan<double>;
 
 #ifdef CGRA_INITIAL3D_NAMES
 	// aliases: Intial3D naming convention
@@ -277,154 +294,147 @@ namespace cgra {
 		constexpr double phi = 1.61803398874989484820458683436563811;
 	}
 
-	// eg: inf<float>()
-	// only for floating point types
-	template <typename T>
-	inline T inf() {
-		return std::numeric_limits<T>::infinity();
+	namespace detail {
+		namespace scalars {
+
+			// not-NaN type
+			// asserts using ctor that value is non-nan
+			template <typename T>
+			class not_nan {
+			private:
+				T m_v;
+
+				void check() const {
+					assert(m_v == m_v && "nan");
+				}
+
+			public:
+				not_nan() : m_v{} {}
+
+				not_nan(const T &t_) : m_v{t_} {
+					check();
+				}
+
+				not_nan(T &&t_) : m_v(std::move(t_)) {
+					check();
+				}
+
+				operator const T & () const {
+					check();
+					return m_v;
+				}
+
+				friend void swap(not_nan &a, not_nan &b) {
+					using std::swap;
+					swap(a.m_v, b.m_v);
+				}
+
+				not_nan & operator=(const T &t) {
+					m_v = t;
+					check();
+					return *this;
+				}
+
+				not_nan & operator=(T &&t) {
+					m_v = std::move(t);
+					check();
+					return *this;
+				}
+
+				not_nan & operator+=(const T &rhs) {
+					m_v += rhs;
+					check();
+					return *this;
+				}
+
+				not_nan & operator-=(const T &rhs) {
+					m_v -= rhs;
+					check();
+					return *this;
+				}
+
+				not_nan & operator*=(const T &rhs) {
+					m_v *= rhs;
+					check();
+					return *this;
+				}
+
+				not_nan & operator/=(const T &rhs) {
+					m_v /= rhs;
+					check();
+					return *this;
+				}
+
+				not_nan & operator++() {
+					m_v++;
+					return *this;
+				}
+
+				not_nan operator++(int) {
+					T temp = m_v;
+					++*this;
+					return temp;
+				}
+
+				not_nan & operator--() {
+					m_v--;
+					return *this;
+				}
+
+				not_nan operator--(int) {
+					T temp = m_v;
+					--*this;
+					return temp;
+				}
+			};
+
+			template <typename T>
+			inline not_nan<T> operator+(const not_nan<T> &lhs, const T &rhs) {
+				return not_nan<T>(lhs) += rhs;
+			}
+
+			template <typename T>
+			inline not_nan<T> operator+(const T &lhs, const not_nan<T> &rhs) {
+				return not_nan<T>(lhs) += rhs;
+			}
+
+			template <typename T>
+			inline not_nan<T> operator-(const not_nan<T> &lhs, const T &rhs) {
+				return not_nan<T>(lhs) -= rhs;
+			}
+
+			template <typename T>
+			inline not_nan<T> operator-(const T &lhs, const not_nan<T> &rhs) {
+				return not_nan<T>(lhs) -= rhs;
+			}
+
+			template <typename T>
+			inline not_nan<T> operator*(const not_nan<T> &lhs, const T &rhs) {
+				return not_nan<T>(lhs) *= rhs;
+			}
+
+			template <typename T>
+			inline not_nan<T> operator*(const T &lhs, const not_nan<T> &rhs) {
+				return not_nan<T>(lhs) *= rhs;
+			}
+
+			template <typename T>
+			inline not_nan<T> operator/(const not_nan<T> &lhs, const T &rhs) {
+				return not_nan<T>(lhs) /= rhs;
+			}
+
+			template <typename T>
+			inline not_nan<T> operator/(const T &lhs, const not_nan<T> &rhs) {
+				return not_nan<T>(lhs) /= rhs;
+			}
+
+		}
 	}
-
-	// eg: nan<float>()
-	// only for floating point types
-	template <typename T>
-	inline T nan() {
-		return std::numeric_limits<T>::quiet_NaN();
-	}
-
-	// not-NaN type
-	// asserts using ctor that value is non-nan
-	template <typename T>
-	class not_nan {
-	private:
-		T m_v;
-
-		void check() const {
-			assert(m_v == m_v && "nan");
-		}
-
-	public:
-		not_nan() : m_v{} {}
-
-		not_nan(const T &t_) : m_v{ t_ } {
-			check();
-		}
-
-		not_nan(T &&t_) : m_v(std::move(t_)) {
-			check();
-		}
-
-		operator const T & () const {
-			check();
-			return m_v;
-		}
-
-		friend void swap(not_nan &a, not_nan &b) {
-			using std::swap;
-			swap(a.m_v, b.m_v);
-		}
-
-		not_nan & operator=(const T &t) {
-			m_v = t;
-			check();
-			return *this;
-		}
-
-		not_nan & operator=(T &&t) {
-			m_v = std::move(t);
-			check();
-			return *this;
-		}
-
-		not_nan & operator+=(const T &rhs) {
-			m_v += rhs;
-			check();
-			return *this;
-		}
-
-		not_nan & operator-=(const T &rhs) {
-			m_v -= rhs;
-			check();
-			return *this;
-		}
-
-		not_nan & operator*=(const T &rhs) {
-			m_v *= rhs;
-			check();
-			return *this;
-		}
-
-		not_nan & operator/=(const T &rhs) {
-			m_v /= rhs;
-			check();
-			return *this;
-		}
-
-		not_nan & operator++() {
-			m_v++;
-			return *this;
-		}
-		
-		not_nan operator++(int) {
-			T temp = m_v;
-			++*this;
-			return temp;
-		}
-  
-		not_nan & operator--() {
-			m_v--;
-			return *this;
-		}
-		
-		not_nan operator--(int) {
-			T temp = m_v;
-			--*this;
-			return temp;
-		}
-	};
-
-	template <typename T>
-	inline not_nan<T> operator+(const not_nan<T> &lhs, const T &rhs) {
-		return not_nan<T>(lhs) += rhs;
-	}
-
-	template <typename T>
-	inline not_nan<T> operator+(const T &lhs, const not_nan<T> &rhs) {
-		return not_nan<T>(lhs) += rhs;
-	}
-
-	template <typename T>
-	inline not_nan<T> operator-(const not_nan<T> &lhs, const T &rhs) {
-		return not_nan<T>(lhs) -= rhs;
-	}
-
-	template <typename T>
-	inline not_nan<T> operator-(const T &lhs, const not_nan<T> &rhs) {
-		return not_nan<T>(lhs) -= rhs;
-	}
-
-	template <typename T>
-	inline not_nan<T> operator*(const not_nan<T> &lhs, const T &rhs) {
-		return not_nan<T>(lhs) *= rhs;
-	}
-
-	template <typename T>
-	inline not_nan<T> operator*(const T &lhs, const not_nan<T> &rhs) {
-		return not_nan<T>(lhs) *= rhs;
-	}
-
-	template <typename T>
-	inline not_nan<T> operator/(const not_nan<T> &lhs, const T &rhs) {
-		return not_nan<T>(lhs) /= rhs;
-	}
-
-	template <typename T>
-	inline not_nan<T> operator/(const T &lhs, const not_nan<T> &rhs) {
-		return not_nan<T>(lhs) /= rhs;
-	}
+	
+	
 
 
-	using nnfloat = not_nan<float>;
-	using nndouble = not_nan<double>;
+	
 
 
 
@@ -761,6 +771,9 @@ namespace cgra {
 		template <typename ...Ts>
 		using void_t = void;
 
+		template <typename ...Ts>
+		struct dependent_false : std::false_type {};
+
 		template <size_t X>
 		using index_constant = std::integral_constant<size_t, X>;
 
@@ -787,25 +800,52 @@ namespace cgra {
 		template <typename T, typename = void>
 		struct scalar_traits {
 			static constexpr bool is_scalar = false;
+			static constexpr bool want_real_fns = false;
+			static constexpr bool want_trig_fns = false;
+			static constexpr bool want_exp_fns = false;
 		};
 
 		template <typename T>
+		using scalar_fpromote_t = typename scalar_traits<std::decay_t<T>>::fpromote_t;
+
+		template <typename T>
 		struct scalar_traits<T, std::enable_if_t<std::numeric_limits<T>::is_specialized>> {
+			using fpromote_t = std::conditional_t<std::numeric_limits<T>::is_integer, decltype(std::declval<T>() + 1.0), T>;
 			static constexpr bool is_scalar = true;
+			static constexpr bool want_real_fns = true;
+			static constexpr bool want_trig_fns = true;
+			static constexpr bool want_exp_fns = true;
 		};
 
 		template <typename T>
 		struct scalar_traits<std::complex<T>, void> {
+			using fpromote_t = std::complex<scalar_fpromote_t<T>>;
 			static constexpr bool is_scalar = true;
+			static constexpr bool want_real_fns = false;
+			static constexpr bool want_trig_fns = true;
+			static constexpr bool want_exp_fns = true;
 		};
 
 		template <typename T>
 		struct scalar_traits<basic_quat<T>, void> {
+			using fpromote_t = basic_quat<scalar_fpromote_t<T>>;
 			static constexpr bool is_scalar = true;
+			static constexpr bool want_real_fns = false;
+			static constexpr bool want_trig_fns = false;
+			static constexpr bool want_exp_fns = true;
 		};
 
 		template <typename T>
 		struct is_scalar : bool_constant<scalar_traits<std::decay_t<T>>::is_scalar> {};
+
+		template <typename T>
+		struct want_real_fns : bool_constant<scalar_traits<std::decay_t<T>>::want_real_fns> {};
+
+		template <typename T>
+		struct want_trig_fns : bool_constant<scalar_traits<std::decay_t<T>>::want_trig_fns> {};
+
+		template <typename T>
+		struct want_exp_fns : bool_constant<scalar_traits<std::decay_t<T>>::want_exp_fns> {};
 
 		template <typename T, typename = void>
 		struct array_traits {
@@ -855,12 +895,39 @@ namespace cgra {
 		template <typename T>
 		struct is_matrix : bool_constant<array_traits<std::decay_t<T>>::is_matrix> {};
 
-		template <template <typename T1, typename T2> class F>
-		struct meta_quote2 {
-			template <typename T1, typename T2>
+		template <typename N>
+		struct make_index_sequence {
+			using type = std::make_index_sequence<N::value>;
+		};
+
+		template <typename N>
+		using make_index_sequence_t = typename make_index_sequence<N>::type;
+
+		template <template <typename ...Ts> class F>
+		struct meta_quote {
+			template <typename ...Us>
 			struct apply {
-				using type = typename F<T1, T2>::type;
+				using type = typename F<Us...>::type;
 			};
+		};
+
+		template <template <typename ...Ts> class F>
+		struct meta_fquote {
+			template <typename ...Us>
+			struct apply {
+				using type = F<Us...>;
+			};
+		};
+
+		template <typename F, typename Tup>
+		struct tup_apply {};
+
+		template <typename F, typename Tup>
+		using tup_apply_t = typename tup_apply<F, Tup>::type;
+
+		template <typename F, typename ...Ts>
+		struct tup_apply<F, std::tuple<Ts...>> {
+			using type = typename F::template apply<Ts...>::type;
 		};
 
 		template <typename F, typename T1, typename Tup>
@@ -940,6 +1007,66 @@ namespace cgra {
 		template <typename N1, typename N2>
 		using meta_or_t = typename meta_or<N1, N2>::type;
 
+		template <typename F, typename ...Tups>
+		struct meta_zip_with {
+			template <size_t I>
+			struct impl2 {
+				using type = typename F::template apply<std::tuple_element_t<I, Tups>...>::type;
+			};
+			template <typename ISeq>
+			struct impl {};
+			template <size_t ...Is>
+			struct impl<std::index_sequence<Is...>> {
+				using type = std::tuple<typename impl2<Is>::type...>;
+			};
+			using size = meta_fold_t<meta_quote<meta_min>, index_constant<SIZE_MAX>, std::tuple<std::tuple_size<Tups>...>>;
+			using type = typename impl<make_index_sequence_t<size>>::type;
+		};
+
+		template <typename F, typename ...Tups>
+		using meta_zip_with_t = typename meta_zip_with<F, Tups...>::type;
+
+		template <typename ...Tups>
+		using meta_zip = meta_zip_with_t<meta_fquote<std::tuple>, Tups...>;
+
+		template <typename ...Tups>
+		struct tup_cat {
+			using type = decltype(std::tuple_cat(std::declval<Tups>()...));
+		};
+
+		template <typename ...Tups>
+		using tup_cat_t = typename tup_cat<Tups...>::type;
+
+		template <typename Tup1, typename Tup2>
+		struct meta_cartesian_product {
+			// yes, this could be generalized to an arbitrary number of tuples.
+			// no, im not going to unless i have to.
+			template <typename T1>
+			struct impl {
+				template <typename T2>
+				struct impl2 {
+					using type = std::tuple<T1, T2>;
+				};
+				using type = meta_zip_with_t<meta_quote<impl2>, Tup2>;
+			};
+			using type = tup_apply_t<meta_quote<tup_cat>, meta_zip_with_t<meta_quote<impl>, Tup1>>;
+		};
+
+		template <typename Tup1, typename Tup2>
+		using meta_cartesian_product_t = typename meta_cartesian_product<Tup1, Tup2>::type;
+
+		template <typename F, typename Tup1, typename Tup2>
+		struct meta_cartesian_zip_with {
+			template <typename TupX>
+			struct impl {
+				using type = tup_apply_t<F, TupX>;
+			};
+			using type = meta_zip_with_t<meta_quote<impl>, meta_cartesian_product_t<Tup1, Tup2>>;
+		};
+
+		template <typename F, typename Tup1, typename Tup2>
+		using meta_cartesian_zip_with_t = typename meta_cartesian_zip_with<F, Tup1, Tup2>::type;
+
 		template <typename VecT>
 		using array_value_t = typename array_traits<std::decay_t<VecT>>::value_t;
 
@@ -963,7 +1090,7 @@ namespace cgra {
 		struct array_size : index_constant<array_traits<std::decay_t<VecT>>::size> {};
 		
 		template <typename ...VecTs>
-		struct array_min_size : meta_fold_t<meta_quote2<meta_min>, index_constant<SIZE_MAX>, std::tuple<array_size<VecTs>...>> {};
+		struct array_min_size : meta_fold_t<meta_quote<meta_min>, index_constant<SIZE_MAX>, std::tuple<array_size<VecTs>...>> {};
 		
 		template <typename MatT>
 		struct mat_cols : array_size<MatT> {};
@@ -978,10 +1105,6 @@ namespace cgra {
 		template <typename T1, typename T2>
 		struct is_mutually_constructible :
 			bool_constant<std::is_constructible<T1, T2>::value && std::is_constructible<T2, T1>::value> {};
-
-		template <typename T1, typename T2>
-		struct is_scalar_compatible :
-			bool_constant<is_mutually_convertible<T1, T2>::value && is_scalar<T1>::value && is_scalar<T2>::value> {};
 
 		// is T a compatible scalar type for array VecT?
 		template <typename VecT, typename T, bool Explicit = false, typename = void>
@@ -1088,50 +1211,78 @@ namespace cgra {
 		template <typename MatT, typename VecT>
 		struct is_matrix_mul_row_compatible :
 			bool_constant<
-			is_element_compatible<array_value_or_void_t<MatT>, VecT>::value
-			&& mat_rows<MatT>::value == array_size<VecT>::value
-			&& is_matrix<MatT>::value
-			&& is_vector<VecT>::value
+				is_element_compatible<array_value_or_void_t<MatT>, VecT>::value
+				&& mat_rows<MatT>::value == array_size<VecT>::value
+				&& is_matrix<MatT>::value
+				&& is_vector<VecT>::value
 			>
 		{};
 
+		template <typename F, typename ...Ts>
+		using enable_if_all_t = std::enable_if_t<
+			meta_fold_t<
+				meta_quote<meta_and>,
+				std::true_type,
+				std::tuple<typename F::template apply<Ts>::type...>
+			>::value,
+			int
+		>;
+
 		template <typename ...Ts>
-		using enable_if_scalar_t = std::enable_if_t<meta_fold_t<meta_quote2<meta_and>, std::true_type, std::tuple<is_scalar<Ts>...>>::value>;
+		using enable_if_arithmetic_t = enable_if_all_t<meta_fquote<std::is_arithmetic>, Ts...>;
+
+		template <typename ...Ts>
+		using enable_if_want_real_fns_t = enable_if_all_t<meta_fquote<want_real_fns>, Ts...>;
+
+		template <typename ...Ts>
+		using enable_if_want_trig_fns_t = enable_if_all_t<meta_fquote<want_trig_fns>, Ts...>;
+
+		template <typename ...Ts>
+		using enable_if_want_exp_fns_t = enable_if_all_t<meta_fquote<want_exp_fns>, Ts...>;
 
 		template <typename ...VecTs>
-		using enable_if_array_t = std::enable_if_t<meta_fold_t<meta_quote2<meta_and>, std::true_type, std::tuple<is_array<VecTs>...>>::value>;
+		using enable_if_array_t = enable_if_all_t<meta_fquote<is_array>, VecTs...>;
 
 		template <typename ...VecTs>
-		using enable_if_vector_t = std::enable_if_t<meta_fold_t<meta_quote2<meta_and>, std::true_type, std::tuple<is_vector<VecTs>...>>::value>;
+		using enable_if_vector_t = enable_if_all_t<meta_fquote<is_vector>, VecTs...>;
+		
 		template <typename ...MatTs>
-		using enable_if_matrix_t = std::enable_if_t<meta_fold_t<meta_quote2<meta_and>, std::true_type, std::tuple<is_matrix<MatTs>...>>::value>;
+		using enable_if_matrix_t = enable_if_all_t<meta_fquote<is_matrix>, MatTs...>;
 
-		template <typename T0, typename T1>
-		using enable_if_scalar_compatible_t = std::enable_if_t<is_scalar_compatible<T0, T1>::value>;
+		template <typename F, typename ...Ts>
+		using enable_if_cartesian_all_t = std::enable_if_t<
+			meta_fold_t<
+				meta_quote<meta_and>,
+				std::true_type,
+				meta_cartesian_zip_with_t<
+					F,
+					std::tuple<Ts...>,
+					std::tuple<Ts...>
+				>
+			>::value,
+			int
+		>;
 
-		template <typename VecT0, typename VecT1>
-		using enable_if_vector_compatible_t = std::enable_if_t<is_vector_compatible<VecT0, VecT1>::value>;
+		template <typename ...VecTs>
+		using enable_if_vector_compatible_t = enable_if_cartesian_all_t<meta_fquote<is_vector_compatible>, VecTs...>;
 
 		template <typename VecT, typename T>
-		using enable_if_vector_scalar_compatible_t = std::enable_if_t<is_vector_scalar_compatible<VecT, T>::value>;
+		using enable_if_vector_scalar_compatible_t = std::enable_if_t<is_vector_scalar_compatible<VecT, T>::value, int>;
+
+		template <typename ...MatTs>
+		using enable_if_matrix_compatible_t = enable_if_cartesian_all_t<meta_fquote<is_matrix_compatible>, MatTs...>;
 
 		template <typename MatT0, typename MatT1>
-		using enable_if_matrix_compatible_t = std::enable_if_t<is_matrix_compatible<MatT0, MatT1>::value>;
-
-		template <typename MatT0, typename MatT1>
-		using enable_if_matrix_mul_compatible_t = std::enable_if_t<is_matrix_mul_compatible<MatT0, MatT1>::value>;
+		using enable_if_matrix_mul_compatible_t = std::enable_if_t<is_matrix_mul_compatible<MatT0, MatT1>::value, int>;
 
 		template <typename MatT, typename T>
-		using enable_if_matrix_scalar_compatible_t = std::enable_if_t<is_matrix_scalar_compatible<MatT, T>::value>;
+		using enable_if_matrix_scalar_compatible_t = std::enable_if_t<is_matrix_scalar_compatible<MatT, T>::value, int>;
 
 		template <typename MatT, typename VecT>
-		using enable_if_matrix_mul_col_compatible_t = std::enable_if_t<is_matrix_mul_col_compatible<MatT, VecT>::value>;
+		using enable_if_matrix_mul_col_compatible_t = std::enable_if_t<is_matrix_mul_col_compatible<MatT, VecT>::value, int>;
 
 		template <typename MatT, typename VecT>
-		using enable_if_matrix_mul_row_compatible_t = std::enable_if_t<is_matrix_mul_row_compatible<MatT, VecT>::value>;
-
-		template <typename ...Tups>
-		using tup_cat_t = decltype(std::tuple_cat(std::declval<Tups>()...));
+		using enable_if_matrix_mul_row_compatible_t = std::enable_if_t<is_matrix_mul_row_compatible<MatT, VecT>::value, int>;
 
 		template <typename Tup, size_t N>
 		struct tup_repeat {
@@ -1268,7 +1419,7 @@ namespace cgra {
 
 		template <typename CatT, typename ...ArgTs>
 		struct cat_arg_vec_total_size :
-			meta_fold_t<meta_quote2<meta_add>, index_constant<0>, std::tuple<cat_arg_vec_size<CatT, ArgTs>...>> {};
+			meta_fold_t<meta_quote<meta_add>, index_constant<0>, std::tuple<cat_arg_vec_size<CatT, ArgTs>...>> {};
 
 		template <typename CatT, typename Seq, typename Tup>
 		struct cat_arg_seq {};
@@ -1277,14 +1428,6 @@ namespace cgra {
 		struct cat_arg_seq<CatT, std::index_sequence<Is...>, std::tuple<Ts...>> {
 			using type = seq_cat_t<std::index_sequence<>, seq_repeat_t<std::index_sequence<Is>, cat_arg_vec_size<CatT, Ts>>...>;
 		};
-
-		template <typename N>
-		struct make_index_sequence {
-			using type = std::make_index_sequence<N::value>;
-		};
-
-		template <typename N>
-		using make_index_sequence_t = typename make_index_sequence<N>::type;
 
 		template <typename CatT, typename Tup>
 		struct cat_val_seq {};
@@ -1344,7 +1487,7 @@ namespace cgra {
 			bool_constant<
 				array_size<CatT>::value == cat_arg_vec_total_size<CatT, ArgTs...>::value
 				&& meta_fold_t<
-					meta_quote2<meta_and>,
+					meta_quote<meta_and>,
 					std::true_type,
 					std::tuple<is_cat_compatible<CatT, ArgTs, false>...>
 				>::value
@@ -1363,7 +1506,7 @@ namespace cgra {
 		template <typename CatT, bool RequireExactSize, typename ...ArgTs>
 		struct can_have_explicit_magic_ctor :
 			meta_fold_t<
-				meta_quote2<meta_and>,
+				meta_quote<meta_and>,
 				std::true_type,
 				std::tuple<
 					bool_constant<
@@ -1401,7 +1544,7 @@ namespace cgra {
 		template <typename T, typename ...ArgTs>
 		struct can_have_element_ctor :
 			meta_fold_t<
-				meta_quote2<meta_and>,
+				meta_quote<meta_and>,
 				std::true_type,
 				std::tuple<std::is_same<T, std::decay_t<ArgTs>>...>
 			>
@@ -2075,6 +2218,8 @@ namespace cgra {
 
 		}
 
+
+
 	}
 
 
@@ -2329,105 +2474,109 @@ namespace cgra {
 	//                                                                                                                                                                          //
 	//==========================================================================================================================================================================//
 
-	// quaternion of type T
-	template <typename T>
-	class basic_quat {
-	public:
-		using value_t = T;
-
-		T w, x, y, z;
-
-		// default ctor
-		CGRA_CONSTEXPR_FUNCTION basic_quat() :
-			w(T()), x(T()), y(T()), z(T()) {}
-
-		// real ctor
-		CGRA_CONSTEXPR_FUNCTION basic_quat(T t) :
-			w(std::move(t)), x(T()), y(T()), z(T()) {}
-
-		// real + vector imag ctor
-		CGRA_CONSTEXPR_FUNCTION basic_quat(T w_, basic_vec<T, 3> xyz) :
-			w(std::move(w_)), x(std::move(xyz.x)), y(std::move(xyz.y)), z(std::move(xyz.y)) {}
-
-		// TODO complex ctor?
-
-		// all values ctor (prefer the real + vector imag ctor)
-		CGRA_CONSTEXPR_FUNCTION explicit basic_quat(T w_, T x_, T y_, T z_) :
-			w(std::move(w_)), x(std::move(x_)), y(std::move(y_)), z(std::move(z_)) {}
-
-		CGRA_CONSTEXPR_FUNCTION explicit basic_quat(basic_vec<T, 4> v) :
-			w(std::move(v[0])), x(std::move(v[1])), y(std::move(v[2])), z(std::move(v[3])) {}
-
-		CGRA_CONSTEXPR_FUNCTION explicit operator basic_vec<T, 4>() const {
-			return {w, x, y, z};
-		}
-
-		// TODO proper access to real/imag components
-
-		// basic_mat<U, 3, 3> conversion
-		template <typename U>
-		CGRA_CONSTEXPR_FUNCTION explicit operator basic_mat<U, 3, 3>() const {
-			basic_mat<U, 3, 3> m;
-
-			m[0][0] = w * w + x * x - y * y - z * z;
-			m[0][1] = 2 * x * y + 2 * w * z;
-			m[0][2] = 2 * x * z - 2 * w * y;
-
-			m[1][0] = 2 * x * y - 2 * w * z;
-			m[1][1] = w * w - x * x + y * y - z * z;
-			m[1][2] = 2 * y * z + 2 * w * x;
-
-			m[2][0] = 2 * x * z + 2 * w * y;
-			m[2][1] = 2 * y * z - 2 * w * x;
-			m[2][2] = w * w - x * x - y * y + z * z;
-
-			return m;
-		}
-
-		// basic_mat<U, 4, 4> conversion
-		template <typename U>
-		CGRA_CONSTEXPR_FUNCTION explicit operator basic_mat<U, 4, 4>() const {
-			basic_mat<U, 4, 4> m;
-
-			m[0][0] = w * w + x * x - y * y - z * z;
-			m[0][1] = 2 * x * y + 2 * w * z;
-			m[0][2] = 2 * x * z - 2 * w * y;
-			m[0][3] = 0;
-
-			m[1][0] = 2 * x * y - 2 * w * z;
-			m[1][1] = w * w - x * x + y * y - z * z;
-			m[1][2] = 2 * y * z + 2 * w * x;
-			m[1][3] = 0;
-
-			m[2][0] = 2 * x * z + 2 * w * y;
-			m[2][1] = 2 * y * z - 2 * w * x;
-			m[2][2] = w * w - x * x - y * y + z * z;
-			m[2][3] = 0;
-
-			m[3][0] = 0;
-			m[3][1] = 0;
-			m[3][2] = 0;
-			m[3][3] = w * w + x * x + y * y + z * z;
-
-			return m;
-		}
-	};
-
-	template <typename T>
-	CGRA_CONSTEXPR_FUNCTION inline void swap(basic_quat<T> &lhs, basic_quat<T> &rhs) {
-		// TODO noexcept
-		swap(lhs.w, rhs.w);
-		swap(lhs.x, rhs.x);
-		swap(lhs.y, rhs.y);
-		swap(lhs.z, rhs.z);
-	}
-
-	template <typename T>
-	inline std::ostream & operator<<(std::ostream &out, const basic_quat<T> &v) {
-		return out << '(' << v.w << " + " << v.x << "i + " << v.y << "j + " << v.z << "k)";
-	}
-
 	namespace detail {
+
+		namespace scalars {
+
+			// quaternion of type T
+			template <typename T>
+			class basic_quat {
+			public:
+				using value_t = T;
+
+				T w, x, y, z;
+
+				// default ctor
+				CGRA_CONSTEXPR_FUNCTION basic_quat() :
+					w(T()), x(T()), y(T()), z(T()) {}
+
+				// real ctor
+				CGRA_CONSTEXPR_FUNCTION basic_quat(T t) :
+					w(std::move(t)), x(T()), y(T()), z(T()) {}
+
+				// real + vector imag ctor
+				CGRA_CONSTEXPR_FUNCTION basic_quat(T w_, basic_vec<T, 3> xyz) :
+					w(std::move(w_)), x(std::move(xyz.x)), y(std::move(xyz.y)), z(std::move(xyz.y)) {}
+
+				// TODO complex ctor?
+
+				// all values ctor (prefer the real + vector imag ctor)
+				CGRA_CONSTEXPR_FUNCTION explicit basic_quat(T w_, T x_, T y_, T z_) :
+					w(std::move(w_)), x(std::move(x_)), y(std::move(y_)), z(std::move(z_)) {}
+
+				CGRA_CONSTEXPR_FUNCTION explicit basic_quat(basic_vec<T, 4> v) :
+					w(std::move(v[0])), x(std::move(v[1])), y(std::move(v[2])), z(std::move(v[3])) {}
+
+				CGRA_CONSTEXPR_FUNCTION explicit operator basic_vec<T, 4>() const {
+					return{w, x, y, z};
+				}
+
+				// TODO proper access to real/imag components
+
+				// basic_mat<U, 3, 3> conversion
+				template <typename U>
+				CGRA_CONSTEXPR_FUNCTION explicit operator basic_mat<U, 3, 3>() const {
+					basic_mat<U, 3, 3> m;
+
+					m[0][0] = w * w + x * x - y * y - z * z;
+					m[0][1] = 2 * x * y + 2 * w * z;
+					m[0][2] = 2 * x * z - 2 * w * y;
+
+					m[1][0] = 2 * x * y - 2 * w * z;
+					m[1][1] = w * w - x * x + y * y - z * z;
+					m[1][2] = 2 * y * z + 2 * w * x;
+
+					m[2][0] = 2 * x * z + 2 * w * y;
+					m[2][1] = 2 * y * z - 2 * w * x;
+					m[2][2] = w * w - x * x - y * y + z * z;
+
+					return m;
+				}
+
+				// basic_mat<U, 4, 4> conversion
+				template <typename U>
+				CGRA_CONSTEXPR_FUNCTION explicit operator basic_mat<U, 4, 4>() const {
+					basic_mat<U, 4, 4> m;
+
+					m[0][0] = w * w + x * x - y * y - z * z;
+					m[0][1] = 2 * x * y + 2 * w * z;
+					m[0][2] = 2 * x * z - 2 * w * y;
+					m[0][3] = 0;
+
+					m[1][0] = 2 * x * y - 2 * w * z;
+					m[1][1] = w * w - x * x + y * y - z * z;
+					m[1][2] = 2 * y * z + 2 * w * x;
+					m[1][3] = 0;
+
+					m[2][0] = 2 * x * z + 2 * w * y;
+					m[2][1] = 2 * y * z - 2 * w * x;
+					m[2][2] = w * w - x * x - y * y + z * z;
+					m[2][3] = 0;
+
+					m[3][0] = 0;
+					m[3][1] = 0;
+					m[3][2] = 0;
+					m[3][3] = w * w + x * x + y * y + z * z;
+
+					return m;
+				}
+			};
+
+			template <typename T>
+			CGRA_CONSTEXPR_FUNCTION inline void swap(basic_quat<T> &lhs, basic_quat<T> &rhs) {
+				// TODO noexcept
+				swap(lhs.w, rhs.w);
+				swap(lhs.x, rhs.x);
+				swap(lhs.y, rhs.y);
+				swap(lhs.z, rhs.z);
+			}
+
+			template <typename T>
+			inline std::ostream & operator<<(std::ostream &out, const basic_quat<T> &v) {
+				return out << '(' << v.w << " + " << v.x << "i + " << v.y << "j + " << v.z << "k)";
+			}
+
+		}
 
 		namespace vectors {
 
@@ -2928,514 +3077,518 @@ namespace cgra {
 	//                                                                                                                                                                                                        //
 	//========================================================================================================================================================================================================//
 
-	// quat add assign
-	template <typename T1, typename T2>
-	inline basic_quat<T1> & operator+=(basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
-		lhs.w += rhs.w;
-		lhs.x += rhs.x;
-		lhs.y += rhs.y;
-		lhs.z += rhs.z;
-		return lhs;
-	}
-
-	// quat sub assign
-	template <typename T1, typename T2>
-	inline basic_quat<T1> & operator-=(basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
-		lhs.w -= rhs.w;
-		lhs.x -= rhs.x;
-		lhs.y -= rhs.y;
-		lhs.z -= rhs.z;
-		return lhs;
-	}
-
-	// quat mul assign
-	template <typename T1, typename T2>
-	inline basic_quat<T1> & operator*=(basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
-		return lhs = basic_quat<T1>{lhs * rhs};
-	}
-
-	// quat mul assign scalar
-	template <typename T1, typename T2>
-	inline basic_quat<T1> & operator*=(basic_quat<T1> &lhs, const T2 &rhs) {
-		lhs.w *= rhs;
-		lhs.x *= rhs;
-		lhs.y *= rhs;
-		lhs.z *= rhs;
-		return lhs;
-	}
-
-	// quat negate
-	template <typename T>
-	inline auto operator-(const basic_quat<T> &rhs) {
-		basic_quat<T> q;
-		q.w =- rhs.w;
-		q.x =- rhs.x;
-		q.y =- rhs.y;
-		q.z =- rhs.z;
-		return q;
-	}
-
-	// quat add
-	template <typename T1, typename T2>
-	inline auto operator+(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
-		basic_quat<decltype(T1() + T2())> q{lhs};
-		return q += rhs;
-	}
-
-	// quat sub
-	template <typename T1, typename T2>
-	inline auto operator-(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
-		basic_quat<decltype(T1() - T2())> q{lhs};
-		return q -= rhs;
-	}
-
-	// quat mul
-	template <typename T1, typename T2>
-	inline auto operator*(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
-		basic_quat<decltype(T1() * T2())> q{lhs};
-		q.w = lhs.w * rhs.w - lhs.x * rhs.x - lhs.y * rhs.y - lhs.z * rhs.z;
-		q.x = lhs.w * rhs.x + lhs.x * rhs.w + lhs.y * rhs.z - lhs.z * rhs.y;
-		q.y = lhs.w * rhs.y - lhs.x * rhs.z + lhs.y * rhs.w + lhs.z * rhs.x;
-		q.z = lhs.w * rhs.z + lhs.x * rhs.y - lhs.y * rhs.x + lhs.z * rhs.w;
-		return q;
-	}
-
-	// quat mul vec3 (rotate vec3 by quat)
-	// TODO allow other vector types
-	template <typename T1, typename T2>
-	inline auto operator*(const basic_quat<T1> &lhs, const basic_vec<T2, 3> &rhs) {
-		using common_t = decltype(T1() * T2());
-		basic_quat<common_t> p{common_t{}, rhs};
-		p = lhs * p * inverse(lhs);
-		return basic_vec<common_t, 3>(p.x, p.y, p.z);
-	}
-
-	// quat mul scalar
-	template <typename T1, typename T2>
-	inline auto operator*(const basic_quat<T1> &lhs, const T2 &rhs) {
-		basic_quat<decltype(T1() * T2())> q{lhs};
-		return q *= rhs;
-	}
-
-	// quat mul scalar
-	template <typename T1, typename T2>
-	inline auto operator*(const T1 &lhs, const basic_quat<T2> &rhs) {
-		basic_quat<decltype(T1() * T2())> q{rhs};
-		return q *= lhs;
-	}
-
-	// quat equal
-	template <typename T1, typename T2>
-	inline auto operator==(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
-		return std::tie(lhs.w, lhs.x, lhs.y, lhs.z) == std::tie(rhs.w, rhs.x, rhs.y, rhs.z);
-	}
-
-	// quat not-equal
-	template <typename T1, typename T2>
-	inline auto operator!=(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
-		return !(lhs == rhs);
-	}
-
-	// quat less-than
-	template <typename T1, typename T2>
-	inline auto operator<(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
-		return std::tie(lhs.w, lhs.x, lhs.y, lhs.z) < std::tie(rhs.w, rhs.x, rhs.y, rhs.z);
-	}
-
 	namespace detail {
+		namespace scalars {
+			namespace functions {
+
+				// quat add assign
+				template <typename T1, typename T2>
+				inline basic_quat<T1> & operator+=(basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
+					lhs.w += rhs.w;
+					lhs.x += rhs.x;
+					lhs.y += rhs.y;
+					lhs.z += rhs.z;
+					return lhs;
+				}
+
+				// quat sub assign
+				template <typename T1, typename T2>
+				inline basic_quat<T1> & operator-=(basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
+					lhs.w -= rhs.w;
+					lhs.x -= rhs.x;
+					lhs.y -= rhs.y;
+					lhs.z -= rhs.z;
+					return lhs;
+				}
+
+				// quat mul assign
+				template <typename T1, typename T2>
+				inline basic_quat<T1> & operator*=(basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
+					return lhs = basic_quat<T1>{lhs * rhs};
+				}
+
+				// quat mul assign scalar
+				template <typename T1, typename T2>
+				inline basic_quat<T1> & operator*=(basic_quat<T1> &lhs, const T2 &rhs) {
+					lhs.w *= rhs;
+					lhs.x *= rhs;
+					lhs.y *= rhs;
+					lhs.z *= rhs;
+					return lhs;
+				}
+
+				// quat negate
+				template <typename T>
+				inline auto operator-(const basic_quat<T> &rhs) {
+					basic_quat<T> q;
+					q.w = -rhs.w;
+					q.x = -rhs.x;
+					q.y = -rhs.y;
+					q.z = -rhs.z;
+					return q;
+				}
+
+				// quat add
+				template <typename T1, typename T2>
+				inline auto operator+(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
+					basic_quat<decltype(T1() + T2())> q{lhs};
+					return q += rhs;
+				}
+
+				// quat sub
+				template <typename T1, typename T2>
+				inline auto operator-(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
+					basic_quat<decltype(T1() - T2())> q{lhs};
+					return q -= rhs;
+				}
+
+				// quat mul
+				template <typename T1, typename T2>
+				inline auto operator*(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
+					basic_quat<decltype(T1() * T2())> q{lhs};
+					q.w = lhs.w * rhs.w - lhs.x * rhs.x - lhs.y * rhs.y - lhs.z * rhs.z;
+					q.x = lhs.w * rhs.x + lhs.x * rhs.w + lhs.y * rhs.z - lhs.z * rhs.y;
+					q.y = lhs.w * rhs.y - lhs.x * rhs.z + lhs.y * rhs.w + lhs.z * rhs.x;
+					q.z = lhs.w * rhs.z + lhs.x * rhs.y - lhs.y * rhs.x + lhs.z * rhs.w;
+					return q;
+				}
+
+				// quat mul vec3 (rotate vec3 by quat)
+				// TODO allow other vector types
+				template <typename T1, typename T2>
+				inline auto operator*(const basic_quat<T1> &lhs, const basic_vec<T2, 3> &rhs) {
+					using common_t = decltype(T1() * T2());
+					basic_quat<common_t> p{common_t{}, rhs};
+					p = lhs * p * inverse(lhs);
+					return basic_vec<common_t, 3>(p.x, p.y, p.z);
+				}
+
+				// quat mul scalar
+				template <typename T1, typename T2>
+				inline auto operator*(const basic_quat<T1> &lhs, const T2 &rhs) {
+					basic_quat<decltype(T1() * T2())> q{lhs};
+					return q *= rhs;
+				}
+
+				// quat mul scalar
+				template <typename T1, typename T2>
+				inline auto operator*(const T1 &lhs, const basic_quat<T2> &rhs) {
+					basic_quat<decltype(T1() * T2())> q{rhs};
+					return q *= lhs;
+				}
+
+				// quat equal
+				template <typename T1, typename T2>
+				inline auto operator==(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
+					return std::tie(lhs.w, lhs.x, lhs.y, lhs.z) == std::tie(rhs.w, rhs.x, rhs.y, rhs.z);
+				}
+
+				// quat not-equal
+				template <typename T1, typename T2>
+				inline auto operator!=(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
+					return !(lhs == rhs);
+				}
+
+				// quat less-than
+				template <typename T1, typename T2>
+				inline auto operator<(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
+					return std::tie(lhs.w, lhs.x, lhs.y, lhs.z) < std::tie(rhs.w, rhs.x, rhs.y, rhs.z);
+				}
+
+			}
+		}
 
 		namespace vectors {
-
 			namespace functions {
 
 				// vec add_assign
-				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline VecT1 & operator+=(VecT1 &lhs, const VecT2 &rhs) {
 					zip_with(detail::op::add_assign(), lhs, rhs);
 					return lhs;
 				}
 
 				// vec add_assign scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline VecT & operator+=(VecT &lhs, const T &rhs) {
 					zip_with(detail::op::add_assign(), lhs, repeat_vec<T, array_size<VecT>::value>(rhs));
 					return lhs;
 				}
 
 				// vec sub_assign
-				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline VecT1 & operator-=(VecT1 &lhs, const VecT2 &rhs) {
 					zip_with(detail::op::sub_assign(), lhs, rhs);
 					return lhs;
 				}
 
 				// vec sub_assign scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline VecT & operator-=(VecT &lhs, const T &rhs) {
 					zip_with(detail::op::sub_assign(), lhs, repeat_vec<T, array_size<VecT>::value>(rhs));
 					return lhs;
 				}
 
 				// vec mul_assign
-				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline VecT1 & operator*=(VecT1 &lhs, const VecT2 &rhs) {
 					zip_with(detail::op::mul_assign(), lhs, rhs);
 					return lhs;
 				}
 
 				// vec mul_assign scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline VecT & operator*=(VecT &lhs, const T &rhs) {
 					zip_with(detail::op::mul_assign(), lhs, repeat_vec<T, array_size<VecT>::value>(rhs));
 					return lhs;
 				}
 
 				// vec div_assign
-				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline VecT1 & operator/=(VecT1 &lhs, const VecT2 &rhs) {
 					zip_with(detail::op::div_assign(), lhs, rhs);
 					return lhs;
 				}
 
 				// vec div_assign scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline VecT & operator/=(VecT &lhs, const T &rhs) {
 					zip_with(detail::op::div_assign(), lhs, repeat_vec<T, array_size<VecT>::value>(rhs));
 					return lhs;
 				}
 
 				// vec remainder (mod) assign
-				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline VecT1 & operator%=(VecT1 &lhs, const VecT2 &rhs) {
 					zip_with(detail::op::mod_assign(), lhs, rhs);
 					return lhs;
 				}
 
 				// vec remainder (mod) assign scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline VecT & operator%=(VecT &lhs, const T &rhs) {
 					zip_with(detail::op::mod_assign(), lhs, repeat_vec<T, array_size<VecT>::value>(rhs));
 					return lhs;
 				}
 
 				// vec lshift_assign
-				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline VecT1 & operator<<=(VecT1 &lhs, const VecT2 &rhs) {
 					zip_with(detail::op::lshift_assign(), lhs, rhs);
 					return lhs;
 				}
 
 				// vec lshift_assign scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline VecT & operator<<=(VecT &lhs, const T &rhs) {
 					zip_with(detail::op::lshift_assign(), lhs, repeat_vec<T, array_size<VecT>::value>(rhs));
 					return lhs;
 				}
 
 				// vec rshift_assign
-				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline VecT1 & operator>>=(VecT1 &lhs, const VecT2 &rhs) {
 					zip_with(detail::op::rshift_assign(), lhs, rhs);
 					return lhs;
 				}
 
 				// vec rshift_assign scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline VecT & operator>>=(VecT &lhs, const T &rhs) {
 					zip_with(detail::op::rshift_assign(), lhs, repeat_vec<T, array_size<VecT>::value>(rhs));
 					return lhs;
 				}
 
 				// vec bitwise_or_assign
-				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline VecT1 & operator|=(VecT1 &lhs, const VecT2 &rhs) {
 					zip_with(detail::op::bitwise_or_assign(), lhs, rhs);
 					return lhs;
 				}
 
 				// vec bitwise_or_assign scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline VecT & operator|=(VecT &lhs, const T &rhs) {
 					zip_with(detail::op::bitwise_or_assign(), lhs, repeat_vec<T, array_size<VecT>::value>(rhs));
 					return lhs;
 				}
 
 				// vec bitwise_xor_assign
-				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline VecT1 & operator^=(VecT1 &lhs, const VecT2 &rhs) {
 					zip_with(detail::op::bitwise_xor_assign(), lhs, rhs);
 					return lhs;
 				}
 
 				// vec bitwise_xor_assign scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline VecT & operator^=(VecT &lhs, const T &rhs) {
 					zip_with(detail::op::bitwise_xor_assign(), lhs, repeat_vec<T, array_size<VecT>::value>(rhs));
 					return lhs;
 				}
 
 				// vec bitwise_and_assign
-				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline VecT1 & operator&=(VecT1 &lhs, const VecT2 &rhs) {
 					zip_with(detail::op::bitwise_and_assign(), lhs, rhs);
 					return lhs;
 				}
 
 				// vec bitwise_and_assign scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline VecT & operator&=(VecT &lhs, const T &rhs) {
 					zip_with(detail::op::bitwise_and_assign(), lhs, repeat_vec<T, array_size<VecT>::value>(rhs));
 					return lhs;
 				}
 
 				// vec negate
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto operator-(const VecT &rhs) {
 					return zip_with(detail::op::neg(), rhs);
 				}
 
 				// vec logical_not
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto operator!(const VecT &rhs) {
 					return zip_with(detail::op::logical_not(), rhs);
 				}
 
 				// vec bitwise_not
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto operator~(const VecT &rhs) {
 					return zip_with(detail::op::bitwise_not(), rhs);
 				}
 
 				// vec add
-				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline auto operator+(const VecT1 &lhs, const VecT2 &rhs) {
 					return zip_with(detail::op::add(), lhs, rhs);
 				}
 
 				// vec add right scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline auto operator+(const VecT &lhs, const T &rhs) {
 					return zip_with(detail::op::add(), lhs, repeat_vec<T, array_size<VecT>::value>(rhs));
 				}
 
 				// vec add left scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline auto operator+(const T &lhs, const VecT &rhs) {
 					return zip_with(detail::op::add(), repeat_vec<T, array_size<VecT>::value>(lhs), rhs);
 				}
 
 				// vec sub
-				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline auto operator-(const VecT1 &lhs, const VecT2 &rhs) {
 					return zip_with(detail::op::sub(), lhs, rhs);
 				}
 
 				// vec sub right scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline auto operator-(const VecT &lhs, const T &rhs) {
 					return zip_with(detail::op::sub(), lhs, repeat_vec<T, array_size<VecT>::value>(rhs));
 				}
 
 				// vec sub left scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline auto operator-(const T &lhs, const VecT &rhs) {
 					return zip_with(detail::op::sub(), repeat_vec<T, array_size<VecT>::value>(lhs), rhs);
 				}
 
 				// vec mul
-				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline auto operator*(const VecT1 &lhs, const VecT2 &rhs) {
 					return zip_with(detail::op::mul(), lhs, rhs);
 				}
 
 				// vec mul right scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline auto operator*(const VecT &lhs, const T &rhs) {
 					return zip_with(detail::op::mul(), lhs, repeat_vec<T, array_size<VecT>::value>(rhs));
 				}
 
 				// vec mul left scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline auto operator*(const T &lhs, const VecT &rhs) {
 					return zip_with(detail::op::mul(), repeat_vec<T, array_size<VecT>::value>(lhs), rhs);
 				}
 
 				// vec div
-				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline auto operator/(const VecT1 &lhs, const VecT2 &rhs) {
 					return zip_with(detail::op::div(), lhs, rhs);
 				}
 
 				// vec div right scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline auto operator/(const VecT &lhs, const T &rhs) {
 					return zip_with(detail::op::div(), lhs, repeat_vec<T, array_size<VecT>::value>(rhs));
 				}
 
 				// vec div left scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline auto operator/(const T &lhs, const VecT &rhs) {
 					return zip_with(detail::op::div(), repeat_vec<T, array_size<VecT>::value>(lhs), rhs);
 				}
 
 				// vec remainder (mod)
-				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline auto operator%(const VecT1 &lhs, const VecT2 &rhs) {
 					return zip_with(detail::op::mod(), lhs, rhs);
 				}
 
 				// vec remainder (mod) right scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline auto operator%(const VecT &lhs, const T &rhs) {
 					return zip_with(detail::op::mod(), lhs, repeat_vec<T, array_size<VecT>::value>(rhs));
 				}
 
 				// vec remainder (mod) left scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline auto operator%(const T &lhs, const VecT &rhs) {
 					return zip_with(detail::op::mod(), repeat_vec<T, array_size<VecT>::value>(lhs), rhs);
 				}
 
 				// vec lshift
-				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline auto operator<<(const VecT1 &lhs, const VecT2 &rhs) {
 					return zip_with(detail::op::lshift(), lhs, rhs);
 				}
 
 				// vec lshift right scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline auto operator<<(const VecT &lhs, const T &rhs) {
 					return zip_with(detail::op::lshift(), lhs, repeat_vec<T, array_size<VecT>::value>(rhs));
 				}
 
 				// vec lshift left scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline auto operator<<(const T &lhs, const VecT &rhs) {
 					return zip_with(detail::op::lshift(), repeat_vec<T, array_size<VecT>::value>(lhs), rhs);
 				}
 
 				// vec rshift
-				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline auto operator >> (const VecT1 &lhs, const VecT2 &rhs) {
 					return zip_with(detail::op::rshift(), lhs, rhs);
 				}
 
 				// vec rshift right scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline auto operator >> (const VecT &lhs, const T &rhs) {
 					return zip_with(detail::op::rshift(), lhs, repeat_vec<T, array_size<VecT>::value>(rhs));
 				}
 
 				// vec rshift left scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline auto operator >> (const T &lhs, const VecT &rhs) {
 					return zip_with(detail::op::rshift(), repeat_vec<T, array_size<VecT>::value>(lhs), rhs);
 				}
 
 				// vec logical_or
-				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline auto operator||(const VecT1 &lhs, const VecT2 &rhs) {
 					return zip_with(detail::op::logical_or(), lhs, rhs);
 				}
 
 				// vec logical_or right scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline auto operator||(const VecT &lhs, const T &rhs) {
 					return zip_with(detail::op::logical_or(), lhs, repeat_vec<T, array_size<VecT>::value>(rhs));
 				}
 
 				// vec logical_or left scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline auto operator||(const T &lhs, const VecT &rhs) {
 					return zip_with(detail::op::logical_or(), repeat_vec<T, array_size<VecT>::value>(lhs), rhs);
 				}
 
 				// vec logical_and
-				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline auto operator&&(const VecT1 &lhs, const VecT2 &rhs) {
 					return zip_with(detail::op::logical_and(), lhs, rhs);
 				}
 
 				// vec logical_and right scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline auto operator&&(const VecT &lhs, const T &rhs) {
 					return zip_with(detail::op::logical_and(), lhs, repeat_vec<T, array_size<VecT>::value>(rhs));
 				}
 
 				// vec logical_and left scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline auto operator&&(const T &lhs, const VecT &rhs) {
 					return zip_with(detail::op::logical_and(), repeat_vec<T, array_size<VecT>::value>(lhs), rhs);
 				}
 
 				// vec bitwise_or
-				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline auto operator|(const VecT1 &lhs, const VecT2 &rhs) {
 					return zip_with(detail::op::bitwise_or(), lhs, rhs);
 				}
 
 				// vec bitwise_or right scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline auto operator|(const VecT &lhs, const T &rhs) {
 					return zip_with(detail::op::bitwise_or(), lhs, repeat_vec<T, array_size<VecT>::value>(rhs));
 				}
 
 				// vec bitwise_or left scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline auto operator|(const T &lhs, const VecT &rhs) {
 					return zip_with(detail::op::bitwise_or(), repeat_vec<T, array_size<VecT>::value>(lhs), rhs);
 				}
 
 				// vec bitwise_xor
-				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline auto operator^(const VecT1 &lhs, const VecT2 &rhs) {
 					return zip_with(detail::op::bitwise_xor(), lhs, rhs);
 				}
 
 				// vec bitwise_xor right scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline auto operator^(const VecT &lhs, const T &rhs) {
 					return zip_with(detail::op::bitwise_xor(), lhs, repeat_vec<T, array_size<VecT>::value>(rhs));
 				}
 
 				// vec bitwise_xor left scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline auto operator^(const T &lhs, const VecT &rhs) {
 					return zip_with(detail::op::bitwise_xor(), repeat_vec<T, array_size<VecT>::value>(lhs), rhs);
 				}
 
 				// vec bitwise_and
-				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline auto operator&(const VecT1 &lhs, const VecT2 &rhs) {
 					return zip_with(detail::op::bitwise_and(), lhs, rhs);
 				}
 
 				// vec bitwise_and right scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline auto operator&(const VecT &lhs, const T &rhs) {
 					return zip_with(detail::op::bitwise_and(), lhs, repeat_vec<T, array_size<VecT>::value>(rhs));
 				}
 
 				// vec bitwise_and left scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline auto operator&(const T &lhs, const VecT &rhs) {
 					return zip_with(detail::op::bitwise_and(), repeat_vec<T, array_size<VecT>::value>(lhs), rhs);
 				}
 
 				// vec equal
-				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline auto operator==(const VecT1 &lhs, const VecT2 &rhs) {
 					return fold(detail::op::logical_and(), true, zip_with(detail::op::equal(), lhs, rhs));
 				}
 
 				// vec not-equal
-				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline auto operator!=(const VecT1 &lhs, const VecT2 &rhs) {
 					return fold(detail::op::logical_or(), false, zip_with(detail::op::nequal(), lhs, rhs));
 				}
 
 				// vec less-than
-				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline auto operator<(const VecT1 &lhs, const VecT2 &rhs) {
 					// TODO nicely
 					return reinterpret_cast<const std::array<array_value_t<VecT1>, array_size<VecT1>::value> &>(lhs)
@@ -3443,167 +3596,163 @@ namespace cgra {
 				}
 
 			}
-
 		}
 
 		namespace matrices {
-
 			namespace functions {
 
 				// mat add_assign
-				template <typename MatT1, typename MatT2, typename = enable_if_matrix_compatible_t<MatT1, MatT2>>
+				template <typename MatT1, typename MatT2, enable_if_matrix_compatible_t<MatT1, MatT2> = 0>
 				inline MatT1 & operator+=(MatT1 &lhs, const MatT2 &rhs) {
 					zip_with<type_to_mat>(detail::op::add_assign(), lhs, rhs);
 					return lhs;
 				}
 
 				// mat add_assign scalar
-				template <typename MatT, typename T, typename = enable_if_matrix_scalar_compatible_t<MatT, T>, typename = void>
+				template <typename MatT, typename T, enable_if_matrix_scalar_compatible_t<MatT, T> = 0>
 				inline MatT & operator+=(MatT &lhs, const T &rhs) {
 					zip_with<type_to_mat>(detail::op::add_assign(), lhs, repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(rhs));
 					return lhs;
 				}
 
 				// mat sub_assign
-				template <typename MatT1, typename MatT2, typename = enable_if_matrix_compatible_t<MatT1, MatT2>>
+				template <typename MatT1, typename MatT2, enable_if_matrix_compatible_t<MatT1, MatT2> = 0>
 				inline MatT1 & operator-=(MatT1 &lhs, const MatT2 &rhs) {
 					zip_with<type_to_mat>(detail::op::sub_assign(), lhs, rhs);
 					return lhs;
 				}
 
 				// mat sub_assign scalar
-				template <typename MatT, typename T, typename = enable_if_matrix_scalar_compatible_t<MatT, T>, typename = void>
+				template <typename MatT, typename T, enable_if_matrix_scalar_compatible_t<MatT, T> = 0>
 				inline MatT & operator-=(MatT &lhs, const T &rhs) {
 					zip_with<type_to_mat>(detail::op::sub_assign(), lhs, repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(rhs));
 					return lhs;
 				}
 
 				// mat mul_assign
-				template <typename MatT1, typename MatT2, typename = enable_if_matrix_mul_compatible_t<MatT1, MatT2>>
+				template <typename MatT1, typename MatT2, enable_if_matrix_mul_compatible_t<MatT1, MatT2> = 0>
 				inline MatT1 & operator*=(MatT1 &lhs, const MatT2 &rhs) {
 					return lhs = lhs * rhs;
 				}
 
 				// mat mul_assign scalar
-				template <typename MatT, typename T, typename = enable_if_matrix_scalar_compatible_t<MatT, T>, typename = void>
+				template <typename MatT, typename T, enable_if_matrix_scalar_compatible_t<MatT, T> = 0>
 				inline MatT & operator*=(MatT &lhs, const T &rhs) {
 					zip_with<type_to_mat>(detail::op::mul_assign(), lhs, repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(rhs));
 					return lhs;
 				}
 
 				// mat div_assign scalar
-				template <typename MatT, typename T, typename = enable_if_matrix_scalar_compatible_t<MatT, T>, typename = void>
+				template <typename MatT, typename T, enable_if_matrix_scalar_compatible_t<MatT, T> = 0>
 				inline MatT & operator/=(MatT &lhs, const T &rhs) {
 					zip_with<type_to_mat>(detail::op::div_assign(), lhs, repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(rhs));
 					return lhs;
 				}
 
 				// mat negate
-				template <typename MatT, typename = enable_if_matrix_t<MatT>>
+				template <typename MatT, enable_if_matrix_t<MatT> = 0>
 				inline auto operator-(const MatT &rhs) {
 					return zip_with<type_to_mat>(detail::op::neg(), rhs);
 				}
 
 				// mat add
-				template <typename MatT1, typename MatT2, typename = enable_if_matrix_compatible_t<MatT1, MatT2>>
+				template <typename MatT1, typename MatT2, enable_if_matrix_compatible_t<MatT1, MatT2> = 0>
 				inline auto operator+(const MatT1 &lhs, const MatT2 &rhs) {
 					return zip_with<type_to_mat>(detail::op::add(), lhs, rhs);
 				}
 
 				// mat add right scalar
-				template <typename MatT, typename T, typename = enable_if_matrix_scalar_compatible_t<MatT, T>, typename = void>
+				template <typename MatT, typename T, enable_if_matrix_scalar_compatible_t<MatT, T> = 0>
 				inline auto operator+(const MatT &lhs, const T &rhs) {
 					return zip_with<type_to_mat>(detail::op::add(), lhs, repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(rhs));
 				}
 
 				// mat add left scalar
-				template <typename MatT, typename T, typename = enable_if_matrix_scalar_compatible_t<MatT, T>, typename = void, typename = void>
+				template <typename MatT, typename T, enable_if_matrix_scalar_compatible_t<MatT, T> = 0>
 				inline auto operator+(const T &lhs, const MatT &rhs) {
 					return zip_with<type_to_mat>(detail::op::add(), repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(lhs), rhs);
 				}
 
 				// mat sub
-				template <typename MatT1, typename MatT2, typename = enable_if_matrix_compatible_t<MatT1, MatT2>>
+				template <typename MatT1, typename MatT2, enable_if_matrix_compatible_t<MatT1, MatT2> = 0>
 				inline auto operator-(const MatT1 &lhs, const MatT2 &rhs) {
 					return zip_with<type_to_mat>(detail::op::sub(), lhs, rhs);
 				}
 
 				// mat sub right scalar
-				template <typename MatT, typename T, typename = enable_if_matrix_scalar_compatible_t<MatT, T>, typename = void>
+				template <typename MatT, typename T, enable_if_matrix_scalar_compatible_t<MatT, T> = 0>
 				inline auto operator-(const MatT &lhs, const T &rhs) {
 					return zip_with<type_to_mat>(detail::op::sub(), lhs, repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(rhs));
 				}
 
 				// mat sub left scalar
-				template <typename MatT, typename T, typename = enable_if_matrix_scalar_compatible_t<MatT, T>, typename = void, typename = void>
+				template <typename MatT, typename T, enable_if_matrix_scalar_compatible_t<MatT, T> = 0>
 				inline auto operator-(const T &lhs, const MatT &rhs) {
 					return zip_with<type_to_mat>(detail::op::sub(), repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(lhs), rhs);
 				}
 
 				// mat mul
-				template <typename MatT1, typename MatT2, typename = enable_if_matrix_mul_compatible_t<MatT1, MatT2>>
+				template <typename MatT1, typename MatT2, enable_if_matrix_mul_compatible_t<MatT1, MatT2> = 0>
 				inline auto operator*(const MatT1 &lhs, const MatT2 &rhs) {
 					return zip_with<type_to_mat>([&](auto &rcol) { return dot(lhs, rcol); }, rhs);
 				}
 
 				// mat mul right scalar
-				template <typename MatT, typename T, typename = enable_if_matrix_scalar_compatible_t<MatT, T>, typename = void>
+				template <typename MatT, typename T, enable_if_matrix_scalar_compatible_t<MatT, T> = 0>
 				inline auto operator*(const MatT &lhs, const T &rhs) {
 					return zip_with<type_to_mat>(detail::op::mul(), lhs, repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(rhs));
 				}
 
 				// mat mul left scalar
-				template <typename MatT, typename T, typename = enable_if_matrix_scalar_compatible_t<MatT, T>, typename = void, typename = void>
+				template <typename MatT, typename T, enable_if_matrix_scalar_compatible_t<MatT, T> = 0>
 				inline auto operator*(const T &lhs, const MatT &rhs) {
 					return zip_with<type_to_mat>(detail::op::mul(), repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(lhs), rhs);
 				}
 
 				// mat div right scalar
-				template <typename MatT, typename T, typename = enable_if_matrix_scalar_compatible_t<MatT, T>, typename = void>
+				template <typename MatT, typename T, enable_if_matrix_scalar_compatible_t<MatT, T> = 0>
 				inline auto operator/(const MatT &lhs, const T &rhs) {
 					return zip_with<type_to_mat>(detail::op::div(), lhs, repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(rhs));
 				}
 
 				// mat div left scalar
-				template <typename MatT, typename T, typename = enable_if_matrix_scalar_compatible_t<MatT, T>, typename = void, typename = void>
+				template <typename MatT, typename T, enable_if_matrix_scalar_compatible_t<MatT, T> = 0>
 				inline auto operator/(const T &lhs, const MatT &rhs) {
 					return lhs * inverse(rhs);
 				}
 
 				// mat mul right vec
-				template <typename MatT, typename VecT, typename = enable_if_matrix_mul_col_compatible_t<MatT, VecT>, typename = void, typename = void, typename = void>
+				template <typename MatT, typename VecT, enable_if_matrix_mul_col_compatible_t<MatT, VecT> = 0>
 				inline auto operator*(const MatT &lhs, const VecT &rhs) {
 					return dot(lhs, rhs);
 				}
 
 				// mat mul left vec
-				template <typename MatT, typename VecT, typename = enable_if_matrix_mul_row_compatible_t<MatT, VecT>, typename = void, typename = void, typename = void, typename = void>
+				template <typename MatT, typename VecT, enable_if_matrix_mul_row_compatible_t<MatT, VecT> = 0>
 				inline auto operator*(const VecT &lhs, const MatT &rhs) {
 					return zip_with([&](auto &rcol) { return dot(lhs, rcol); }, rhs);
 				}
 				
 				// mat equal
-				template <typename MatT1, typename MatT2, typename = enable_if_matrix_compatible_t<MatT1, MatT2>>
+				template <typename MatT1, typename MatT2, enable_if_matrix_compatible_t<MatT1, MatT2> = 0>
 				inline auto operator==(const MatT1 &lhs, const MatT2 &rhs) {
 					return fold(detail::op::logical_and(), true, zip_with(detail::op::equal(), lhs, rhs));
 				}
 
 				// mat not-equal
-				template <typename MatT1, typename MatT2, typename = enable_if_matrix_compatible_t<MatT1, MatT2>>
+				template <typename MatT1, typename MatT2, enable_if_matrix_compatible_t<MatT1, MatT2> = 0>
 				inline auto operator!=(const MatT1 &lhs, const MatT2 &rhs) {
 					return fold(detail::op::logical_or(), false, zip_with(detail::op::nequal(), lhs, rhs));
 				}
 
 				// mat less-than
-				template <typename MatT1, typename MatT2, typename = enable_if_matrix_compatible_t<MatT1, MatT2>>
+				template <typename MatT1, typename MatT2, enable_if_matrix_compatible_t<MatT1, MatT2> = 0>
 				inline auto operator<(const MatT1 &lhs, const MatT2 &rhs) {
 					return lhs.as_vec() < rhs.as_vec();
 				}
 
 			}
-
 		}
-
 	}
 
 
@@ -3618,327 +3767,330 @@ namespace cgra {
 	//                                                                                                                                          //
 	//==========================================================================================================================================//
 
-	using std::sin;
-	using std::cos;
-	using std::tan;
-	using std::asin;
-	using std::acos;
-	using std::atan;
-	using std::sinh;
-	using std::cosh;
-	using std::tanh;
-	using std::asinh;
-	using std::acosh;
-	using std::atanh;
-
-	// secant
-	template <typename T, typename = detail::enable_if_scalar_t<T>>
-	inline T sec(const T &x) {
-		return T(1) / cos(x);
-	}
-
-	// cosecant
-	template <typename T, typename = detail::enable_if_scalar_t<T>>
-	inline T csc(const T &x) {
-		return T(1) / sin(x);
-	}
-
-	// cotangent
-	template <typename T, typename = detail::enable_if_scalar_t<T>>
-	inline T cot(const T &x) {
-		return cos(x) / sin(x);
-	}
-
-	// inverse secant 
-	template <typename T, typename = detail::enable_if_scalar_t<T>>
-	inline T asec(const T &x) {
-		return acos(T(1) / x);
-	}
-
-	// inverse cosecant
-	template <typename T, typename = detail::enable_if_scalar_t<T>>
-	inline T acsc(const T &x) {
-		return asin(T(1) / x);
-	}
-
-	// inverse cotangent
-	template <typename T, typename = detail::enable_if_scalar_t<T>>
-	inline T acot(const T &x) {
-		return atan(T(1) / x);
-	}
-
-	// hyperbolic secant
-	template <typename T, typename = detail::enable_if_scalar_t<T>>
-	inline T sech(const T &x) {
-		return T(1) / cosh(x);
-	}
-
-	// hyperbolic cosecant
-	template <typename T, typename = detail::enable_if_scalar_t<T>>
-	inline T csch(const T &x) {
-		return T(1) / sinh(x);
-	}
-
-	// hyperbolic cotangent
-	template <typename T, typename = detail::enable_if_scalar_t<T>>
-	inline T coth(const T &x) {
-		return cosh(x) / sinh(x);
-	}
-
-	// inverse hyperbolic secant
-	template <typename T, typename = detail::enable_if_scalar_t<T>>
-	inline T asech(const T &x) {
-		return acosh(T(1) / x);
-	}
-
-	// inverse hyperbolic cosecant
-	template <typename T, typename = detail::enable_if_scalar_t<T>>
-	inline T acsch(const T &x) {
-		return asinh(T(1) / x);
-	}
-
-	// inverse hyperbolic cotangent
-	template <typename T, typename = detail::enable_if_scalar_t<T>>
-	inline T acoth(const T &x) {
-		return atanh(T(1) / x);
-	}
-
-	// Converts degrees to radians, i.e., x * pi/180
-	template <typename T, typename = detail::enable_if_scalar_t<T>>
-	inline T radians(const T &x) {
-		return x * T(pi / 180.0);
-	}
-
-	// Converts radians to degrees, i.e., x * 180/pi
-	template <typename T, typename = detail::enable_if_scalar_t<T>>
-	inline T degrees(const T &x) {
-		return x * T(180.0 / pi);
-	}
-
-	// Arc tangent. Returns an angle whose tangent is y/x
-	// The signs of x and y are used to determine what quadrant the angle is in
-	// The range of values returned by this function is [−pi, pi]
-	// Results are undefined if x and y are both 0
-	template <typename T, typename = detail::enable_if_scalar_t<T>>
-	inline T atan(const T &y, const T &x) {
-		return std::atan2(y, x);
-	}
-
 	namespace detail {
+		namespace scalars {
+			namespace functions {
+
+				using std::sin;
+				using std::cos;
+				using std::tan;
+				using std::asin;
+				using std::acos;
+				using std::atan;
+				using std::sinh;
+				using std::cosh;
+				using std::tanh;
+				using std::asinh;
+				using std::acosh;
+				using std::atanh;
+
+				// secant
+				template <typename T, enable_if_want_trig_fns_t<T> = 0>
+				inline auto sec(const T &x) {
+					return T(1) / cos(x);
+				}
+
+				// cosecant
+				template <typename T, enable_if_want_trig_fns_t<T> = 0>
+				inline auto csc(const T &x) {
+					return T(1) / sin(x);
+				}
+
+				// cotangent
+				template <typename T, enable_if_want_trig_fns_t<T> = 0>
+				inline auto cot(const T &x) {
+					return cos(x) / sin(x);
+				}
+
+				// inverse secant 
+				template <typename T, enable_if_want_trig_fns_t<T> = 0>
+				inline auto asec(const T &x) {
+					return acos(T(1) / scalar_fpromote_t<T>(x));
+				}
+
+				// inverse cosecant
+				template <typename T, enable_if_want_trig_fns_t<T> = 0>
+				inline auto acsc(const T &x) {
+					return asin(T(1) / scalar_fpromote_t<T>(x));
+				}
+
+				// inverse cotangent
+				template <typename T, enable_if_want_trig_fns_t<T> = 0>
+				inline auto acot(const T &x) {
+					return atan(T(1) / scalar_fpromote_t<T>(x));
+				}
+
+				// hyperbolic secant
+				template <typename T, enable_if_want_trig_fns_t<T> = 0>
+				inline auto sech(const T &x) {
+					return T(1) / cosh(x);
+				}
+
+				// hyperbolic cosecant
+				template <typename T, enable_if_want_trig_fns_t<T> = 0>
+				inline auto csch(const T &x) {
+					return T(1) / sinh(x);
+				}
+
+				// hyperbolic cotangent
+				template <typename T, enable_if_want_trig_fns_t<T> = 0>
+				inline auto coth(const T &x) {
+					return cosh(x) / sinh(x);
+				}
+
+				// inverse hyperbolic secant
+				template <typename T, enable_if_want_trig_fns_t<T> = 0>
+				inline auto asech(const T &x) {
+					return acosh(T(1) / scalar_fpromote_t<T>(x));
+				}
+
+				// inverse hyperbolic cosecant
+				template <typename T, enable_if_want_trig_fns_t<T> = 0>
+				inline auto acsch(const T &x) {
+					return asinh(T(1) / scalar_fpromote_t<T>(x));
+				}
+
+				// inverse hyperbolic cotangent
+				template <typename T, enable_if_want_trig_fns_t<T> = 0>
+				inline auto acoth(const T &x) {
+					return atanh(T(1) / scalar_fpromote_t<T>(x));
+				}
+
+				// Converts degrees to radians, i.e., x * pi/180
+				template <typename T, enable_if_want_real_fns_t<T> = 0>
+				inline auto radians(const T &x) {
+					return x * scalar_fpromote_t<T>(pi / 180.0);
+				}
+
+				// Converts radians to degrees, i.e., x * 180/pi
+				template <typename T, enable_if_want_real_fns_t<T> = 0>
+				inline auto degrees(const T &x) {
+					return x * scalar_fpromote_t<T>(180.0 / pi);
+				}
+
+				// Arc tangent. Returns an angle whose tangent is y/x
+				// The signs of x and y are used to determine what quadrant the angle is in
+				// The range of values returned by this function is [−pi, pi]
+				// Results are undefined if x and y are both 0
+				template <typename Ty, typename Tx, enable_if_arithmetic_t<Ty, Tx> = 0>
+				inline auto atan(const Ty &y, const Tx &x) {
+					return std::atan2(y, x);
+				}
+
+			}
+		}
+
 		namespace vectors {
 			namespace functions {
 
-				// FIXME find a nicer way to un-hide the scalar functions than throwing usings everywhere
-				// possibly: put scalar functions into cgra::functions and using-namespace them in
-
 				// Returns the angle between 2 vectors in radians
-				template <typename VecT1, typename VecT2, typename = detail::enable_if_vector_compatible_t<VecT1, VecT2>>
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline auto angle(const VecT1 &v1, const VecT2 &v2) {
-					using cgra::acos;
+					using cgra::detail::scalars::acos;
 					// TODO use asin and |v1 x v2| for vec3, vec2 (its a lot more precise for small angles)
 					return acos(dot(v1, v2) / (length(v1) * length(v2)));
 				}
 
 				// vec sin
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto sin(const VecT &v) {
-					using cgra::sin;
+					using cgra::detail::scalars::sin;
 					return zip_with([](const auto &x) { return sin(x); }, v);
 				}
 
 				// vec cosine
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto cos(const VecT &v) {
-					using cgra::cos;
+					using cgra::detail::scalars::cos;
 					return zip_with([](const auto &x) { return cos(x); }, v);
 				}
 
 				// vec tangent
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto tan(const VecT &v) {
-					using cgra::tan;
+					using cgra::detail::scalars::tan;
 					return zip_with([](const auto &x) { return tan(x); }, v);
 				}
 
 				// vec secant
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto sec(const VecT &v) {
-					using cgra::sec;
+					using cgra::detail::scalars::sec;
 					return zip_with([](const auto &x) { return sec(x); }, v);
 				}
 
 				// vec cosecant
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto csc(const VecT &v) {
-					using cgra::csc;
+					using cgra::detail::scalars::csc;
 					return zip_with([](const auto &x) { return csc(x); }, v);
 				}
 
 				// vec cotangent
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto cot(const VecT &v) {
-					using cgra::cot;
+					using cgra::detail::scalars::cot;
 					return zip_with([](const auto &x) { return cot(x); }, v);
 				}
 
 				// vec inverse sin
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto asin(const VecT &v) {
-					using cgra::asin;
+					using cgra::detail::scalars::asin;
 					return zip_with([](const auto &x) { return asin(x); }, v);
 				}
 
 				// vec inverse cosine
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto acos(const VecT &v) {
-					using cgra::acos;
+					using cgra::detail::scalars::acos;
 					return zip_with([](const auto &x) { return acos(x); }, v);
 				}
 
 				// vec inverse tangent
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto atan(const VecT &v) {
-					using cgra::atan;
+					using cgra::detail::scalars::atan;
 					return zip_with([](const auto &x) { return atan(x); }, v);
 				}
 
 				// vec inverse secant
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto asec(const VecT &v) {
-					using cgra::asec;
+					using cgra::detail::scalars::asec;
 					return zip_with([](const auto &x) { return asec(x); }, v);
 				}
 
 				// vec inverse cosecant
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto acsc(const VecT &v) {
-					using cgra::acsc;
+					using cgra::detail::scalars::acsc;
 					return zip_with([](const auto &x) { return acsc(x); }, v);
 				}
 
 				// vec inverse cotangent
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto acot(const VecT &v) {
-					using cgra::acot;
+					using cgra::detail::scalars::acot;
 					return zip_with([](const auto &x) { return acot(x); }, v);
 				}
 
 				// vec hyperbolic sin
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto sinh(const VecT &v) {
-					using cgra::sinh;
+					using cgra::detail::scalars::sinh;
 					return zip_with([](const auto &x) { return sinh(x); }, v);
 				}
 
 				// vec hyperbolic cosine
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto cosh(const VecT &v) {
-					using cgra::cosh;
+					using cgra::detail::scalars::cosh;
 					return zip_with([](const auto &x) { return cosh(x); }, v);
 				}
 
 				// vec hyperbolic tangent
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto tanh(const VecT &v) {
-					using cgra::tanh;
+					using cgra::detail::scalars::tanh;
 					return zip_with([](const auto &x) { return tanh(x); }, v);
 				}
 
 				// vec hyperbolic secant
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto sech(const VecT &v) {
-					using cgra::sech;
+					using cgra::detail::scalars::sech;
 					return zip_with([](const auto &x) { return sech(x); }, v);
 				}
 
 				// vec hyperbolic cosecant
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto csch(const VecT &v) {
-					using cgra::csch;
+					using cgra::detail::scalars::csch;
 					return zip_with([](const auto &x) { return csch(x); }, v);
 				}
 
 				// vec hyperbolic cotangent
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto coth(const VecT &v) {
-					using cgra::coth;
+					using cgra::detail::scalars::coth;
 					return zip_with([](const auto &x) { return coth(x); }, v);
 				}
 
 				// vec inverse hyperbolic sin
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto asinh(const VecT &v) {
-					using cgra::asinh;
+					using cgra::detail::scalars::asinh;
 					return zip_with([](const auto &x) { return asinh(x); }, v);
 				}
 
 				// vec inverse hyperbolic cosine
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto acosh(const VecT &v) {
-					using cgra::acosh;
+					using cgra::detail::scalars::acosh;
 					return zip_with([](const auto &x) { return acosh(x); }, v);
 				}
 
 				// vec inverse hyperbolic tangent
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto atanh(const VecT &v) {
-					using cgra::atanh;
+					using cgra::detail::scalars::atanh;
 					return zip_with([](const auto &x) { return atanh(x); }, v);
 				}
 
 				// vec inverse hyperbolic secant
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto asech(const VecT &v) {
-					using cgra::asech;
+					using cgra::detail::scalars::asech;
 					return zip_with([](const auto &x) { return asech(x); }, v);
 				}
 
 				// vec inverse hyperbolic cosecant
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto acsch(const VecT &v) {
-					using cgra::acsch;
+					using cgra::detail::scalars::acsch;
 					return zip_with([](const auto &x) { return acsch(x); }, v);
 				}
 
 				// vec inverse hyperbolic cotangent
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto acoth(const VecT &v) {
-					using cgra::acoth;
+					using cgra::detail::scalars::acoth;
 					return zip_with([](const auto &x) { return acoth(x); }, v);
 				}
 
 				// vec degrees to radians
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto radians(const VecT &v) {
-					using cgra::radians;
+					using cgra::detail::scalars::radians;
 					return zip_with([](const auto &x) { return radians(x); }, v);
 				}
 
 				// vec radians to degrees
-				template <typename VecT, typename = enable_if_vector_t<VecT>>
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
 				inline auto degrees(const VecT &v) {
-					using cgra::degrees;
+					using cgra::detail::scalars::degrees;
 					return zip_with([](const auto &x) { return degrees(x); }, v);
 				}
 
 				// vec inverse tangent (2-arg)
-				template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline auto atan(const VecT1 &vy, const VecT2 &vx) {
-					using cgra::atan;
+					using cgra::detail::scalars::atan;
 					return zip_with([](const auto &xy, const auto &xx) { return atan(xy, xx); }, vy, vx);
 				}
 
 				// vec inverse tangent (2-arg) right scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline auto atan(const VecT &vy, const T &x) {
-					using cgra::atan;
+					using cgra::detail::scalars::atan;
 					return zip_with([&](const auto &xy) { return atan(xy, x); }, vy);
 				}
 
 				// vec inverse tangent (2-arg) left scalar
-				template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void, typename = void>
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 				inline auto atan(const T &y, const VecT &vx) {
-					using cgra::atan;
+					using cgra::detail::scalars::atan;
 					return zip_with([&](const auto &xx) { return atan(y, xx); }, vx);
 				}
 
@@ -3958,70 +4110,119 @@ namespace cgra {
 	//                                                                                                                                                                                                               //
 	//===============================================================================================================================================================================================================//
 
-	using std::pow;
+	namespace detail {
+		namespace scalars {
+			namespace functions {
 
-	// Element-wise function for x in v1 and y in v2
-	// Returns x raised to the y power, i.e., x^y
-	// Results are undefined if x < 0
-	// Results are undefined if x = 0 and y <= 0
-	template <typename T1, typename T2, size_t N>
-	inline auto pow(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-		return zip_with([](auto &&x, auto &&y) { return pow(decltype(x)(x), decltype(y)(y)); }, v1, v2);
+				using std::exp;
+				using std::exp2;
+				using std::expm1;
+				using std::log;
+				using std::log2;
+				using std::log10;
+				using std::log1p;
+				using std::pow;
+				using std::sqrt;
+				using std::cbrt;
+				using std::hypot;
+
+			}
+		}
+
+		namespace vectors {
+			namespace functions {
+				
+				// TODO vector hypot
+
+				// vec exp
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
+				inline auto exp(const VecT &v) {
+					using cgra::detail::scalars::exp;
+					return zip_with([](const auto &x) { return exp(x); }, v);
+				}
+
+				// vec exp base 2
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
+				inline auto exp2(const VecT &v) {
+					using cgra::detail::scalars::exp2;
+					return zip_with([](const auto &x) { return exp2(x); }, v);
+				}
+
+				// vec exp(x) - 1
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
+				inline auto expm1(const VecT &v) {
+					using cgra::detail::scalars::expm1;
+					return zip_with([](const auto &x) { return expm1(x); }, v);
+				}
+
+				// vec log
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
+				inline auto log(const VecT &v) {
+					using cgra::detail::scalars::log;
+					return zip_with([](const auto &x) { return log(x); }, v);
+				}
+
+				// vec log2
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
+				inline auto log2(const VecT &v) {
+					using cgra::detail::scalars::log2;
+					return zip_with([](const auto &x) { return log2(x); }, v);
+				}
+
+				// vec log10
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
+				inline auto log10(const VecT &v) {
+					using cgra::detail::scalars::log10;
+					return zip_with([](const auto &x) { return log10(x); }, v);
+				}
+
+				// vec log(1 + x)
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
+				inline auto log1p(const VecT &v) {
+					using cgra::detail::scalars::log1p;
+					return zip_with([](const auto &x) { return log1p(x); }, v);
+				}
+
+				// vec sqrt
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
+				inline auto sqrt(const VecT &v) {
+					using cgra::detail::scalars::sqrt;
+					return zip_with([](const auto &x) { return sqrt(x); }, v);
+				}
+
+				// vec cbrt
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
+				inline auto cbrt(const VecT &v) {
+					using cgra::detail::scalars::cbrt;
+					return zip_with([](const auto &x) { return cbrt(x); }, v);
+				}
+
+				// vec pow
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
+				inline auto pow(const VecT1 &vx, const VecT2 &va) {
+					using cgra::detail::scalars::pow;
+					return zip_with([](const auto &xx, const auto &xa) { return pow(xx, xa); }, vx, va);
+				}
+
+				// vec pow right scalar
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
+				inline auto pow(const VecT &vx, const T &a) {
+					using cgra::detail::scalars::pow;
+					return zip_with([&](const auto &xx) { return pow(xx, a); }, vx);
+				}
+
+				// vec pow left scalar
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
+				inline auto pow(const T &x, const VecT &va) {
+					using cgra::detail::scalars::pow;
+					return zip_with([&](const auto &xa) { return pow(x, xa); }, va);
+				}
+
+			}
+		}
 	}
 
-	using std::exp;
-
-	// Element-wise function for x in v
-	// Returns the natural exponentiation of x, i.e., e^x
-	template <typename T, size_t N>
-	inline basic_vec<T, N> exp(const basic_vec<T, N> &v) {
-		return zip_with([](auto &&x) { return exp(decltype(x)(x)); }, v);
-	}
-
-	using std::log;
-
-	// Element-wise function for x in v
-	// Returns the natural logarithm of x, i.e., the value y which satisfies the equation x = e^y
-	// Results are undefined if x <= 0.
-	template <typename T, size_t N>
-	inline basic_vec<T, N> log(const basic_vec<T, N> &v) {
-		return zip_with([](auto &&x) { return log(decltype(x)(x)); }, v);
-	}
-
-	// exp2 for both scalar x or elements in vector x
-	// Returns 2 raised to the x power, i.e., 2^x
-	template <typename T>
-	inline T exp2(const T &x) {
-		return zip_with([](auto &&x) { return pow(decltype(x)(2), decltype(x)(x)); }, x);
-	}
-
-	// log2 for both scalar x or elements in vector x
-	// Returns the base 2 logarithm of x, i.e., returns the value
-	// y which satisfies the equation x=2^y
-	// Results are undefined if x <= 0
-	template <typename T>
-	inline T log2(const T &x) {
-		return log(x) * T(1.4426950408889634073599246810019);
-	}
-
-	using std::sqrt;
-
-	// Element-wise function for x in v
-	// Returns sqrt(x)
-	// Results are undefined if x < 0
-	template <typename T, size_t N>
-	inline basic_vec<T, N> sqrt(const basic_vec<T, N> &v) {
-		return zip_with([](auto &&x) { return sqrt(decltype(x)(x)); }, v);
-	}
-
-	// inversesqrt for both scalar x or elements in vector x
-	// Returns 1/sqrt(x)
-	// Results are undefined if x < 0
-	template <typename T>
-	inline T inversesqrt(const T &x) {
-		return T(1) / sqrt(x);
-	}
-
+	
 
 
 	//    ______   ______   .___  ___. .___  ___.   ______   .__   __.     _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
@@ -4033,35 +4234,299 @@ namespace cgra {
 	//                                                                                                                                                                 //
 	//=================================================================================================================================================================//
 
-	using std::abs;
+	namespace detail {
+		namespace scalars {
+			namespace functions {
 
-	// Element-wise function for x in v
-	// Returns x if x >= 0; otherwise it returns –x
-	template <typename T, size_t N>
-	inline basic_vec<T, N> abs(const basic_vec<T, N> &v) {
-		return zip_with([](auto &&x) { return abs(decltype(x)(x)); }, v);
-	}
+				using std::abs;
+				using std::floor;
+				using std::ceil;
+				using std::min;
+				using std::max;
+				using std::isnan;
+				using std::isinf;
 
-	// Returns 1 if x > 0, 0 if x = 0, or –1 if x < 0
-	template <typename T>
-	inline auto sign(T x) -> std::enable_if_t<std::is_arithmetic<T>::value, int> {
-		return (T(0) < x) - (x < T(0));
-	}
+				// eg: inf<float>()
+				template <typename T, enable_if_want_real_fns_t<T> = 0>
+				inline T inf() {
+					static_assert(std::numeric_limits<T>::has_infinity, "type has no infinity");
+					return std::numeric_limits<T>::infinity();
+				}
 
-	// Element-wise function for x in v
-	// Returns 1 if x > 0, 0 if x = 0, or –1 if x < 0
-	template <typename T, size_t N>
-	inline basic_vec<T, N> sign(const basic_vec<T, N> &v) {
-		return zip_with([](auto &&x) { return sign(decltype(x)(x)); }, v);
-	}
+				// eg: nan<float>()
+				template <typename T, enable_if_want_real_fns_t<T> = 0>
+				inline T nan() {
+					static_assert(std::numeric_limits<T>::has_quiet_NaN, "type has no NaN");
+					return std::numeric_limits<T>::quiet_NaN();
+				}
 
-	using std::floor;
+				// Returns 1 if x > 0, 0 if x = 0, or –1 if x < 0
+				template <typename T, enable_if_want_real_fns_t<T> = 0>
+				inline int sign(const T &x) {
+					return (T(0) < x) - (x < T(0));
+				}
 
-	// Element-wise function for x in v
-	// Returns a value equal to the nearest integer that is less than or equal to x
-	template <typename T, size_t N>
-	inline basic_vec<T, N> floor(const basic_vec<T, N> &v) {
-		return zip_with([](auto &&x) { return floor(decltype(x)(x)); }, v);
+				// Fractional component of x. Returns x–floor(x)
+				template <typename T, enable_if_want_real_fns_t<T> = 0>
+				inline auto fract(const T &x) {
+					return x - floor(x);
+				}
+
+				// Modulus. Returns x-m*floor(x/m)
+				template <typename Tx, typename Tm, enable_if_want_real_fns_t<Tx, Tm> = 0>
+				inline auto mod(const Tx &x, const Tm &m) {
+					// on integers, promote to fp; consistent with std::fmod etc
+					return x - m * floor(x / scalar_fpromote_t<Tm>(m));
+				}
+
+				// Returns the linear blend of x1 and x2, i.e., x1*(1−t) + x2*t
+				template <typename Tx1, typename Tx2, typename Tt, typename = void> // FIXME constrain mix
+				inline auto mix(const Tx1 &x1, const Tx2 &x2, const Tt &t) {
+					return x1 * (Tt(1) - t) + x2 * t;
+				}
+
+				// heterogeneous version of std::min
+				template <typename Tx1, typename Tx2, enable_if_want_real_fns_t<Tx1, Tx2> = 0>
+				inline auto min(const Tx1 &x1, const Tx2 &x2) {
+					using common_t = decltype(x1 + x2);
+					return min(common_t(x1), common_t(x2));
+				}
+
+				// heterogeneous version of std::max
+				template <typename Tx1, typename Tx2, enable_if_want_real_fns_t<Tx1, Tx2> = 0>
+				inline auto max(const Tx1 &x1, const Tx2 &x2) {
+					using common_t = decltype(x1 + x2);
+					return max(common_t(x1), common_t(x2));
+				}
+
+				// Returns min(max(x, lower), upper)
+				template <typename Tx, typename Tl, typename Tu, enable_if_want_real_fns_t<Tx, Tl, Tu> = 0>
+				inline auto clamp(const Tx &x, const Tl &lower, const Tu &upper) {
+					using common_t = decltype(x + lower + upper);
+					return min(max(common_t(x), common_t(lower)), common_t(upper));
+				}
+
+				// Returns 0 if x < edge, 1 otherwise
+				template <typename Te, typename Tx, enable_if_want_real_fns_t<Te, Tx> = 0>
+				inline auto step(const Te &edge, const Tx &x) {
+					// why does glsl have the args in this order?
+					return (x < edge) ? Tx(0) : Tx(1);
+				}
+
+				// Returns 0 if x <= edge0 and 1 if x >= edge1 and performs smooth
+				// Hermite interpolation between 0 and 1 when edge0 < x < edge1
+				// This is useful in cases where you would want a threshold
+				// function with a smooth transition. Results are undefined if edge0 >= edge1.
+				template <typename Te0, typename Te1, typename Tx, enable_if_want_real_fns_t<Te0, Te1, Tx> = 0>
+				inline auto smoothstep(const Te0 &edge0, const Te1 &edge1, const Tx &x) {
+					auto t = clamp((x - edge0) / (edge1 - edge0), Tx(0), Tx(1));
+					return t * t * (Tx(3) - Tx(2) * t);
+				}
+
+			}
+		}
+
+		namespace vectors {
+			namespace functions {
+
+				// vec abs
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
+				inline auto abs(const VecT &v) {
+					using cgra::detail::scalars::abs;
+					return zip_with([](const auto &x) { return abs(x); }, v);
+				}
+
+				// vec floor
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
+				inline auto floor(const VecT &v) {
+					using cgra::detail::scalars::floor;
+					return zip_with([](const auto &x) { return floor(x); }, v);
+				}
+
+				// vec ceil
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
+				inline auto ceil(const VecT &v) {
+					using cgra::detail::scalars::ceil;
+					return zip_with([](const auto &x) { return ceil(x); }, v);
+				}
+
+				// vec isnan
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
+				inline auto isnan(const VecT &v) {
+					using cgra::detail::scalars::isnan;
+					return zip_with([](const auto &x) { return isnan(x); }, v);
+				}
+
+				// vec isinf
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
+				inline auto isinf(const VecT &v) {
+					using cgra::detail::scalars::isinf;
+					return zip_with([](const auto &x) { return isinf(x); }, v);
+				}
+
+				// vec sign
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
+				inline auto sign(const VecT &v) {
+					using cgra::detail::scalars::sign;
+					return zip_with([](const auto &x) { return sign(x); }, v);
+				}
+
+				// vec fract
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
+				inline auto fract(const VecT &v) {
+					using cgra::detail::scalars::fract;
+					return zip_with([](const auto &x) { return fract(x); }, v);
+				}
+
+				// vec mod
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
+				inline auto mod(const VecT1 &vx, const VecT2 &vm) {
+					using cgra::detail::scalars::mod;
+					return zip_with([](const auto &xx, const auto &xm) { return mod(xx, xm); }, vx, vm);
+				}
+
+				// vec mod right scalar
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
+				inline auto mod(const VecT &vx, const T &m) {
+					using cgra::detail::scalars::mod;
+					return zip_with([&](const auto &xx) { return mod(xx, m); }, vx);
+				}
+
+				// vec mod left scalar
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
+				inline auto mod(const T &x, const VecT &vm) {
+					using cgra::detail::scalars::mod;
+					return zip_with([&](const auto &xm) { return mod(x, xm); }, vm);
+				}
+
+				// vec mix
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
+				inline auto mix(const VecT1 &vx, const VecT2 &vt) {
+					using cgra::detail::scalars::mix;
+					return zip_with([](const auto &xx, const auto &xt) { return mix(xx, xt); }, vx, vt);
+				}
+
+				// vec mix right scalar
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
+				inline auto mix(const VecT &vx, const T &t) {
+					using cgra::detail::scalars::mix;
+					return zip_with([&](const auto &xx) { return mix(xx, t); }, vx);
+				}
+
+				// vec mix left scalar
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
+				inline auto mix(const T &x, const VecT &vt) {
+					using cgra::detail::scalars::mix;
+					return zip_with([&](const auto &xt) { return mix(x, xt); }, vt);
+				}
+
+				// vec clamp
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
+				inline auto clamp(const VecT1 &vx, const VecT2 &vlower) {
+					using cgra::detail::scalars::clamp;
+					return zip_with([](const auto &xx, const auto &xlower) { return clamp(xx, xlower); }, vx, vlower);
+				}
+
+				// vec clamp right scalar
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
+				inline auto clamp(const VecT &vx, const T &lower) {
+					using cgra::detail::scalars::clamp;
+					return zip_with([&](const auto &xx) { return clamp(xx, lower); }, vx);
+				}
+
+				// vec clamp left scalar
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
+				inline auto clamp(const T &x, const VecT &vlower) {
+					using cgra::detail::scalars::clamp;
+					return zip_with([&](const auto &xlower) { return clamp(x, xlower); }, vlower);
+				}
+
+				// vec step
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
+				inline auto step(const VecT1 &vedge, const VecT2 &vx) {
+					using cgra::detail::scalars::step;
+					return zip_with([](const auto &xedge, const auto &xx) { return step(xedge, xx); }, vedge, vx);
+				}
+
+				// vec step right scalar
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
+				inline auto step(const VecT &vedge, const T &x) {
+					using cgra::detail::scalars::step;
+					return zip_with([&](const auto &xedge) { return step(xedge, x); }, vedge);
+				}
+
+				// vec step left scalar
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
+				inline auto step(const T &edge, const VecT &vx) {
+					using cgra::detail::scalars::step;
+					return zip_with([&](const auto &xx) { return step(edge, xx); }, vx);
+				}
+
+				// vec smoothstep
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
+				inline auto smoothstep(const VecT1 &vedge, const VecT2 &vx) {
+					using cgra::detail::scalars::smoothstep;
+					return zip_with([](const auto &xedge, const auto &xx) { return smoothstep(xedge, xx); }, vedge, vx);
+				}
+
+				// vec smoothstep right scalar
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
+				inline auto smoothstep(const VecT &vedge, const T &x) {
+					using cgra::detail::scalars::smoothstep;
+					return zip_with([&](const auto &xedge) { return smoothstep(xedge, x); }, vedge);
+				}
+
+				// vec smoothstep left scalar
+				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
+				inline auto smoothstep(const T &edge, const VecT &vx) {
+					using cgra::detail::scalars::smoothstep;
+					return zip_with([&](const auto &xx) { return smoothstep(edge, xx); }, vx);
+				}
+
+				// vec element-wise min
+				template <typename T1, size_t N, typename T2, enable_if_vector_scalar_compatible_t<basic_vec<T1, N>, T2> = 0>
+				inline auto min(const basic_vec<T1, N> &vx1, const T2 &x2) {
+					using cgra::detail::scalars::min;
+					return zip_with([&](const auto &x1) { return min(x1, x2); }, vx1);
+				}
+
+				// vec element-wise min
+				template <typename T1, typename T2, size_t N>
+				inline auto min(const basic_vec<T1, N> &vx1, const basic_vec<T2, N> &vx2) {
+					using cgra::detail::scalars::min;
+					return zip_with([](const auto &x1, const auto &x2) { return min(x1, x2); }, vx1, vx2);
+				}
+
+				// vec element-wise min
+				template <typename T, size_t N>
+				inline auto min(const basic_vec<T, N> &vx1, const basic_vec<T, N> &vx2) {
+					using cgra::detail::scalars::min;
+					return zip_with([](const auto &x1, const auto &x2) { return min(x1, x2); }, vx1, vx2);
+				}
+
+				// vec element-wise max
+				template <typename T1, size_t N, typename T2, enable_if_vector_scalar_compatible_t<basic_vec<T1, N>, T2> = 0>
+				inline auto max(const basic_vec<T1, N> &vx1, const T2 &x2) {
+					using cgra::detail::scalars::max;
+					return zip_with([&](const auto &x1) { return max(x1, x2); }, vx1);
+				}
+
+				// vec element-wise max
+				template <typename T1, typename T2, size_t N>
+				inline auto max(const basic_vec<T1, N> &vx1, const basic_vec<T2, N> &vx2) {
+					using cgra::detail::scalars::max;
+					return zip_with([](const auto &x1, const auto &x2) { return max(x1, x2); }, vx1, vx2);
+				}
+
+				// vec element-wise max
+				template <typename T, size_t N>
+				inline auto max(const basic_vec<T, N> &vx1, const basic_vec<T, N> &vx2) {
+					using cgra::detail::scalars::max;
+					return zip_with([](const auto &x1, const auto &x2) { return max(x1, x2); }, vx1, vx2);
+				}
+
+			}
+		}
 	}
 
 	//TODO trunc
@@ -4083,30 +4548,6 @@ namespace cgra {
 	// A fractional part of 0.5 will round toward the nearest even integer
 	// (Both 3.5 and 4.5 for x will return 4.0)
 
-	using std::ceil;
-
-	// Element-wise function for x in v
-	// Returns a value equal to the nearest integer to x whose
-	// absolute value is not larger than the absolute value of x
-	template <typename T, size_t N>
-	inline basic_vec<T, N> ceil(const basic_vec<T, N> &v) {
-		return zip_with([](auto &&x) { return ceil(decltype(x)(x)); }, v);
-	}
-
-	// fract for both scalar x or elements in vector x
-	// Returns x – floor (x)
-	template <typename T>
-	inline T fract(const T &x) {
-		return x-floor(x);
-	}
-
-	// mod for both scalar x or elements in vector x
-	// Modulus. Returns x-m*floor(x/m)
-	template <typename T1, typename T2>
-	inline auto mod(const T1 &x, const T2 &m) {
-		return x-m * floor(x/m);
-	}
-
 	//TODO modf
 	// Element-wise function for x in v and m in mv
 	// Returns the fractional part of x and sets i to the integer
@@ -4118,90 +4559,7 @@ namespace cgra {
 	// 	return ;
 	// }
 
-	using std::min;
-
-	// Element-wise function for x in v
-	// Returns y if y < x; otherwise it returns x
-	template <typename T1, size_t N, typename T2, typename=std::enable_if_t<std::is_arithmetic<T2>::value>>
-	inline auto min(const basic_vec<T1, N> &v, T2 y) {
-		using common_t = std::common_type_t<T1, T2>;
-		return zip_with([](auto &&x, auto &&y) { return min<common_t>(decltype(x)(x), decltype(y)(y)); }, v, basic_vec<T2, N>(y));
-	}
-
-	// Element-wise function for x in v1 and y in v2
-	// x and y are different types
-	// Returns y if y < x; otherwise it returns x
-	template <typename T1, typename T2, size_t N>
-	inline auto min(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-		using common_t = std::common_type_t<T1, T2>;
-		return zip_with([](auto &&x, auto &&y) { return min<common_t>(decltype(x)(x), decltype(y)(y)); }, v1, v2);
-	}
-
-	// Element-wise function for x in v1 and y in v2
-	// x and y are the same type
-	// Returns y if y < x; otherwise it returns x
-	template <typename T, size_t N>
-	inline auto min(const basic_vec<T, N> &v1, const basic_vec<T, N> &v2) {
-		return zip_with([](auto &&x, auto &&y) { return min(decltype(x)(x), decltype(y)(y)); }, v1, v2);
-	}
-
-	using std::max;
-
-	// Element-wise function for x in v
-	// Returns y if y > x; otherwise it returns x
-	template <typename T1, size_t N, typename T2, typename=std::enable_if_t<std::is_arithmetic<T2>::value>>
-	inline auto max(const basic_vec<T1, N> &v, T2 y) {
-		using common_t = std::common_type_t<T1, T2>;
-		return zip_with([](auto &&x, auto &&y) { return max<common_t>(decltype(x)(x), decltype(y)(y)); }, v, basic_vec<T2, N>(y));
-	}
-
-	// Element-wise function for x in v1 and y in v2
-	// x and y are different types
-	// Returns y if y > x; otherwise it returns x
-	template <typename T1, typename T2, size_t N>
-	inline auto max(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-		using common_t = std::common_type_t<T1, T2>;
-		return zip_with([](auto &&x, auto &&y) { return max<common_t>(decltype(x)(x), decltype(y)(y)); }, v1, v2);
-	}
-
-	// Element-wise function for x in v1 and y in v2
-	// x and y are the same type
-	// Returns y if y > x; otherwise it returns x
-	template <typename T, size_t N>
-	inline auto max(const basic_vec<T, N> &v1, const basic_vec<T, N> &v2) {
-		return zip_with([](auto &&x, auto &&y) { return max(decltype(x)(x), decltype(y)(y)); }, v1, v2);
-	}
-
-	// clamp for both scalar a, minVal, maxVal or elements in vector a, minVal, maxVal
-	// Returns min(max(x, minVal), maxVal)
-	// Results are undefined if minVal > maxVal
-	template <typename T1, typename T2, typename T3>
-	inline auto clamp(const T1 &a, const T2 &minVal, const T3 &maxVal) {
-		return min(max(a, minVal), maxVal);
-	}
-
-	// Returns the linear blend of x and y, i.e., x*(1−a) + y*a
-	template <typename T>
-	inline auto mix(const T &x, const T &y, const T &a) -> std::enable_if_t<std::is_arithmetic<T>::value, T> {
-		return (T(1)-a) * x + a * y;
-	}
-
-	// Element-wise function for x in v1 and y in v2
-	// Returns the linear blend of x and y, i.e., x*(1−a) + y*a
-	template <typename T1, typename T2, size_t N, typename T3>
-	inline auto mix(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2, T3 a) {
-		using common_t = std::common_type_t<T1, T2, T3>;
-		return v1*(common_t(1)-a)+v2*a;
-	}
-
-	// Element-wise function for x in v1, y in v2 and a in va
-	// Returns the linear blend of x and y, i.e., x*(1−a) + y*a
-	template <typename T1, typename T2, typename T3, size_t N>
-	inline auto mix(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2, const basic_vec<T3, N> &va) {
-		using common_t = std::common_type_t<T1, T2, T3>;
-		return v1*(common_t(1)-va)+v2*va;
-	}
-
+	// FIXME mix(..., bool)
 	// Element-wise function for x in v1, y in v2 and a in va
 	// Selects which vector each returned component comes from
 	// For a component of a that is false, the corresponding component of x is returned
@@ -4211,99 +4569,7 @@ namespace cgra {
 	// Thus, this provides different functionality than, for example, 
 	//     vecT mix(vecT x, vecT y, vecT(a))
 	// where a is a Boolean vector.
-	template <typename T1, typename T2, size_t N>
-	inline auto mix(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2, const basic_vec<bool, N> &va) {
-		return zip_with([](auto &&x, auto &&y, auto &&a) { return (!decltype(a)(a)) ? decltype(x)(x) : decltype(y)(y); }, v1, v2, va);
-	}
-
-	// Returns 0.0 if x < edge; otherwise it returns 1.0
-	template <typename T>
-	inline auto step(const T &edge, const T &x) -> std::enable_if_t<std::is_arithmetic<T>::value, T> {
-		return (x<edge) ? T(0) : T(1);
-	}
-
-	// Element-wise function for x in v
-	// Returns 0.0 if x < edge; otherwise it returns 1.0
-	template <typename T1, typename T2, size_t N>
-	inline auto step(T1 edge, const basic_vec<T2, N> &v) {
-		using common_t = std::common_type_t<T1, T2>;
-		return zip_with([](auto &&edge, auto &&x) { return (decltype(x)(x) < decltype(edge)(edge)) ? common_t(0) : common_t(1); }, basic_vec<common_t, N>(edge), v);
-	}
-
-	// Element-wise function for edge in vedge and x in v
-	// Returns 0.0 if x < edge; otherwise it returns 1.0
-	template <typename T1, typename T2, size_t N>
-	inline auto step(const basic_vec<T1, N> &vedge, const basic_vec<T2, N> &v) {
-		using common_t = std::common_type_t<T1, T2>;
-		return zip_with([](auto &&edge, auto &&x) { return (decltype(x)(x) < decltype(edge)(edge)) ? common_t(0) : common_t(1); }, vedge, v);
-	}
-
-	// Returns 0.0 if x <= edge0 and 1.0 if x >= edge1 and performs smooth
-	// Hermite interpolation between 0 and 1 when edge0 < x < edge1
-	// This is useful in cases where you would want a threshold
-	// function with a smooth transition and is equivalent to:
-	//     T t;
-	//     t = clamp ((x – edge0) / (edge1 – edge0), 0, 1);
-	//     return t * t * (3 – 2 * t);
-	// Results are undefined if edge0 >= edge1.
-	template <typename T>
-	inline auto smoothstep(const T &edge0, const T &edge1, const T &x) -> std::enable_if_t<std::is_arithmetic<T>::value, T> {
-		auto t = clamp((x-edge0)/(edge1-edge0), T(0), T(1));
-		return t * t * (T(3)-T(2)*t);
-	}
-
-	// Element-wise function for edge0 in vedge0, edge1 in vedge1
-	// Returns 0.0 if x <= edge0 and 1.0 if x >= edge1 and performs smooth
-	// Hermite interpolation between 0 and 1 when edge0 < x < edge1
-	// This is useful in cases where you would want a threshold
-	// function with a smooth transition and is equivalent to:
-	//     T t;
-	//     t = clamp ((x – edge0) / (edge1 – edge0), 0, 1);
-	//     return t * t * (3 – 2 * t);
-	// Results are undefined if edge0 >= edge1.
-	template <typename T1, typename T2, typename T3, size_t N>
-	inline auto smoothstep(const basic_vec<T1, N> &edge0, const basic_vec<T2, N> &edge1, T3 x) {
-		using common_t = std::common_type_t<T1, T2, T3>;
-		auto t = clamp((x-edge0)/(edge1-edge0),0, 1);
-		return t * t * (common_t(3)-common_t(2)*t);
-	}
-
-	// Element-wise function for edge0 in vedge0, edge1 in vedge1 and x in v
-	// Returns 0.0 if x <= edge0 and 1.0 if x >= edge1 and performs smooth
-	// Hermite interpolation between 0 and 1 when edge0 < x < edge1
-	// This is useful in cases where you would want a threshold
-	// function with a smooth transition and is equivalent to:
-	//     T t;
-	//     t = clamp ((x – edge0) / (edge1 – edge0), 0, 1);
-	//     return t * t * (3 – 2 * t);
-	// Results are undefined if edge0 >= edge1.
-	template <typename T1, typename T2, typename T3, size_t N>
-	inline auto smoothstep(const basic_vec<T1, N> &vedge0, const basic_vec<T2, N> &vedge1, const basic_vec<T3, N> &v) {
-		using common_t = std::common_type_t<T1, T2, T3>;
-		auto t = clamp((v-vedge0)/(vedge1-vedge0),0, 1);
-		return t * t * (common_t(3)-common_t(2)*t);
-	}
-
-	using std::isnan;
-
-	// Element-wise function for x in v
-	// Returns true if x holds a NaN. Returns false otherwise
-	// Always returns false if NaNs are not implemented
-	template <typename T, size_t N>
-	inline auto isnan(const basic_vec<T, N> &v) {
-		return zip_with([](auto &&x) { return isnan(decltype(x)(x)); }, v);
-	}
-
-	using std::isinf;
-
-	// Element-wise function for x in v
-	// Returns true if x holds a positive infinity or negative infinity
-	// Returns false otherwise
-	template <typename T, size_t N>
-	inline auto isinf(const basic_vec<T, N> &v) {
-		return zip_with([](auto &&x) { return isinf(decltype(x)(x)); }, v);
-	}
-
+	
 	//TODO
 	// float_bits_to_int
 	// float_bits_to_uint
@@ -4369,10 +4635,10 @@ namespace cgra {
 
 	
 	
-
-
-
-
+	
+	
+	
+	
 	//  .______      ___       ______  __  ___  __  .__   __.   _______     _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
 	//  |   _  \    /   \     /      ||  |/  / |  | |  \ |  |  /  _____|   |   ____||  |  |  | |  \ |  |  /      ||           ||  |  /  __  \  |  \ |  |     /       |  //
 	//  |  |_)  |  /  ^  \   |  ,----'|  '  /  |  | |   \|  | |  |  __     |  |__   |  |  |  | |   \|  | |  ,----'`---|  |----`|  | |  |  |  | |   \|  |    |   (----`  //
@@ -4381,11 +4647,11 @@ namespace cgra {
 	//  | _|    /__/     \__\ \______||__|\__\ |__| |__| \__|  \______|    |__|      \______/  |__| \__|  \______|    |__|     |__|  \______/  |__| \__| |_______/      //
 	//                                                                                                                                                                  //
 	//==================================================================================================================================================================//
-
+	
 	//TODO
-
-
-
+	
+	
+	
 	//    _______  _______   ______   .___  ___.  _______ .___________..______       __    ______     _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
 	//   /  _____||   ____| /  __  \  |   \/   | |   ____||           ||   _  \     |  |  /      |   |   ____||  |  |  | |  \ |  |  /      ||           ||  |  /  __  \  |  \ |  |     /       |  //
 	//  |  |  __  |  |__   |  |  |  | |  \  /  | |  |__   `---|  |----`|  |_)  |    |  | |  ,----'   |  |__   |  |  |  | |   \|  | |  ,----'`---|  |----`|  | |  |  |  | |   \|  |    |   (----`  //
@@ -4394,87 +4660,116 @@ namespace cgra {
 	//   \______| |_______| \______/  |__|  |__| |_______|    |__|     | _| `._____||__|  \______|   |__|      \______/  |__| \__|  \______|    |__|     |__|  \______/  |__| \__| |_______/      //
 	//                                                                                                                                                                                            //
 	//============================================================================================================================================================================================//
+	
+	namespace detail {
+		namespace vectors {
 
-	// Returns the length of vector v, i.e.,sqrt(v[0]^2 + v[1]^2  + ...)
-	template <typename T, size_t N>
-	inline T length(const basic_vec<T, N> &v) {
-		return sqrt(sum(v*v));
-	}
+			template <size_t N>
+			struct cross_impl {
+				template <typename VecT1, typename VecT2>
+				static void go(const VecT1 &v1, const VecT2 &v2) {
+					static_assert(dependent_false<VecT1, VecT2>::value, "cross product does not exist");
+				}
+			};
 
-	// Returns the distance between p1 and p2, i.e., length (p1 – p2)
-	template <typename T1, typename T2, size_t N>
-	inline auto distance(const basic_vec<T1, N> &p1, const basic_vec<T2, N> &p2) {
-		return length(p1-p2);
-	}
+			template <>
+			struct cross_impl<3> {
+				template <typename VecT1, typename VecT2>
+				static auto go(const VecT1 &v1, const VecT2 &v2) {
+					return basic_vec<decltype(v1[0] * v2[0]), 3>(
+						v1[1] * v2[2] - v1[2] * v2[1],
+						v1[2] * v2[0] - v1[0] * v2[2],
+						v1[0] * v2[1] - v1[1] * v2[0]
+					);
+				}
+			};
 
-	// Returns a vector in the same direction as v but with a length of 1
-	template <typename T, size_t N>
-	inline basic_vec<T, N> normalize(const basic_vec<T, N> &v) {
-		return v / length(v);
-	}
+			template <>
+			struct cross_impl<7> {
+				template <typename VecT1, typename VecT2>
+				static void go(const VecT1 &v1, const VecT2 &v2) {
+					static_assert(dependent_false<VecT1, VecT2>::value, "7D cross product not implemented (yet?)");
+				}
+			};
 
-	// If dot(nref, i) < 0 return n, otherwise return -n
-	template <typename T1, typename T2, typename T3, size_t N>
-	inline auto faceforward(const basic_vec<T1, N> &n, const basic_vec<T2, N> &i, const basic_vec<T3, N> &nref) {
-		using common_t = std::common_type_t<T1, T2, T3>;
-		return (dot(nref, i) < common_t(0)) ? n : -n ;
-	}
+			namespace functions {
 
-	// For the incident vector i and surface orientation n,
-	// returns the reflection direction:
-	//     I – 2 * dot(N, I) * N
-	// n must already be normalized in order to achieve the desired result.
-	template <typename T1, typename T2, size_t N>
-	inline auto reflect(const basic_vec<T1, N> &i, const basic_vec<T2, N> &n) {
-		using common_t = std::common_type_t<T1, T2>;
-		return i - common_t(2) * dot(n, i) * n;
-	}
+				// Returns the length of vector v, i.e. sqrt(v[0]^2 + v[1]^2  + ...)
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
+				inline auto length(const VecT &v) {
+					using cgra::detail::scalars::sqrt;
+					return sqrt(sum(v * v));
+				}
 
-	// For the incident vector i and surface normal n, and the
-	// ratio of indices of refraction eta, return the refraction vector.
-	// The result is computed by :
-	//     k = 1.0 - eta * eta * (1.0 - dot(n, i) * dot(n, i))
-	//     if (k < 0.0)
-	//         return genType(0.0) // or genDType(0.0)
-	//     else
-	//         return eta * i - (eta * dot(n, i) + sqrt(k)) * n
-	// The input parameters for the incident vector i and the surface
-	// normal n must already be normalized to get the desired results.
-	template <typename T1, typename T2, size_t N, typename T3>
-	inline auto refract(const basic_vec<T1, N> &i, const basic_vec<T2, N> &n, T3 eta) {
-		using common_t = std::common_type_t<T1, T2, T3>;
-		auto k = common_t(1) - eta * eta * (common_t(1) - dot(n, i) * dot(n, i));
-		if (k < common_t(0)) {
-			return basic_vec<common_t, N>();
+				// Returns the distance between p1 and p2, i.e., length (p1 – p2)
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
+				inline auto distance(const VecT1 &p1, const VecT2 &p2) {
+					return length(p1 - p2);
+				}
+
+				// Returns a vector in the same direction as v but with a length of 1
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
+				inline auto normalize(const VecT &v) {
+					return v / length(v);
+				}
+
+				// If dot(nref, i) < 0 return n, otherwise return -n
+				template <typename VecT1, typename VecT2, typename VecT3, enable_if_vector_compatible_t<VecT1, VecT2, VecT3> = 0>
+				inline auto faceforward(const VecT1 &n, const VecT2 &i, const VecT3 &nref) {
+					return (dot(nref, i) < 0) ? n : -n;
+				}
+
+				// For the incident vector i and surface orientation n,
+				// returns the reflection direction:
+				//     I – 2 * dot(N, I) * N
+				// n must already be normalized in order to achieve the desired result.
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
+				inline auto reflect(const VecT1 &i, const VecT2 &n) {
+					return i - 2 * dot(n, i) * n;
+				}
+
+				// For the incident vector i and surface normal n, and the
+				// ratio of indices of refraction eta, return the refraction vector.
+				// The result is computed by :
+				//     k = 1.0 - eta * eta * (1.0 - dot(n, i) * dot(n, i))
+				//     if (k < 0.0)
+				//         return genType(0.0) // or genDType(0.0)
+				//     else
+				//         return eta * i - (eta * dot(n, i) + sqrt(k)) * n
+				// The input parameters for the incident vector i and the surface
+				// normal n must already be normalized to get the desired results.
+				template <typename VecT1, typename VecT2, typename T3, enable_if_vector_compatible_t<VecT1, VecT2> = 0, enable_if_vector_scalar_compatible_t<VecT1, T3> = 0>
+				inline auto refract(const VecT1 &i, const VecT2 &n, const T3 &eta) {
+					using cgra::detail::scalars::sqrt;
+					auto k = 1 - eta * eta * (1 - dot(n, i) * dot(n, i));
+					auto r = eta * i - (eta * dot(n, i) + sqrt(k)) * n;
+					return k < 0 ? decltype(r)() : r;
+				}
+
+				// vector projection of v onto n
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
+				inline auto project(const VecT1 &v, const VecT2 &n) {
+					return n * (dot(v, n) / dot(n, n));
+				}
+
+				// vector rejection of v from n
+				// projects v onto the plane defined by the normal n
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
+				inline auto reject(const VecT1 &v, const VecT2 &n) {
+					return v - project(v, n);
+				}
+
+				// vec cross product
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
+				inline auto cross(const VecT1 &v1, const VecT2 &v2) {
+					return cross_impl<array_size<VecT1>::value>::go(v1, v2);
+				}
+
+			}
 		}
-		return eta * i - (eta * dot(n, i) + std::sqrt(k)) * n;
 	}
 
-	// TODO more complete description
-	// project lhs onto rhs
-	template <typename T1, typename T2, size_t N>
-	inline auto project(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-		return v2 * (dot(v1, v2) / dot(v2, v2));
-	}
-
-	// TODO more complete description
-	// project lhs onto the plane defined by the normal rhs
-	template <typename T1, typename T2, size_t N>
-	inline auto reject(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-		return v1 - project(v1, v2);
-	}
-
-	// TODO description
-	// Returns the cross product of 2 vectors
-	template <typename T1, typename T2>
-	inline auto cross(const basic_vec<T1, 3> &v1, const basic_vec<T2, 3> &v2) {
-		return basic_vec<std::common_type_t<T1, T2>, 3>(
-			v1[1] * v2[2] - v1[2] * v2[1],
-			v1[2] * v2[0] - v1[0] * v2[2],
-			v1[0] * v2[1] - v1[1] * v2[0]
-		);
-	}
-
+	
 
 
 	//  .______       _______  __          ___   .___________. __    ______   .__   __.      ___       __          _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
@@ -4486,61 +4781,69 @@ namespace cgra {
 	//                                                                                                                                                                                                         //
 	//=========================================================================================================================================================================================================//
 
-	// Element-wise function for x in v1 and y in v2
-	// Returns the comparison of x < y
-	template <typename T1, typename T2, size_t N>
-	inline auto less_than(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-		return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) < decltype(y)(y); }, v1, v2);
-	}
+	namespace detail {
+		namespace vectors {
+			namespace functions {
 
-	// Element-wise function for x in v1 and y in v2
-	// Returns the comparison of x <= y
-	template <typename T1, typename T2, size_t N>
-	inline auto less_than_equal(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-		return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) <= decltype(y)(y); }, v1, v2);
-	}
+				// Element-wise function for x in v1 and y in v2
+				// Returns the comparison of x < y
+				template <typename T1, typename T2, size_t N>
+				inline auto less_than(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+					return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) < decltype(y)(y); }, v1, v2);
+				}
 
-	// Element-wise function for x in v1 and y in v2
-	// Returns the comparison of x > y
-	template <typename T1, typename T2, size_t N>
-	inline auto greater_than(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-		return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) > decltype(y)(y); }, v1, v2);
-	}
+				// Element-wise function for x in v1 and y in v2
+				// Returns the comparison of x <= y
+				template <typename T1, typename T2, size_t N>
+				inline auto less_than_equal(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+					return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) <= decltype(y)(y); }, v1, v2);
+				}
 
-	// Element-wise function for x in v1 and y in v2
-	// Returns the comparison of x >= y
-	template <typename T1, typename T2, size_t N>
-	inline auto greater_than_equal(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-		return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) >= decltype(y)(y); }, v1, v2);
-	}
+				// Element-wise function for x in v1 and y in v2
+				// Returns the comparison of x > y
+				template <typename T1, typename T2, size_t N>
+				inline auto greater_than(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+					return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) > decltype(y)(y); }, v1, v2);
+				}
 
-	// Element-wise function for x in v1 and y in v2
-	// Returns the comparison of x == y
-	template <typename T1, typename T2, size_t N>
-	inline auto equal(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-		return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) == decltype(y)(y); }, v1, v2);
-	}
+				// Element-wise function for x in v1 and y in v2
+				// Returns the comparison of x >= y
+				template <typename T1, typename T2, size_t N>
+				inline auto greater_than_equal(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+					return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) >= decltype(y)(y); }, v1, v2);
+				}
 
-	// Element-wise function for x in v1 and y in v2
-	// Returns the comparison of x != y
-	template <typename T1, typename T2, size_t N>
-	inline auto not_equal(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-		return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) != decltype(y)(y); }, v1, v2);
-	}
+				// Element-wise function for x in v1 and y in v2
+				// Returns the comparison of x == y
+				template <typename T1, typename T2, size_t N>
+				inline auto equal(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+					return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) == decltype(y)(y); }, v1, v2);
+				}
 
-	// Returns true if any component of v is true
-	template <size_t N>
-	inline bool any(const basic_vec<bool, N> &v) {
-		return fold([](auto &&x, auto &&y) { return decltype(x)(x) || decltype(y)(y); }, false, v);
-	}
+				// Element-wise function for x in v1 and y in v2
+				// Returns the comparison of x != y
+				template <typename T1, typename T2, size_t N>
+				inline auto not_equal(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
+					return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) != decltype(y)(y); }, v1, v2);
+				}
 
-	// Returns true only if all components of x are true
-	template <size_t N>
-	inline bool all(const basic_vec<bool, N> &v) {
-		return fold([](auto &&x, auto &&y) { return decltype(x)(x) && decltype(y)(y); }, true, v);
-	}
+				// Returns true if any component of v is true
+				template <size_t N>
+				inline bool any(const basic_vec<bool, N> &v) {
+					return fold([](auto &&x, auto &&y) { return decltype(x)(x) || decltype(y)(y); }, false, v);
+				}
 
-	// Note : C++ does not support "not" as a function name, hence it has been omitted
+				// Returns true only if all components of x are true
+				template <size_t N>
+				inline bool all(const basic_vec<bool, N> &v) {
+					return fold([](auto &&x, auto &&y) { return decltype(x)(x) && decltype(y)(y); }, true, v);
+				}
+
+				// Note : C++ does not support "not" as a function name, hence it has been omitted
+
+			}
+		}
+	}
 
 
 

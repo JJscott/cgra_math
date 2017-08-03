@@ -34,14 +34,14 @@ binary_ops = [
 ]
 
 assign_op_str = '''// vec {comment}
-template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 inline VecT1 & operator{op}(VecT1 &lhs, const VecT2 &rhs) {{
 	zip_with(detail::op::{func}(), lhs, rhs);
 	return lhs;
 }}
 
 // vec {comment} scalar
-template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void>
+template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 inline VecT & operator{op}(VecT &lhs, const T &rhs) {{
 	zip_with(detail::op::{func}(), lhs, repeat_vec<T, array_size<VecT>::value>(rhs));
 	return lhs;
@@ -49,26 +49,26 @@ inline VecT & operator{op}(VecT &lhs, const T &rhs) {{
 '''
 
 unary_op_str= '''// vec {comment}
-template <typename VecT, typename = enable_if_vector_t<VecT>>
+template <typename VecT, enable_if_vector_t<VecT> = 0>
 inline auto operator{op}(const VecT &rhs) {{
 	return zip_with(detail::op::{func}(), rhs);
 }}
 '''
 
 binary_op_str = '''// vec {comment}
-template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 inline auto operator{op}(const VecT1 &lhs, const VecT2 &rhs) {{
 	return zip_with(detail::op::{func}(), lhs, rhs);
 }}
 
 // vec {comment} right scalar
-template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void>
+template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 inline auto operator{op}(const VecT &lhs, const T &rhs) {{
 	return zip_with(detail::op::{func}(), lhs, repeat_vec<T, array_size<VecT>::value>(rhs));
 }}
 
 // vec {comment} left scalar
-template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void, typename = void>
+template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 inline auto operator{op}(const T &lhs, const VecT &rhs) {{
 	return zip_with(detail::op::{func}(), repeat_vec<T, array_size<VecT>::value>(lhs), rhs);
 }}

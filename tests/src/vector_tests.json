@@ -182,7 +182,7 @@
 		},
 		{
 			"tag" : "sign_zero",
-			"test" : "test_equal(sign(vec_t(0)), vec_t(0))"
+			"test" : "test_equal(vec_t(sign(vec_t(0))), vec_t(0))"
 		},
 		{
 			"tag" : "sign_identity_absolute",

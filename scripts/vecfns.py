@@ -1,4 +1,7 @@
 
+# MANUAL ALTERATIONS NEEDED:
+# some 'binary' functions are actually ternary
+
 unary_fns = [
 	('sin', 'sin'),
 	('cos', 'cosine'),
@@ -28,43 +31,61 @@ unary_fns = [
 	('degrees', 'radians to degrees'),
 	('exp', 'exp'),
 	('exp2', 'exp base 2'),
+	('expm1', 'exp(x) - 1'),
 	('log', 'log'),
+	('log2', 'log2'),
+	('log10', 'log10'),
+	('log1p', 'log(1 + x)'),
+	('sqrt', 'sqrt'),
+	('cbrt', 'cbrt'),
+	('abs', 'abs'),
+	('floor', 'floor'),
+	('ceil', 'ceil'),
+	('isnan', 'isnan'),
+	('isinf', 'isinf'),
+	('sign', 'sign'),
+	('fract', 'fract'),
 	# TODO etc
 ]
 
 binary_fns = [
 	('atan', 'inverse tangent (2-arg)', 'y', 'x'),
-	('pow', 'pow', 'x', 'a')
+	('pow', 'pow', 'x', 'a'),
+	('mod', 'mod', 'x', 'm'),
+	('mix', 'mix', 'x', 't'), # not really binary
+	('clamp', 'clamp', 'x', 'lower'), # not really binary
+	('step', 'step', 'edge', 'x'),
+	('smoothstep', 'smoothstep', 'edge', 'x'), # not really binary
 	# TODO etc
 ]
 
 
 unary_fn_str = '''// vec {comment}
-template <typename VecT, typename = enable_if_vector_t<VecT>>
+template <typename VecT, enable_if_vector_t<VecT> = 0>
 inline auto {func}(const VecT &v) {{
-	using cgra::{func};
+	using cgra::detail::scalars::{func};
 	return zip_with([](const auto &x) {{ return {func}(x); }}, v);
 }}
 '''
 
 binary_fn_str = '''// vec {comment}
-template <typename VecT1, typename VecT2, typename = enable_if_vector_compatible_t<VecT1, VecT2>>
+template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 inline auto {func}(const VecT1 &v{arg1}, const VecT2 &v{arg2}) {{
-	using cgra::{func};
+	using cgra::detail::scalars::{func};
 	return zip_with([](const auto &x{arg1}, const auto &x{arg2}) {{ return {func}(x{arg1}, x{arg2}); }}, v{arg1}, v{arg2});
 }}
 
 // vec {comment} right scalar
-template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void>
+template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 inline auto {func}(const VecT &v{arg1}, const T &{arg2}) {{
-	using cgra::{func};
+	using cgra::detail::scalars::{func};
 	return zip_with([&](const auto &x{arg1}) {{ return {func}(x{arg1}, {arg2}); }}, v{arg1});
 }}
 
 // vec {comment} left scalar
-template <typename VecT, typename T, typename = enable_if_vector_scalar_compatible_t<VecT, T>, typename = void, typename = void>
+template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
 inline auto {func}(const T &{arg1}, const VecT &v{arg2}) {{
-	using cgra::{func};
+	using cgra::detail::scalars::{func};
 	return zip_with([&](const auto &x{arg2}) {{ return {func}({arg1}, x{arg2}); }}, v{arg2});
 }}
 '''

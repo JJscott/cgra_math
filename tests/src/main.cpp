@@ -39,6 +39,7 @@ int main() {
 	auto v3 = vec3(vec4(7));
 	v3.y = 4;
 	v3 = {8, 5, 8};
+	auto v3a = refract(v3, v3, 7);
 
 	vec4 v4{vec0(), vec4(5), vec0(), vec4()};
 
