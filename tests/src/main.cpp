@@ -40,6 +40,8 @@ int main() {
 	v3.y = 4;
 	v3 = {8, 5, 8};
 	auto v3a = refract(v3, v3, 7);
+	auto v3b = vec_cast<4>(vec3());
+	auto v3c = vec_cast<bool>(vec3());
 
 	vec4 v4{vec0(), vec4(5), vec0(), vec4()};
 
@@ -54,6 +56,7 @@ int main() {
 	mat3 m1{mat4(pi)};
 	mat3 m2{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};
 	mat3 m3 = m2;
+	auto m3a = mat_cast<4, 4>(m3);
 
 	auto m4 = zip_with<type_to_mat>(detail::op::add(), m2, m3);
 

@@ -860,6 +860,7 @@ namespace cgra {
 		template <typename T, size_t N>
 		struct array_traits<basic_vec<T, N>, void> {
 			using value_t = T;
+			using copy_t = basic_vec<T, N>;
 			static constexpr size_t size = N;
 
 			static constexpr bool is_array = true;
@@ -880,11 +881,34 @@ namespace cgra {
 
 		template <typename T, size_t Cols, size_t Rows>
 		struct array_traits<basic_mat<T, Cols, Rows>, void> : array_traits<basic_vec<basic_vec<T, Rows>, Cols>> {
+			using copy_t = basic_mat<T, Cols, Rows>;
 			static constexpr bool is_vector = false;
 			static constexpr bool is_matrix = true;
 		};
 
 		// TODO array_traits for std::array, std::tuple
+
+		template <typename VecT>
+		using array_value_t = typename array_traits<std::decay_t<VecT>>::value_t;
+
+		template <typename MatT>
+		using matrix_value_t = array_value_t<array_value_t<MatT>>;
+
+		template <typename T, typename = void>
+		struct array_value_or_void {
+			using type = void;
+		};
+
+		template <typename T>
+		struct array_value_or_void<T, void_t<array_value_t<T>>> {
+			using type = array_value_t<T>;
+		};
+
+		template <typename T>
+		using array_value_or_void_t = typename array_value_or_void<T>::type;
+
+		template <typename VecT>
+		struct array_size : index_constant<array_traits<std::decay_t<VecT>>::size> {};
 
 		template <typename T>
 		struct is_array : bool_constant<array_traits<std::decay_t<T>>::is_array> {};
@@ -894,6 +918,19 @@ namespace cgra {
 
 		template <typename T>
 		struct is_matrix : bool_constant<array_traits<std::decay_t<T>>::is_matrix> {};
+
+		template <typename T, typename = void>
+		struct copy_type {
+			using type = T;
+		};
+
+		template <typename T>
+		using copy_type_t = typename copy_type<T>::type;
+
+		template <typename VecT>
+		struct copy_type<VecT, void_t<array_value_t<VecT>>> {
+			using type = typename array_traits<std::decay_t<VecT>>::copy_t;
+		};
 
 		template <typename N>
 		struct make_index_sequence {
@@ -1067,28 +1104,6 @@ namespace cgra {
 		template <typename F, typename Tup1, typename Tup2>
 		using meta_cartesian_zip_with_t = typename meta_cartesian_zip_with<F, Tup1, Tup2>::type;
 
-		template <typename VecT>
-		using array_value_t = typename array_traits<std::decay_t<VecT>>::value_t;
-
-		template <typename MatT>
-		using mat_value_t = array_value_t<array_value_t<MatT>>;
-
-		template <typename T, typename = void>
-		struct array_value_or_void {
-			using type = void;
-		};
-
-		template <typename T>
-		struct array_value_or_void<T, void_t<array_value_t<T>>> {
-			using type = array_value_t<T>;
-		};
-
-		template <typename T>
-		using array_value_or_void_t = typename array_value_or_void<T>::type;
-
-		template <typename VecT>
-		struct array_size : index_constant<array_traits<std::decay_t<VecT>>::size> {};
-		
 		template <typename ...VecTs>
 		struct array_min_size : meta_fold_t<meta_quote<meta_min>, index_constant<SIZE_MAX>, std::tuple<array_size<VecTs>...>> {};
 		
@@ -2424,7 +2439,7 @@ namespace cgra {
 				}
 			};
 
-			struct nequal {
+			struct not_equal {
 				template <typename T1, typename T2>
 				CGRA_CONSTEXPR_FUNCTION auto operator()(T1 &&t1, T2 &&t2) const {
 					return std::forward<T1>(t1) != std::forward<T2>(t2);
@@ -3008,7 +3023,7 @@ namespace cgra {
 	struct type_to_vec {
 		template <typename VecT>
 		struct apply {
-			using type = basic_vec<detail::array_value_t<VecT>, detail::array_size<VecT>::value>;
+			using type = basic_vec<detail::copy_type_t<detail::array_value_t<VecT>>, detail::array_size<VecT>::value>;
 		};
 	};
 
@@ -3016,53 +3031,109 @@ namespace cgra {
 	struct type_to_mat {
 		template <typename VecT>
 		struct apply {
-			using type = basic_mat<detail::mat_value_t<VecT>, detail::mat_cols<VecT>::value, detail::mat_rows<VecT>::value>;
+			using type = basic_mat<detail::copy_type_t<detail::matrix_value_t<VecT>>, detail::mat_cols<VecT>::value, detail::mat_rows<VecT>::value>;
 		};
 	};
 
-	// TODO description
-	template <typename TypeMap = type_to_vec, typename F, typename ...ArgTs, typename = detail::enable_if_array_t<ArgTs...>>
-	CGRA_CONSTEXPR_FUNCTION auto zip_with(F f, ArgTs &&...args) {
-		using value_t = std::decay_t<decltype(f(detail::array_traits<std::decay_t<ArgTs>>::template get<0>(std::forward<ArgTs>(args))...))>;
-		using size = detail::array_min_size<ArgTs...>;
-		using vec_t = typename TypeMap::template apply<basic_vec<value_t, size::value>>::type;
-		using iseq = std::make_index_sequence<size::value>;
-		return detail::zip_with_impl<vec_t>(f, iseq(), detail::intellisense_constify(std::forward<ArgTs>(args))...);
-	}
+	namespace detail {
+		namespace vectors {
+			namespace functions {
 
-	// TODO fix description
-	// Produce a scalar by applying f(T1,T2) -> T3 to adjacent pairs of elements
-	// from vector a in left-to-right order starting with f(z, v[0])
-	// Typically T1 = T3 and T2 is a vector of some T
-	template <typename F, typename T1, typename VecT, typename = detail::enable_if_array_t<VecT>>
-	CGRA_CONSTEXPR_FUNCTION auto fold(F f, T1 &&t1, VecT &&v) {
-		return detail::fold_impl<0, detail::array_size<VecT>::value>::apply(f, std::forward<T1>(t1), std::forward<VecT>(v));
-	}
+				// TODO description
+				template <typename TypeMap = type_to_vec, typename F, typename ...ArgTs, typename = detail::enable_if_array_t<ArgTs...>>
+				CGRA_CONSTEXPR_FUNCTION auto zip_with(F f, ArgTs &&...args) {
+					using value_t = std::decay_t<decltype(f(detail::array_traits<std::decay_t<ArgTs>>::template get<0>(std::forward<ArgTs>(args))...))>;
+					using size = detail::array_min_size<ArgTs...>;
+					using vec_t = typename TypeMap::template apply<basic_vec<value_t, size::value>>::type;
+					using iseq = std::make_index_sequence<size::value>;
+					return detail::zip_with_impl<vec_t>(f, iseq(), detail::intellisense_constify(std::forward<ArgTs>(args))...);
+				}
 
-	// fill an array-like type VecT with copies of a (relatively) scalar-like value of type T
-	template <typename VecT, typename T>
-	CGRA_CONSTEXPR_FUNCTION inline VecT fill(const T &t) {
-		// VecT should not be constrained to just arrays: fill<float>() etc should work
-		return VecT{detail::fill_repeat<VecT>(t)};
-	}
+				// TODO fix description
+				// Produce a scalar by applying f(T1,T2) -> T3 to adjacent pairs of elements
+				// from vector a in left-to-right order starting with f(z, v[0])
+				// Typically T1 = T3 and T2 is a vector of some T
+				template <typename F, typename T1, typename VecT, typename = detail::enable_if_array_t<VecT>>
+				CGRA_CONSTEXPR_FUNCTION auto fold(F f, T1 &&t1, VecT &&v) {
+					return detail::fold_impl<0, detail::array_size<VecT>::value>::apply(f, std::forward<T1>(t1), std::forward<VecT>(v));
+				}
 
-	// sum of all x in v, i.e., v[0] + v[1] + ...
-	template <typename VecT, typename = detail::enable_if_array_t<VecT>>
-	inline auto sum(const VecT &v) {
-		return fold(detail::op::add(), detail::array_value_t<VecT>{}, v);
-	}
+				// fill an array-like type VecT with copies of a (relatively) scalar-like value of type T
+				template <typename VecT, typename T>
+				CGRA_CONSTEXPR_FUNCTION inline VecT fill(const T &t) {
+					// VecT should not be constrained to just arrays: fill<float>() etc should work
+					return VecT{detail::fill_repeat<VecT>(t)};
+				}
 
-	// product of all x in v, i.e., v[0] * v[1] * ...
-	template <typename VecT, typename = detail::enable_if_array_t<VecT>>
-	inline auto product(const VecT &v) {
-		return fold(detail::op::mul(), fill<detail::array_value_t<VecT>>(1), v);
-	}
+				// sum of all x in v, i.e., v[0] + v[1] + ...
+				template <typename VecT, typename = detail::enable_if_array_t<VecT>>
+				inline auto sum(const VecT &v) {
+					return fold(detail::op::add(), detail::array_value_t<VecT>{}, v);
+				}
 
-	// dot product of v1 and v2, i.e., (v1[0] * v2[0]) + (v1[1] * v2[1]) + ...
-	template <typename VecT1, typename VecT2, typename = detail::enable_if_array_t<VecT1, VecT2>>
-	inline auto dot(const VecT1 &v1, const VecT2 &v2) {
-		auto vprod = zip_with(detail::op::mul(), v1, v2);
-		return fold(detail::op::add(), detail::array_value_t<decltype(vprod)>{}, std::move(vprod));
+				// product of all x in v, i.e., v[0] * v[1] * ...
+				template <typename VecT, typename = detail::enable_if_array_t<VecT>>
+				inline auto product(const VecT &v) {
+					return fold(detail::op::mul(), fill<detail::array_value_t<VecT>>(1), v);
+				}
+
+				// dot product of v1 and v2, i.e., (v1[0] * v2[0]) + (v1[1] * v2[1]) + ...
+				template <typename VecT1, typename VecT2, typename = detail::enable_if_array_t<VecT1, VecT2>>
+				inline auto dot(const VecT1 &v1, const VecT2 &v2) {
+					auto vprod = zip_with(detail::op::mul(), v1, v2);
+					return fold(detail::op::add(), detail::array_value_t<decltype(vprod)>{}, std::move(vprod));
+				}
+
+				// cast array-like to basic_vec<T, N> where T and N are deduced
+				template <typename VecT, enable_if_array_t<VecT> = 0>
+				inline auto vec_cast(const VecT &v) {
+					using result_t = typename type_to_vec::template apply<VecT>::type;
+					return result_t{v};
+				}
+
+				// cast array-like to basic_vec<T, N> where N is deduced
+				template <typename T, typename VecT, enable_if_array_t<VecT> = 0>
+				inline auto vec_cast(const VecT &v) {
+					using result_t = basic_vec<T, array_size<VecT>::value>;
+					return result_t{v};
+				}
+
+				// cast array-like to basic_vec<T, N> where T is deduced
+				template <size_t N, typename VecT, enable_if_array_t<VecT> = 0>
+				inline auto vec_cast(const VecT &v) {
+					using result_t = basic_vec<copy_type_t<array_value_t<VecT>>, N>;
+					return result_t{v};
+				}
+
+			}
+		}
+
+		namespace matrices {
+			namespace functions {
+
+				// cast array-like to basic_mat<T, Cols, Rows> where T, Cols and Rows are deduced
+				template <typename MatT, enable_if_matrix_t<MatT> = 0>
+				inline auto mat_cast(const MatT &m) {
+					using result_t = typename type_to_mat::template apply<MatT>::type;
+					return result_t{m};
+				}
+
+				// cast array-like to basic_mat<T, Cols, Rows> where Cols and Rows are deduced
+				template <typename T, typename MatT, enable_if_matrix_t<MatT> = 0>
+				inline auto mat_cast(const MatT &m) {
+					using result_t = basic_mat<T, mat_cols<MatT>::value, mat_rows<MatT>::value>;
+					return result_t{m};
+				}
+
+				// cast array-like to basic_mat<T, Cols, Rows> were T is deduced
+				template <size_t Cols, size_t Rows, typename MatT, enable_if_matrix_t<MatT> = 0>
+				inline auto mat_cast(const MatT &m) {
+					using result_t = basic_mat<copy_type_t<matrix_value_t<MatT>>, Cols, Rows>;
+					return result_t{m};
+				}
+
+			}
+		}
 	}
 
 
@@ -3584,7 +3655,7 @@ namespace cgra {
 				// vec not-equal
 				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline auto operator!=(const VecT1 &lhs, const VecT2 &rhs) {
-					return fold(detail::op::logical_or(), false, zip_with(detail::op::nequal(), lhs, rhs));
+					return fold(detail::op::logical_or(), false, zip_with(detail::op::not_equal(), lhs, rhs));
 				}
 
 				// vec less-than
@@ -3742,7 +3813,7 @@ namespace cgra {
 				// mat not-equal
 				template <typename MatT1, typename MatT2, enable_if_matrix_compatible_t<MatT1, MatT2> = 0>
 				inline auto operator!=(const MatT1 &lhs, const MatT2 &rhs) {
-					return fold(detail::op::logical_or(), false, zip_with(detail::op::nequal(), lhs, rhs));
+					return fold(detail::op::logical_or(), false, zip_with(detail::op::not_equal(), lhs, rhs));
 				}
 
 				// mat less-than
@@ -4787,59 +4858,60 @@ namespace cgra {
 
 				// Element-wise function for x in v1 and y in v2
 				// Returns the comparison of x < y
-				template <typename T1, typename T2, size_t N>
-				inline auto less_than(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-					return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) < decltype(y)(y); }, v1, v2);
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
+				inline auto less_than(const VecT1 &v1, const VecT2 &v2) {
+					return zip_with([](const auto &x1, const auto &x2) { return x1 < x2; }, v1, v2);
 				}
 
 				// Element-wise function for x in v1 and y in v2
 				// Returns the comparison of x <= y
-				template <typename T1, typename T2, size_t N>
-				inline auto less_than_equal(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-					return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) <= decltype(y)(y); }, v1, v2);
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
+				inline auto less_than_equal(const VecT1 &v1, const VecT2 &v2) {
+					return zip_with([](const auto &x1, const auto &x2) { return x1 < x2; }, v1, v2);
 				}
 
 				// Element-wise function for x in v1 and y in v2
 				// Returns the comparison of x > y
-				template <typename T1, typename T2, size_t N>
-				inline auto greater_than(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-					return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) > decltype(y)(y); }, v1, v2);
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
+				inline auto greater_than(const VecT1 &v1, const VecT2 &v2) {
+					return zip_with([](const auto &x1, const auto &x2) { return x1 < x2; }, v1, v2);
 				}
 
 				// Element-wise function for x in v1 and y in v2
 				// Returns the comparison of x >= y
-				template <typename T1, typename T2, size_t N>
-				inline auto greater_than_equal(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-					return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) >= decltype(y)(y); }, v1, v2);
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
+				inline auto greater_than_equal(const VecT1 &v1, const VecT2 &v2) {
+					return zip_with([](const auto &x1, const auto &x2) { return x1 < x2; }, v1, v2);
 				}
 
 				// Element-wise function for x in v1 and y in v2
 				// Returns the comparison of x == y
-				template <typename T1, typename T2, size_t N>
-				inline auto equal(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-					return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) == decltype(y)(y); }, v1, v2);
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
+				inline auto equal(const VecT1 &v1, const VecT2 &v2) {
+					return zip_with([](const auto &x1, const auto &x2) { return x1 < x2; }, v1, v2);
 				}
 
 				// Element-wise function for x in v1 and y in v2
 				// Returns the comparison of x != y
-				template <typename T1, typename T2, size_t N>
-				inline auto not_equal(const basic_vec<T1, N> &v1, const basic_vec<T2, N> &v2) {
-					return zip_with([](auto &&x, auto &&y) { return decltype(x)(x) != decltype(y)(y); }, v1, v2);
+				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
+				inline auto not_equal(const VecT1 &v1, const VecT2 &v2) {
+					return zip_with([](const auto &x1, const auto &x2) { return x1 < x2; }, v1, v2);
 				}
 
 				// Returns true if any component of v is true
-				template <size_t N>
-				inline bool any(const basic_vec<bool, N> &v) {
-					return fold([](auto &&x, auto &&y) { return decltype(x)(x) || decltype(y)(y); }, false, v);
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
+				inline auto any(const VecT &v) {
+					return fold([](const auto &x1, const auto &x2) { return x1 || x2; }, false, v);
 				}
 
 				// Returns true only if all components of x are true
-				template <size_t N>
-				inline bool all(const basic_vec<bool, N> &v) {
-					return fold([](auto &&x, auto &&y) { return decltype(x)(x) && decltype(y)(y); }, true, v);
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
+				inline auto all(const VecT &v) {
+					return fold([](const auto &x1, const auto &x2) { return x1 && x2; }, true, v);
 				}
 
-				// Note : C++ does not support "not" as a function name, hence it has been omitted
+				// Note : C++ does not support "not" as a function name so it has been omitted;
+				// however, operator! does work for vectors
 
 			}
 		}
@@ -4872,54 +4944,57 @@ namespace cgra {
 	//=================================================================================================================================================================//
 
 	namespace detail {
-
 		namespace matrices {
 
-			namespace functions {
+			template <typename T>
+			inline T det2x2(
+				const T &e00, const T &e01,
+				const T &e10, const T &e11
+			) {
+				return e00 * e11 - e10 * e01;
+			}
 
-				template <typename T>
-				inline T det2x2(
-					T e00, T e01,
-					T e10, T e11
-				) {
-					return e00 * e11 - e10 * e01;
+			template <typename T>
+			inline T det3x3(
+				const T &e00, const T &e01, const T &e02,
+				const T &e10, const T &e11, const T &e12,
+				const T &e20, const T &e21, const T &e22
+			) {
+				T d = 0;
+				d += e00 * e11 * e22;
+				d += e01 * e12 * e20;
+				d += e02 * e10 * e21;
+				d -= e00 * e12 * e21;
+				d -= e01 * e10 * e22;
+				d -= e02 * e11 * e20;
+				return d;
+			}
+
+			template <size_t Cols, size_t Rows>
+			struct inverse_impl {
+				template <typename MatT>
+				static void go(const MatT &m) {
+					static_assert(dependent_false<MatT>::value, "only square matrices are invertible");
 				}
+			};
 
-				template <typename T>
-				inline T det3x3(
-					T e00, T e01, T e02,
-					T e10, T e11, T e12,
-					T e20, T e21, T e22
-				) {
-					T d = 0;
-					d += e00 * e11 * e22;
-					d += e01 * e12 * e20;
-					d += e02 * e10 * e21;
-					d -= e00 * e12 * e21;
-					d -= e01 * e10 * e22;
-					d -= e02 * e11 * e20;
-					return d;
-				}
-
-
-
-				// inverse of matrix (error if not invertible)
-				// generic case
-				// TODO description
-				template <typename T, size_t Cols, size_t Rows>
-				inline basic_mat<T, Cols, Rows> inverse(const basic_mat<T, Cols, Rows> &m) {
-					static_assert(Cols == Rows, "only square matrices are invertible");
-					using std::abs;
-					basic_mat<T, Cols, Rows> mtemp{m};
-					basic_mat<T, Cols, Rows> mr{1};
+			template <size_t Cols>
+			struct inverse_impl<Cols, Cols> {
+				template <typename MatT>
+				static auto go(const MatT &m) {
+					using std::swap;
+					// TODO use of abs and >0 currently means the value type has to be scalar
+					using cgra::detail::scalars::abs;
+					auto mtemp = mat_cast(m);
+					auto mr = decltype(mtemp){1};
 					// run column-wise gauss-jordan elimination on mtemp, apply same ops to mr
 					size_t col = 0;
-					for (size_t r = 0; r < Rows; r++) {
-						// swap cols so (r, col) is as large in magnitude as possible
+					for (size_t r = 0; r < mat_rows<MatT>::value; r++) {
+						// swap cols so [col][r] is as large in magnitude as possible
 						size_t swcol = col;
-						T swmax = abs(mtemp[col][r]);
+						auto swmax = abs(mtemp[col][r]);
 						for (size_t j = col + 1; j < Cols; j++) {
-							T t = abs(mtemp[j][r]);
+							auto t = abs(mtemp[j][r]);
 							if (t > swmax) {
 								swmax = t;
 								swcol = j;
@@ -4932,10 +5007,10 @@ namespace cgra {
 						}
 						if (swmax > 0) {
 							// largest usable abs value was > 0, continue => zero rest of row
-							T q = T(1) / mtemp[col][r];
+							auto q = 1 / mtemp[col][r];
 							for (size_t j = 0; j < Cols; j++) {
 								if (j != col && abs(mtemp[j][r]) > 0) {
-									T f = mtemp[j][r] * q;
+									auto f = mtemp[j][r] * q;
 									mr[j] -= mr[col] * f;
 									mtemp[j] -= mtemp[col] * f;
 								}
@@ -4952,19 +5027,30 @@ namespace cgra {
 					// mr is now the inverse
 					return mr;
 				}
+			};
 
-				// inverse of matrix (error if not invertible)
-				template <typename T>
-				inline basic_mat<T, 1, 1> inverse(const basic_mat<T, 1, 1> &m) {
-					// TODO (error if not invertible)
-					return {{fill<T>(1) / m[0][0]}};
+			template <>
+			struct inverse_impl<0, 0> {
+				template <typename MatT>
+				static auto go(const MatT &m) {
+					return decltype(mat_cast(m)){};
 				}
+			};
 
-				// inverse of matrix (error if not invertible)
-				template <typename T>
-				inline basic_mat<T, 2, 2> inverse(const basic_mat<T, 2, 2> &m) {
-					basic_mat<T, 2, 2> r;
-					T invdet = 1 / determinant(m);
+			template <>
+			struct inverse_impl<1, 1> {
+				template <typename MatT>
+				static auto go(const MatT &m) {
+					return decltype(mat_cast(m)){1 / m[0][0]};
+				}
+			};
+
+			template <>
+			struct inverse_impl<2, 2> {
+				template <typename MatT>
+				static auto go(const MatT &m) {
+					auto r = mat_cast(m);
+					auto invdet = 1 / determinant(m);
 					// FIXME proper detect infinite determinant
 					assert(!isinf(invdet) && invdet == invdet && invdet != 0);
 					r[0][0] = m[1][1] * invdet;
@@ -4973,17 +5059,19 @@ namespace cgra {
 					r[1][1] = m[0][0] * invdet;
 					return r;
 				}
+			};
 
-				// inverse of matrix (error if not invertible)
-				template <typename T>
-				inline basic_mat<T, 3, 3> inverse(const basic_mat<T, 3, 3> &m) {
-					basic_mat<T, 3, 3> r;
+			template <>
+			struct inverse_impl<3, 3> {
+				template <typename MatT>
+				static auto go(const MatT &m) {
+					auto r = mat_cast(m);
 					// first column of cofactors, can use for determinant
-					T c00 = det2x2(m[1][1], m[1][2], m[2][1], m[2][2]);
-					T c01 = -det2x2(m[1][0], m[1][2], m[2][0], m[2][2]);
-					T c02 = det2x2(m[1][0], m[1][1], m[2][0], m[2][1]);
+					auto c00 = det2x2(m[1][1], m[1][2], m[2][1], m[2][2]);
+					auto c01 = -det2x2(m[1][0], m[1][2], m[2][0], m[2][2]);
+					auto c02 = det2x2(m[1][0], m[1][1], m[2][0], m[2][1]);
 					// get determinant by expanding about first column
-					T invdet = 1 / (m[0][0] * c00 + m[0][1] * c01 + m[0][2] * c02);
+					auto invdet = 1 / (m[0][0] * c00 + m[0][1] * c01 + m[0][2] * c02);
 					// FIXME proper detect infinite determinant
 					assert(!isinf(invdet) && invdet == invdet && invdet != 0);
 					// transpose of cofactor matrix * (1 / det)
@@ -4998,19 +5086,20 @@ namespace cgra {
 					r[2][2] = det2x2(m[0][0], m[0][1], m[1][0], m[1][1]) * invdet;
 					return r;
 				}
+			};
 
-
-				// inverse of matrix (error if not invertible)
-				template <typename T>
-				inline basic_mat<T, 4, 4> inverse(const basic_mat<T, 4, 4> &m) {
-					basic_mat<T, 4, 4> r;
+			template <>
+			struct inverse_impl<4, 4> {
+				template <typename MatT>
+				static auto go(const MatT &m) {
+					auto r = mat_cast(m);
 					// first column of cofactors, can use for determinant
-					T c0 = det3x3(m[1][1], m[1][2], m[1][3], m[2][1], m[2][2], m[2][3], m[3][1], m[3][2], m[3][3]);
-					T c1 = -det3x3(m[1][0], m[1][2], m[1][3], m[2][0], m[2][2], m[2][3], m[3][0], m[3][2], m[3][3]);
-					T c2 = det3x3(m[1][0], m[1][1], m[1][3], m[2][0], m[2][1], m[2][3], m[3][0], m[3][1], m[3][3]);
-					T c3 = -det3x3(m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2], m[3][0], m[3][1], m[3][2]);
+					auto c0 = det3x3(m[1][1], m[1][2], m[1][3], m[2][1], m[2][2], m[2][3], m[3][1], m[3][2], m[3][3]);
+					auto c1 = -det3x3(m[1][0], m[1][2], m[1][3], m[2][0], m[2][2], m[2][3], m[3][0], m[3][2], m[3][3]);
+					auto c2 = det3x3(m[1][0], m[1][1], m[1][3], m[2][0], m[2][1], m[2][3], m[3][0], m[3][1], m[3][3]);
+					auto c3 = -det3x3(m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2], m[3][0], m[3][1], m[3][2]);
 					// get determinant by expanding about first column
-					T invdet = 1 / (m[0][0] * c0 + m[0][1] * c1 + m[0][2] * c2 + m[0][3] * c3);
+					auto invdet = 1 / (m[0][0] * c0 + m[0][1] * c1 + m[0][2] * c2 + m[0][3] * c3);
 					// FIXME proper detect infinite determinant
 					assert(!isinf(invdet) && invdet == invdet && invdet != 0);
 					// transpose of cofactor matrix * (1 / det)
@@ -5032,7 +5121,20 @@ namespace cgra {
 					r[3][3] = det3x3(m[0][0], m[0][1], m[0][2], m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2]) * invdet;
 					return r;
 				}
+			};
 
+			template <size_t Cols, size_t Rows>
+			struct determinant_impl {
+
+			};
+
+			namespace functions {
+
+				// matrix inverse (error if not invertible)
+				template <typename MatT, enable_if_matrix_t<MatT> = 0>
+				inline auto inverse(const MatT &m) {
+					return inverse_impl<mat_cols<MatT>::value, mat_rows<MatT>::value>::go(m);
+				}
 
 				// determinant of matrix
 				template <typename T>
