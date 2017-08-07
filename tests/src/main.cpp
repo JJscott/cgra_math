@@ -66,6 +66,7 @@ int main() {
 
 	auto v6 = m6 * v3;
 	auto v7 = v3 * transpose(m6);
+
 	cout << v6 << endl;
 	cout << v7 << endl;
 
@@ -76,6 +77,10 @@ int main() {
 	cout << m5 << endl;
 	cout << m6 << endl;
 	cout << (m5 * m6) << endl;
+
+	auto m7 = scale2(ivec2{1, 2});
+	auto m8 = look_at(vec3(1, 2, 3), vec3(4, 5, 6), vec3(7, 8, 9));
+	cout << (m8 * vec4(1, 2, 3, 1)) << endl;
 
 	constexpr quat q1{vec4(v5)};
 

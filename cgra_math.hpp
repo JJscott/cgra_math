@@ -14,6 +14,8 @@
 
 - FIXME revisit transform matrix factory functions (re: homogeneous coords, explicit types)
 - FIXME revisit quat factory functions (re: explicit types)
+- ndc z-bounds for projection matrices (gl vs d3d)
+- infinite perspective projection
 - FIXME examine all advanced quat functions for correctness
 - FIXME min/max for vectors vs std (overloading only for basic_vec is dangerous)
 - FIXME unbreak constexpr for msvc and intellisense
@@ -840,12 +842,12 @@ namespace cgra {
 		};
 
 		template <typename T>
-		struct fpromote<T, typename scalar_traits<std::decay_t<T>>::fpromote_t> {
-			using type = typename scalar_traits<std::decay_t<T>>::fpromote_t;
-		};
+		struct is_scalar : bool_constant<scalar_traits<std::decay_t<T>>::is_scalar> {};
 
 		template <typename T>
-		struct is_scalar : bool_constant<scalar_traits<std::decay_t<T>>::is_scalar> {};
+		struct fpromote<T, std::enable_if_t<is_scalar<T>::value>> {
+			using type = typename scalar_traits<std::decay_t<T>>::fpromote_t;
+		};
 
 		template <typename T>
 		struct want_real_fns : bool_constant<scalar_traits<std::decay_t<T>>::want_real_fns> {};
@@ -898,11 +900,6 @@ namespace cgra {
 		};
 
 		// TODO array_traits for std::array, std::tuple
-		
-		template <typename VecT>
-		struct fpromote<VecT, void_t<typename array_traits<std::decay_t<VecT>>::fpromote_t>> {
-			using type = typename array_traits<std::decay_t<VecT>>::fpromote_t;
-		};
 
 		template <typename VecT>
 		using array_value_t = typename array_traits<std::decay_t<VecT>>::value_t;
@@ -934,6 +931,11 @@ namespace cgra {
 
 		template <typename T>
 		struct is_matrix : bool_constant<array_traits<std::decay_t<T>>::is_matrix> {};
+
+		template <typename VecT>
+		struct fpromote<VecT, std::enable_if_t<is_array<VecT>::value>> {
+			using type = typename array_traits<std::decay_t<VecT>>::fpromote_t;
+		};
 
 		template <typename T, typename = void>
 		struct copy_type {
@@ -5284,14 +5286,9 @@ namespace cgra {
 	// general transformations
 	//
 
-	// TODO i dont think this function should exist -ben
-	template <typename MatT>
-	inline auto identity() {
-		return MatT{1};
-	}
-
 	template <typename MatT>
 	inline auto shear(int t_dim, int s_dim, typename MatT::value_t f) {
+		// FIXME shear transform specification
 		MatT m{ 1 };
 		m[t_dim][s_dim] = f;
 		return m;
@@ -5301,154 +5298,102 @@ namespace cgra {
 	// Functions for constructing 2d transformations
 	//
 
-	template <typename MatT>
-	inline auto rotate2(typename MatT::value_t v) {
-		static_assert(MatT::cols >= 2, "Matrix type must have 2 or more columns");
-		static_assert(MatT::rows >= 2, "Matrix type must have 2 or more rows");
-		MatT r{ 1 };
-		typename MatT::value_t cos_v = cos(v);
-		typename MatT::value_t sin_v = sin(v);
-		r[0][0] = cos_v;
-		r[1][0] = -sin_v;
-		r[1][1] = cos_v;
-		r[0][1] = sin_v;
+	template <typename T>
+	inline auto rotate2(const T &x) {
+		basic_mat<detail::fpromote_t<T>, 3, 3> r{1};
+		auto cos_x = cos(x);
+		auto sin_x = sin(x);
+		r[0][0] = cos_x;
+		r[1][0] = -sin_x;
+		r[1][1] = cos_x;
+		r[0][1] = sin_x;
 		return r;
 	}
 
-	template <typename MatT>
-	inline auto scale2(typename MatT::value_t v) {
-		static_assert(MatT::cols >= 2, "Matrix type must have 2 or more columns");
-		static_assert(MatT::rows >= 2, "Matrix type must have 2 or more rows");
-		MatT r{ 1 };
-		r[0][0] = v;
-		r[1][1] = v;
+	template <typename T>
+	inline auto scale2(const T &x, const T &y) {
+		basic_mat<detail::fpromote_t<T>, 3, 3> r{1};
+		r[0][0] = x;
+		r[1][1] = y;
 		return r;
 	}
 
+	template <typename T>
+	inline auto scale2(const T &x) {
+		return scale2(x, x);
+	}
 
-	template <typename MatT>
-	inline auto scale2(const basic_vec<typename MatT::value_t, 2> &v) {
-		static_assert(MatT::cols >= 2, "Matrix type must have 2 or more columns");
-		static_assert(MatT::rows >= 2, "Matrix type must have 2 or more rows");
-		MatT r{ 1 };
-		r[0][0] = v[0];
-		r[1][1] = v[1];
+	template <typename T>
+	inline auto scale2(const basic_vec<T, 2> &v) {
+		return scale2(v.x, v.y);
+	}
+
+	template <typename T>
+	inline auto translate2(const T &x, const T &y) {
+		basic_mat<detail::fpromote_t<T>, 3, 3> r{1};
+		r[3][0] = x;
+		r[3][1] = y;
 		return r;
 	}
 
-	template <typename MatT>
-	inline auto translate2(typename MatT::value_t v) {
-		static_assert(MatT::cols >= 3, "Matrix type must have 3 or more columns");
-		static_assert(MatT::rows >= 2, "Matrix type must have 2 or more rows");
-		MatT r{ 1 };
-		r[3][0] = v;
-		r[3][1] = v;
-		return r;
+	template <typename T>
+	inline auto translate2(const T &x) {
+		// TODO is this overload useful?
+		return translate2(x, x);
 	}
 
-	template <typename MatT>
-	inline auto translate2(typename MatT::value_t vx, typename MatT::value_t vy) {
-		static_assert(MatT::cols >= 3, "Matrix type must have 3 or more columns");
-		static_assert(MatT::rows >= 2, "Matrix type must have 2 or more rows");
-		MatT r{ 1 };
-		r[3][0] = vx;
-		r[3][1] = vy;
-		return r;
+	template <typename T>
+	inline auto translate2(const basic_vec<T, 2> &v) {
+		return translate2(v.x, v.y);
 	}
-
-	template <typename MatT>
-	inline auto translate2(const basic_vec<typename MatT::value_t, 2> &v) {
-		static_assert(MatT::cols >= 3, "Matrix type must have 3 or more columns");
-		static_assert(MatT::rows >= 2, "Matrix type must have 2 or more rows");
-		MatT r{ 1 };
-		r[3][0] = v[0];
-		r[3][1] = v[1];
-		return r;
-	}
-
-
-
 
 
 	// Functions for constructing 3d transformations
 	//
 
-	// TODO Nan check
-	template <typename MatT>
-	inline auto look_at(
-		const basic_vec<typename MatT::value_t, 3> &eye,
-		const basic_vec<typename MatT::value_t, 3> &lookAt,
-		const basic_vec<typename MatT::value_t, 3> &up
-	) {
-		static_assert(MatT::cols == 4, "Matrix type must have exactly 4 columns");
-		static_assert(MatT::rows == 4, "Matrix type must have exactly 4 rows");
-		using vec3_t = basic_vec<typename MatT::value_t, 3>;
-		using vec4_t = basic_vec<typename MatT::value_t, 4>;
-		vec3_t vz = normalize(eye - lookAt);
-		vec3_t vx = normalize(cross(up, vz));
-		vec3_t vy = normalize(cross(vz, vx));
-		MatT m{
-			vec4_t(vx, 0),
-			vec4_t(vy, 0),
-			vec4_t(vz, 0),
-			vec4_t(eye, 1) };
-		return inverse(m);
+	template <typename T>
+	inline auto look_at(const basic_vec<T, 3> &eye, const basic_vec<T, 3> &lookAt, const basic_vec<T, 3> &up) {
+		// TODO Nan check
+		using value_t = detail::fpromote_t<T>;
+		auto vz = normalize(eye - lookAt);
+		auto vx = normalize(cross(up, vz));
+		auto vy = normalize(cross(vz, vx));
+		basic_mat<value_t, 4, 4> r{vx, vy, vz, eye};
+		r[3][3] = value_t{1};
+		return inverse(r);
 	}
 
-	template <typename MatT>
-	inline auto look_at(
-		typename MatT::value_t ex, typename MatT::value_t ey, typename MatT::value_t ez,
-		typename MatT::value_t lx, typename MatT::value_t ly, typename MatT::value_t lz,
-		typename MatT::value_t ux, typename MatT::value_t uy, typename MatT::value_t uz
-	) {
-		static_assert(MatT::cols == 4, "Matrix type must have exactly 4 columns");
-		static_assert(MatT::rows == 4, "Matrix type must have exactly 4 rows");
-		return look_at( { ex, ey, ez }, { lx, ly, lz }, { ux, uy, uz } );
-	}
-
-	// fovy in radians veritical feild of view as an angle
-	// aspect is w/h
-	// TODO Nan check
-	template <typename MatT>
-	inline auto perspective(
-		typename MatT::value_t fovy,
-		typename MatT::value_t aspect,
-		typename MatT::value_t zNear,
-		typename MatT::value_t zFar
-	) {
-		static_assert(MatT::cols == 4, "Matrix type must have exactly 4 columns");
-		static_assert(MatT::rows == 4, "Matrix type must have exactly 4 rows");
-		// typename MatT::value_t f = typename MatT::value_t(1) / (fovy / typename MatT::value_t(2)); // lol wtf, fast approximation
-		typename MatT::value_t f = cot(fovy / typename MatT::value_t(2)); // real equation
-		MatT r{ 0 };
+	// fovy: vertical field of view in radians; aspect is w/h
+	template <typename T>
+	inline auto perspective(const T &fovy, const T &aspect, const T &znear, const T &zfar) {
+		// TODO Nan check
+		// lol wtf, fast approximation
+		// (seriously, where did this come from?)
+		// typename MatT::value_t f = typename MatT::value_t(1) / (fovy / typename MatT::value_t(2));
+		using value_t = detail::fpromote_t<T>;
+		// real equation
+		auto f = cot(fovy / value_t{2});
+		basic_mat<value_t, 4, 4> r{0};
 		r[0][0] = f / aspect;
 		r[1][1] = f;
-		r[2][2] = (zFar + zNear) / (zNear - zFar);
-		r[3][2] = (2 * zFar * zNear) / (zNear - zFar);
+		r[2][2] = (zfar + znear) / (znear - zfar);
+		r[3][2] = (2 * zfar * znear) / (znear - zfar);
 		r[2][3] = -1;
 		return r;
 	}
 
-	// TODO Nan check
-	template <typename MatT>
-	inline auto orthographic(
-		typename MatT::value_t left, 
-		typename MatT::value_t right, 
-		typename MatT::value_t bottom, 
-		typename MatT::value_t top, 
-		typename MatT::value_t nearVal, 
-		typename MatT::value_t farVal
-	) {
-		static_assert(MatT::cols == 4, "Matrix type must have exactly 4 columns");
-		static_assert(MatT::rows == 4, "Matrix type must have exactly 4 rows");
-		MatT r{ 0 };
-		r[0][0] = typename MatT::value_t(2) / (right - left);
+	template <typename T>
+	inline auto orthographic(const T &left, const T &right, const T &bottom, const T &top, const T &znear, const T &zfar) {
+		// TODO Nan check
+		using value_t = detail::fpromote_t<T>;
+		basic_mat<value_t, 4, 4> r{0};
+		r[0][0] = value_t{2} / (right - left);
 		r[3][0] = (right + left) / (right - left);
-		r[1][1] = typename MatT::value_t(2) / (top - bottom);
+		r[1][1] = value_t{2} / (top - bottom);
 		r[3][1] = (top + bottom) / (top - bottom);
-		r[2][2] = -typename MatT::value_t(2) / (farVal - nearVal);
-		r[3][2] = (farVal + nearVal) / (farVal - nearVal);
-		r[3][3] = typename MatT::value_t(1);
+		r[2][2] = -value_t{2} / (zfar - znear);
+		r[3][2] = (zfar + znear) / (zfar - znear);
+		r[3][3] = value_t{1};
 		return r;
 	}
 
