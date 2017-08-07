@@ -52,6 +52,7 @@ int main() {
 	cout << v3 << endl;
 	cout << v4 << endl;
 	cout << v5 << endl;
+	cout << outer_product(vec3(1, 2, 3), vec3(4, 5, 6)) << endl;
 
 	mat3 m1{mat4(pi)};
 	mat3 m2{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}};

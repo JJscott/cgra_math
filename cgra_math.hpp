@@ -12,17 +12,15 @@
 //      TODO
 //-----------------
 
-- ? mod vs fmod : name vs behaviour
 - FIXME revisit transform matrix factory functions (re: homogeneous coords, explicit types)
 - FIXME revisit quat factory functions (re: explicit types)
 - FIXME examine all advanced quat functions for correctness
-- [...] FIXME reimplement vec/mat ops/functions more generically
 - FIXME min/max for vectors vs std (overloading only for basic_vec is dangerous)
 - FIXME unbreak constexpr for msvc and intellisense
 - 'conjugate' -> 'conj' (others?)
 - vector etc comparison result magic
-- [...] use non-type template arg sfinae to avoid extra dummy params
 - defend more things against vectors of vectors (scalar compatibility?)
+- defend more things against integer arguments by promoting to floating point
 - test is_vector_compatible etc with static asserts
 - move random section to bottom of file
 - FIXME make mat inverse error by exception
@@ -797,6 +795,15 @@ namespace cgra {
 		template <typename T, size_t N, bool RequireExactSize, typename ArgTupT, typename BaseDataT>
 		using basic_vec_ctor_proxy = vectors::basic_vec_ctor_proxy<T, N, RequireExactSize, ArgTupT, BaseDataT>;
 
+		// got integers? promote them to doubles
+		template <typename T, typename = void>
+		struct fpromote {
+			using type = T;
+		};
+
+		template <typename T>
+		using fpromote_t = typename fpromote<T>::type;
+
 		template <typename T, typename = void>
 		struct scalar_traits {
 			static constexpr bool is_scalar = false;
@@ -804,9 +811,6 @@ namespace cgra {
 			static constexpr bool want_trig_fns = false;
 			static constexpr bool want_exp_fns = false;
 		};
-
-		template <typename T>
-		using scalar_fpromote_t = typename scalar_traits<std::decay_t<T>>::fpromote_t;
 
 		template <typename T>
 		struct scalar_traits<T, std::enable_if_t<std::numeric_limits<T>::is_specialized>> {
@@ -819,7 +823,7 @@ namespace cgra {
 
 		template <typename T>
 		struct scalar_traits<std::complex<T>, void> {
-			using fpromote_t = std::complex<scalar_fpromote_t<T>>;
+			using fpromote_t = std::complex<detail::fpromote_t<T>>;
 			static constexpr bool is_scalar = true;
 			static constexpr bool want_real_fns = false;
 			static constexpr bool want_trig_fns = true;
@@ -828,11 +832,16 @@ namespace cgra {
 
 		template <typename T>
 		struct scalar_traits<basic_quat<T>, void> {
-			using fpromote_t = basic_quat<scalar_fpromote_t<T>>;
+			using fpromote_t = basic_quat<detail::fpromote_t<T>>;
 			static constexpr bool is_scalar = true;
 			static constexpr bool want_real_fns = false;
 			static constexpr bool want_trig_fns = false;
 			static constexpr bool want_exp_fns = true;
+		};
+
+		template <typename T>
+		struct fpromote<T, typename scalar_traits<std::decay_t<T>>::fpromote_t> {
+			using type = typename scalar_traits<std::decay_t<T>>::fpromote_t;
 		};
 
 		template <typename T>
@@ -861,6 +870,7 @@ namespace cgra {
 		struct array_traits<basic_vec<T, N>, void> {
 			using value_t = T;
 			using copy_t = basic_vec<T, N>;
+			using fpromote_t = basic_vec<detail::fpromote_t<T>, N>;
 			static constexpr size_t size = N;
 
 			static constexpr bool is_array = true;
@@ -882,11 +892,17 @@ namespace cgra {
 		template <typename T, size_t Cols, size_t Rows>
 		struct array_traits<basic_mat<T, Cols, Rows>, void> : array_traits<basic_vec<basic_vec<T, Rows>, Cols>> {
 			using copy_t = basic_mat<T, Cols, Rows>;
+			using fpromote_t = basic_mat<detail::fpromote_t<T>, Cols, Rows>;
 			static constexpr bool is_vector = false;
 			static constexpr bool is_matrix = true;
 		};
 
 		// TODO array_traits for std::array, std::tuple
+		
+		template <typename VecT>
+		struct fpromote<VecT, void_t<typename array_traits<std::decay_t<VecT>>::fpromote_t>> {
+			using type = typename array_traits<std::decay_t<VecT>>::fpromote_t;
+		};
 
 		template <typename VecT>
 		using array_value_t = typename array_traits<std::decay_t<VecT>>::value_t;
@@ -3876,19 +3892,19 @@ namespace cgra {
 				// inverse secant 
 				template <typename T, enable_if_want_trig_fns_t<T> = 0>
 				inline auto asec(const T &x) {
-					return acos(T(1) / scalar_fpromote_t<T>(x));
+					return acos(T(1) / fpromote_t<T>(x));
 				}
 
 				// inverse cosecant
 				template <typename T, enable_if_want_trig_fns_t<T> = 0>
 				inline auto acsc(const T &x) {
-					return asin(T(1) / scalar_fpromote_t<T>(x));
+					return asin(T(1) / fpromote_t<T>(x));
 				}
 
 				// inverse cotangent
 				template <typename T, enable_if_want_trig_fns_t<T> = 0>
 				inline auto acot(const T &x) {
-					return atan(T(1) / scalar_fpromote_t<T>(x));
+					return atan(T(1) / fpromote_t<T>(x));
 				}
 
 				// hyperbolic secant
@@ -3912,31 +3928,31 @@ namespace cgra {
 				// inverse hyperbolic secant
 				template <typename T, enable_if_want_trig_fns_t<T> = 0>
 				inline auto asech(const T &x) {
-					return acosh(T(1) / scalar_fpromote_t<T>(x));
+					return acosh(T(1) / fpromote_t<T>(x));
 				}
 
 				// inverse hyperbolic cosecant
 				template <typename T, enable_if_want_trig_fns_t<T> = 0>
 				inline auto acsch(const T &x) {
-					return asinh(T(1) / scalar_fpromote_t<T>(x));
+					return asinh(T(1) / fpromote_t<T>(x));
 				}
 
 				// inverse hyperbolic cotangent
 				template <typename T, enable_if_want_trig_fns_t<T> = 0>
 				inline auto acoth(const T &x) {
-					return atanh(T(1) / scalar_fpromote_t<T>(x));
+					return atanh(T(1) / fpromote_t<T>(x));
 				}
 
 				// Converts degrees to radians, i.e., x * pi/180
 				template <typename T, enable_if_want_real_fns_t<T> = 0>
 				inline auto radians(const T &x) {
-					return x * scalar_fpromote_t<T>(pi / 180.0);
+					return x * fpromote_t<T>(pi / 180.0);
 				}
 
 				// Converts radians to degrees, i.e., x * 180/pi
 				template <typename T, enable_if_want_real_fns_t<T> = 0>
 				inline auto degrees(const T &x) {
-					return x * scalar_fpromote_t<T>(180.0 / pi);
+					return x * fpromote_t<T>(180.0 / pi);
 				}
 
 				// Arc tangent. Returns an angle whose tangent is y/x
@@ -4344,10 +4360,11 @@ namespace cgra {
 				}
 
 				// Modulus. Returns x-m*floor(x/m)
+				// note that this has different behaviour on negatives than std::fmod
 				template <typename Tx, typename Tm, enable_if_want_real_fns_t<Tx, Tm> = 0>
 				inline auto mod(const Tx &x, const Tm &m) {
 					// on integers, promote to fp; consistent with std::fmod etc
-					return x - m * floor(x / scalar_fpromote_t<Tm>(m));
+					return x - m * floor(x / fpromote_t<Tm>(m));
 				}
 
 				// Returns the linear blend of x1 and x2, i.e., x1*(1−t) + x2*t
@@ -4954,13 +4971,14 @@ namespace cgra {
 				return e00 * e11 - e10 * e01;
 			}
 
+			// this would actually be fine on integers, but we force the type if fpromoting for consistency
 			template <typename T>
 			inline T det3x3(
 				const T &e00, const T &e01, const T &e02,
 				const T &e10, const T &e11, const T &e12,
 				const T &e20, const T &e21, const T &e22
 			) {
-				T d = 0;
+				T d{0};
 				d += e00 * e11 * e22;
 				d += e01 * e12 * e20;
 				d += e02 * e10 * e21;
@@ -4970,7 +4988,7 @@ namespace cgra {
 				return d;
 			}
 
-			template <size_t Cols, size_t Rows>
+			template <size_t Cols, size_t Rows, typename = void>
 			struct inverse_impl {
 				template <typename MatT>
 				static void go(const MatT &m) {
@@ -4985,7 +5003,8 @@ namespace cgra {
 					using std::swap;
 					// TODO use of abs and >0 currently means the value type has to be scalar
 					using cgra::detail::scalars::abs;
-					auto mtemp = mat_cast(m);
+					using value_t = fpromote_t<matrix_value_t<MatT>>;
+					auto mtemp = mat_cast<value_t>(m);
 					auto mr = decltype(mtemp){1};
 					// run column-wise gauss-jordan elimination on mtemp, apply same ops to mr
 					size_t col = 0;
@@ -5007,7 +5026,7 @@ namespace cgra {
 						}
 						if (swmax > 0) {
 							// largest usable abs value was > 0, continue => zero rest of row
-							auto q = 1 / mtemp[col][r];
+							auto q = value_t{1} / mtemp[col][r];
 							for (size_t j = 0; j < Cols; j++) {
 								if (j != col && abs(mtemp[j][r]) > 0) {
 									auto f = mtemp[j][r] * q;
@@ -5033,7 +5052,8 @@ namespace cgra {
 			struct inverse_impl<0, 0> {
 				template <typename MatT>
 				static auto go(const MatT &m) {
-					return decltype(mat_cast(m)){};
+					using value_t = fpromote_t<matrix_value_t<MatT>>;
+					return decltype(mat_cast<value_t>(m)){};
 				}
 			};
 
@@ -5041,7 +5061,8 @@ namespace cgra {
 			struct inverse_impl<1, 1> {
 				template <typename MatT>
 				static auto go(const MatT &m) {
-					return decltype(mat_cast(m)){1 / m[0][0]};
+					using value_t = fpromote_t<matrix_value_t<MatT>>;
+					return decltype(mat_cast<value_t>(m)){matrix_value_t<MatT>{1} / m[0][0]};
 				}
 			};
 
@@ -5049,8 +5070,9 @@ namespace cgra {
 			struct inverse_impl<2, 2> {
 				template <typename MatT>
 				static auto go(const MatT &m) {
-					auto r = mat_cast(m);
-					auto invdet = 1 / determinant(m);
+					using value_t = fpromote_t<matrix_value_t<MatT>>;
+					auto r = decltype(mat_cast<value_t>(m)){};
+					const auto invdet = value_t{1} / determinant(m);
 					// FIXME proper detect infinite determinant
 					assert(!isinf(invdet) && invdet == invdet && invdet != 0);
 					r[0][0] = m[1][1] * invdet;
@@ -5065,25 +5087,26 @@ namespace cgra {
 			struct inverse_impl<3, 3> {
 				template <typename MatT>
 				static auto go(const MatT &m) {
-					auto r = mat_cast(m);
+					using value_t = fpromote_t<matrix_value_t<MatT>>;
+					auto r = decltype(mat_cast<value_t>(m)){};
 					// first column of cofactors, can use for determinant
-					auto c00 = det2x2(m[1][1], m[1][2], m[2][1], m[2][2]);
-					auto c01 = -det2x2(m[1][0], m[1][2], m[2][0], m[2][2]);
-					auto c02 = det2x2(m[1][0], m[1][1], m[2][0], m[2][1]);
+					const auto c00 = det2x2<value_t>(m[1][1], m[1][2], m[2][1], m[2][2]);
+					const auto c01 = -det2x2<value_t>(m[1][0], m[1][2], m[2][0], m[2][2]);
+					const auto c02 = det2x2<value_t>(m[1][0], m[1][1], m[2][0], m[2][1]);
 					// get determinant by expanding about first column
-					auto invdet = 1 / (m[0][0] * c00 + m[0][1] * c01 + m[0][2] * c02);
+					const auto invdet = value_t{1} / (m[0][0] * c00 + m[0][1] * c01 + m[0][2] * c02);
 					// FIXME proper detect infinite determinant
 					assert(!isinf(invdet) && invdet == invdet && invdet != 0);
 					// transpose of cofactor matrix * (1 / det)
 					r[0][0] = c00 * invdet;
 					r[1][0] = c01 * invdet;
 					r[2][0] = c02 * invdet;
-					r[0][1] = -det2x2(m[0][1], m[0][2], m[2][1], m[2][2]) * invdet;
-					r[1][1] = det2x2(m[0][0], m[0][2], m[2][0], m[2][2]) * invdet;
-					r[2][1] = -det2x2(m[0][0], m[0][1], m[2][0], m[2][1]) * invdet;
-					r[0][2] = det2x2(m[0][1], m[0][2], m[1][1], m[1][2]) * invdet;
-					r[1][2] = -det2x2(m[0][0], m[0][2], m[1][0], m[1][2]) * invdet;
-					r[2][2] = det2x2(m[0][0], m[0][1], m[1][0], m[1][1]) * invdet;
+					r[0][1] = -det2x2<value_t>(m[0][1], m[0][2], m[2][1], m[2][2]) * invdet;
+					r[1][1] = det2x2<value_t>(m[0][0], m[0][2], m[2][0], m[2][2]) * invdet;
+					r[2][1] = -det2x2<value_t>(m[0][0], m[0][1], m[2][0], m[2][1]) * invdet;
+					r[0][2] = det2x2<value_t>(m[0][1], m[0][2], m[1][1], m[1][2]) * invdet;
+					r[1][2] = -det2x2<value_t>(m[0][0], m[0][2], m[1][0], m[1][2]) * invdet;
+					r[2][2] = det2x2<value_t>(m[0][0], m[0][1], m[1][0], m[1][1]) * invdet;
 					return r;
 				}
 			};
@@ -5092,14 +5115,15 @@ namespace cgra {
 			struct inverse_impl<4, 4> {
 				template <typename MatT>
 				static auto go(const MatT &m) {
-					auto r = mat_cast(m);
+					using value_t = fpromote_t<matrix_value_t<MatT>>;
+					auto r = decltype(mat_cast<value_t>(m)){};
 					// first column of cofactors, can use for determinant
-					auto c0 = det3x3(m[1][1], m[1][2], m[1][3], m[2][1], m[2][2], m[2][3], m[3][1], m[3][2], m[3][3]);
-					auto c1 = -det3x3(m[1][0], m[1][2], m[1][3], m[2][0], m[2][2], m[2][3], m[3][0], m[3][2], m[3][3]);
-					auto c2 = det3x3(m[1][0], m[1][1], m[1][3], m[2][0], m[2][1], m[2][3], m[3][0], m[3][1], m[3][3]);
-					auto c3 = -det3x3(m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2], m[3][0], m[3][1], m[3][2]);
+					const auto c0 = det3x3<value_t>(m[1][1], m[1][2], m[1][3], m[2][1], m[2][2], m[2][3], m[3][1], m[3][2], m[3][3]);
+					const auto c1 = -det3x3<value_t>(m[1][0], m[1][2], m[1][3], m[2][0], m[2][2], m[2][3], m[3][0], m[3][2], m[3][3]);
+					const auto c2 = det3x3<value_t>(m[1][0], m[1][1], m[1][3], m[2][0], m[2][1], m[2][3], m[3][0], m[3][1], m[3][3]);
+					const auto c3 = -det3x3<value_t>(m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2], m[3][0], m[3][1], m[3][2]);
 					// get determinant by expanding about first column
-					auto invdet = 1 / (m[0][0] * c0 + m[0][1] * c1 + m[0][2] * c2 + m[0][3] * c3);
+					const auto invdet = value_t{1} / (m[0][0] * c0 + m[0][1] * c1 + m[0][2] * c2 + m[0][3] * c3);
 					// FIXME proper detect infinite determinant
 					assert(!isinf(invdet) && invdet == invdet && invdet != 0);
 					// transpose of cofactor matrix * (1 / det)
@@ -5107,25 +5131,90 @@ namespace cgra {
 					r[1][0] = c1 * invdet;
 					r[2][0] = c2 * invdet;
 					r[3][0] = c3 * invdet;
-					r[0][1] = -det3x3(m[0][1], m[0][2], m[0][3], m[2][1], m[2][2], m[2][3], m[3][1], m[3][2], m[3][3]) * invdet;
-					r[1][1] = det3x3(m[0][0], m[0][2], m[0][3], m[2][0], m[2][2], m[2][3], m[3][0], m[3][2], m[3][3]) * invdet;
-					r[2][1] = -det3x3(m[0][0], m[0][1], m[0][3], m[2][0], m[2][1], m[2][3], m[3][0], m[3][1], m[3][3]) * invdet;
-					r[3][1] = det3x3(m[0][0], m[0][1], m[0][2], m[2][0], m[2][1], m[2][2], m[3][0], m[3][1], m[3][2]) * invdet;
-					r[0][2] = det3x3(m[0][1], m[0][2], m[0][3], m[1][1], m[1][2], m[1][3], m[3][1], m[3][2], m[3][3]) * invdet;
-					r[1][2] = -det3x3(m[0][0], m[0][2], m[0][3], m[1][0], m[1][2], m[1][3], m[3][0], m[3][2], m[3][3]) * invdet;
-					r[2][2] = det3x3(m[0][0], m[0][1], m[0][3], m[1][0], m[1][1], m[1][3], m[3][0], m[3][1], m[3][3]) * invdet;
-					r[3][2] = -det3x3(m[0][0], m[0][1], m[0][2], m[1][0], m[1][1], m[1][2], m[3][0], m[3][1], m[3][2]) * invdet;
-					r[0][3] = -det3x3(m[0][1], m[0][2], m[0][3], m[1][1], m[1][2], m[1][3], m[2][1], m[2][2], m[2][3]) * invdet;
-					r[1][3] = det3x3(m[0][0], m[0][2], m[0][3], m[1][0], m[1][2], m[1][3], m[2][0], m[2][2], m[2][3]) * invdet;
-					r[2][3] = -det3x3(m[0][0], m[0][1], m[0][3], m[1][0], m[1][1], m[1][3], m[2][0], m[2][1], m[2][3]) * invdet;
-					r[3][3] = det3x3(m[0][0], m[0][1], m[0][2], m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2]) * invdet;
+					r[0][1] = -det3x3<value_t>(m[0][1], m[0][2], m[0][3], m[2][1], m[2][2], m[2][3], m[3][1], m[3][2], m[3][3]) * invdet;
+					r[1][1] = det3x3<value_t>(m[0][0], m[0][2], m[0][3], m[2][0], m[2][2], m[2][3], m[3][0], m[3][2], m[3][3]) * invdet;
+					r[2][1] = -det3x3<value_t>(m[0][0], m[0][1], m[0][3], m[2][0], m[2][1], m[2][3], m[3][0], m[3][1], m[3][3]) * invdet;
+					r[3][1] = det3x3<value_t>(m[0][0], m[0][1], m[0][2], m[2][0], m[2][1], m[2][2], m[3][0], m[3][1], m[3][2]) * invdet;
+					r[0][2] = det3x3<value_t>(m[0][1], m[0][2], m[0][3], m[1][1], m[1][2], m[1][3], m[3][1], m[3][2], m[3][3]) * invdet;
+					r[1][2] = -det3x3<value_t>(m[0][0], m[0][2], m[0][3], m[1][0], m[1][2], m[1][3], m[3][0], m[3][2], m[3][3]) * invdet;
+					r[2][2] = det3x3<value_t>(m[0][0], m[0][1], m[0][3], m[1][0], m[1][1], m[1][3], m[3][0], m[3][1], m[3][3]) * invdet;
+					r[3][2] = -det3x3<value_t>(m[0][0], m[0][1], m[0][2], m[1][0], m[1][1], m[1][2], m[3][0], m[3][1], m[3][2]) * invdet;
+					r[0][3] = -det3x3<value_t>(m[0][1], m[0][2], m[0][3], m[1][1], m[1][2], m[1][3], m[2][1], m[2][2], m[2][3]) * invdet;
+					r[1][3] = det3x3<value_t>(m[0][0], m[0][2], m[0][3], m[1][0], m[1][2], m[1][3], m[2][0], m[2][2], m[2][3]) * invdet;
+					r[2][3] = -det3x3<value_t>(m[0][0], m[0][1], m[0][3], m[1][0], m[1][1], m[1][3], m[2][0], m[2][1], m[2][3]) * invdet;
+					r[3][3] = det3x3<value_t>(m[0][0], m[0][1], m[0][2], m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2]) * invdet;
 					return r;
 				}
 			};
 
-			template <size_t Cols, size_t Rows>
+			template <size_t Cols, size_t Rows, typename = void>
 			struct determinant_impl {
+				template <typename MatT>
+				static void go(const MatT &) {
+					static_assert(dependent_false<MatT>::value, "general-case determinant not implemented (yet?)");
+				}
+			};
 
+			template <size_t Cols, size_t Rows>
+			struct determinant_impl<Cols, Rows, std::enable_if_t<(Cols != Rows)>> {
+				template <typename MatT>
+				static auto go(const MatT &) {
+					using value_t = fpromote_t<matrix_value_t<MatT>>;
+					// determinant of non-square matrix is always 0
+					return value_t{0};
+				}
+			};
+
+			template <>
+			struct determinant_impl<0, 0> {
+				template <typename MatT>
+				static auto go(const MatT &) {
+					using value_t = fpromote_t<matrix_value_t<MatT>>;
+					// i'm just gonna say this is 1
+					return value_t{1};
+				}
+			};
+
+			template <>
+			struct determinant_impl<1, 1> {
+				template <typename MatT>
+				static auto go(const MatT &m) {
+					using value_t = fpromote_t<matrix_value_t<MatT>>;
+					return value_t{m[0][0]};
+				}
+			};
+
+			template <>
+			struct determinant_impl<2, 2> {
+				template <typename MatT>
+				static auto go(const MatT &m) {
+					using value_t = fpromote_t<matrix_value_t<MatT>>;
+					return det2x2<value_t>(m[0][0], m[0][1], m[1][0], m[1][1]);
+				}
+			};
+
+			template <>
+			struct determinant_impl<3, 3> {
+				template <typename MatT>
+				static auto go(const MatT &m) {
+					using value_t = fpromote_t<matrix_value_t<MatT>>;
+					return det3x3<value_t>(m[0][0], m[0][1], m[0][2], m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2]);
+				}
+			};
+
+			template <>
+			struct determinant_impl<4, 4> {
+				template <typename MatT>
+				static auto go(const MatT &m) {
+					using value_t = fpromote_t<matrix_value_t<MatT>>;
+					auto d = value_t{0};
+					// expand about first column
+					d += m[0][0] * det3x3<value_t>(m[1][1], m[1][2], m[1][3], m[2][1], m[2][2], m[2][3], m[3][1], m[3][2], m[3][3]);
+					d -= m[0][1] * det3x3<value_t>(m[1][0], m[1][2], m[1][3], m[2][0], m[2][2], m[2][3], m[3][0], m[3][2], m[3][3]);
+					d += m[0][2] * det3x3<value_t>(m[1][0], m[1][1], m[1][3], m[2][0], m[2][1], m[2][3], m[3][0], m[3][1], m[3][3]);
+					d -= m[0][3] * det3x3<value_t>(m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2], m[3][0], m[3][1], m[3][2]);
+					return d;
+				}
 			};
 
 			namespace functions {
@@ -5136,67 +5225,43 @@ namespace cgra {
 					return inverse_impl<mat_cols<MatT>::value, mat_rows<MatT>::value>::go(m);
 				}
 
-				// determinant of matrix
-				template <typename T>
-				inline T determinant(const basic_mat<T, 2, 2> &m) {
-					return m[0][0] * m[1][1] - m[1][0] * m[0][1];
+				// matrix determinant
+				template <typename MatT, enable_if_matrix_t<MatT> = 0>
+				inline auto determinant(const MatT &m) {
+					return determinant_impl<mat_cols<MatT>::value, mat_rows<MatT>::value>::go(m);
 				}
 
-				// determinant of matrix
-				template <typename T>
-				inline T determinant(const basic_mat<T, 3, 3> &m) {
-					T d = 0;
-					d += m[0][0] * m[1][1] * m[2][2];
-					d += m[0][1] * m[1][2] * m[2][0];
-					d += m[0][2] * m[1][0] * m[2][1];
-					d -= m[0][0] * m[1][2] * m[2][1];
-					d -= m[0][1] * m[1][0] * m[2][2];
-					d -= m[0][2] * m[1][1] * m[2][0];
-					return d;
-				}
-
-				//TODO
-				// determinant of matrix
-				template <typename T>
-				inline T determinant(const basic_mat<T, 4, 4> &m) {
-					T d = 0;
-					// expand about first column
-					d += m[0][0] * det3x3(m[1][1], m[1][2], m[1][3], m[2][1], m[2][2], m[2][3], m[3][1], m[3][2], m[3][3]);
-					d -= m[0][1] * det3x3(m[1][0], m[1][2], m[1][3], m[2][0], m[2][2], m[2][3], m[3][0], m[3][2], m[3][3]);
-					d += m[0][2] * det3x3(m[1][0], m[1][1], m[1][3], m[2][0], m[2][1], m[2][3], m[3][0], m[3][1], m[3][3]);
-					d -= m[0][3] * det3x3(m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2], m[3][0], m[3][1], m[3][2]);
-					return d;
-				}
-
-
-				// transpose of matrix
-				// TODO
-				template <typename T, size_t Cols, size_t Rows>
-				inline basic_mat<T, Rows, Cols> transpose(const basic_mat<T, Rows, Cols> &m) {
-					basic_mat<T, Rows, Cols> r;
-					for (size_t j = 0; j < Cols; ++j)
-						for (size_t i = 0; i < Rows; ++i)
+				// matrix transpose
+				template <typename MatT, enable_if_matrix_t<MatT> = 0>
+				inline auto transpose(const MatT &m) {
+					auto r = copy_type_t<MatT>{};
+					for (size_t j = 0; j < mat_cols<MatT>::value; ++j) {
+						for (size_t i = 0; i < mat_rows<MatT>::value; ++i) {
 							r[i][j] = m[j][i];
+						}
+					}
 					return r;
 				}
 
-				// component-wise multiplication 
+				// matrix component-wise multiplication 
 				// see (*) operator overload for matrix product
-				// TODO
-				template <typename T1, typename T2, size_t Rows, size_t Cols>
-				inline auto matrixCompMult(const basic_mat<T1, Rows, Cols> &lhs, const basic_mat<T2, Rows, Cols> &rhs) {
-					return zip_with(detail::op::mul(), lhs.as_vec(), rhs.as_vec());
+				template <typename MatT1, typename MatT2, enable_if_matrix_compatible_t<MatT1, MatT2> = 0>
+				inline auto matrix_comp_mult(const MatT1 &lhs, const MatT2 &rhs) {
+					return zip_with<type_to_mat>(op::mul(), lhs, rhs);
 				}
 
-				// outerProduct
-				// TODO
-				template <typename T1, typename T2, size_t N>
-				inline auto outerProduct(const basic_vec<T1, N> &lhs, const basic_vec<T2, N> &rhs) {
-					basic_mat<std::common_type_t<T1, T2>, N, N> r;
-					for (size_t j = 0; j < N; ++j)
-						for (size_t i = 0; i < N; ++i)
-							r[j][i] = lhs[j] * rhs[i];
-					return r;
+			}
+		}
+
+		namespace vectors {
+			namespace functions {
+
+				// vector outer product
+				// matrix multiplication where lhs is column, rhs is row
+				template <typename VecT1, typename VecT2, std::enable_if_t<is_element_compatible<VecT1, VecT2>::value, int> = 0>
+				inline auto outer_product(const VecT1 &lhs, const VecT2 &rhs) {
+					// TODO this could be constrained better
+					return zip_with<type_to_mat>(op::mul(), repeat_vec<const VecT1 &, array_size<VecT2>::value>(lhs), rhs);
 				}
 
 			}
