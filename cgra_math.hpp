@@ -3047,8 +3047,13 @@ namespace cgra {
 
 	// metafunction class: convert array-like type to matrix
 	struct type_to_mat {
-		template <typename VecT>
+		template <typename VecT, typename = void>
 		struct apply {
+			static_assert(detail::dependent_false<VecT>::value, "type is not convertible to a matrix");
+		};
+
+		template <typename VecT>
+		struct apply<VecT, detail::void_t<detail::matrix_value_t<VecT>>> {
 			using type = basic_mat<detail::copy_type_t<detail::matrix_value_t<VecT>>, detail::mat_cols<VecT>::value, detail::mat_rows<VecT>::value>;
 		};
 	};
@@ -3130,21 +3135,21 @@ namespace cgra {
 			namespace functions {
 
 				// cast array-like to basic_mat<T, Cols, Rows> where T, Cols and Rows are deduced
-				template <typename MatT, enable_if_matrix_t<MatT> = 0>
+				template <typename MatT, enable_if_array_t<MatT> = 0>
 				inline auto mat_cast(const MatT &m) {
 					using result_t = typename type_to_mat::template apply<MatT>::type;
 					return result_t{m};
 				}
 
 				// cast array-like to basic_mat<T, Cols, Rows> where Cols and Rows are deduced
-				template <typename T, typename MatT, enable_if_matrix_t<MatT> = 0>
+				template <typename T, typename MatT, enable_if_array_t<MatT> = 0>
 				inline auto mat_cast(const MatT &m) {
 					using result_t = basic_mat<T, mat_cols<MatT>::value, mat_rows<MatT>::value>;
 					return result_t{m};
 				}
 
-				// cast array-like to basic_mat<T, Cols, Rows> were T is deduced
-				template <size_t Cols, size_t Rows, typename MatT, enable_if_matrix_t<MatT> = 0>
+				// cast array-like to basic_mat<T, Cols, Rows> where T is deduced
+				template <size_t Cols, size_t Rows, typename MatT, enable_if_array_t<MatT> = 0>
 				inline auto mat_cast(const MatT &m) {
 					using result_t = basic_mat<copy_type_t<matrix_value_t<MatT>>, Cols, Rows>;
 					return result_t{m};
@@ -5397,119 +5402,85 @@ namespace cgra {
 		return r;
 	}
 
-	template <typename MatT>
-	inline auto rotate3x(typename MatT::value_t angle) {
-		static_assert(MatT::cols >= 3, "Matrix type must have 3 or more columns");
-		static_assert(MatT::rows >= 3, "Matrix type must have 3 or more rows");
-		MatT r{ 1 };
-		r[1][1] = cos(angle);
-		r[2][1] = -sin(angle);
-		r[1][2] = sin(angle);
-		r[2][2] = cos(angle);
+	template <typename T>
+	inline auto rotate3x(const T &x) {
+		using value_t = detail::fpromote_t<T>;
+		basic_mat<value_t, 4, 4> r{1};
+		r[1][1] = cos(x);
+		r[2][1] = -sin(x);
+		r[1][2] = sin(x);
+		r[2][2] = cos(x);
 		return r;
 	}
 
-	template <typename MatT>
-	inline auto rotate3y(typename MatT::value_t angle) {
-		static_assert(MatT::cols >= 3, "Matrix type must have 3 or more columns");
-		static_assert(MatT::rows >= 3, "Matrix type must have 3 or more rows");
-		MatT r{ 1 };
-		r[0][0] = cos(angle);
-		r[2][0] = sin(angle);
-		r[0][2] = -sin(angle);
-		r[2][2] = cos(angle);
+	template <typename T>
+	inline auto rotate3y(const T &x) {
+		using value_t = detail::fpromote_t<T>;
+		basic_mat<value_t, 4, 4> r{1};
+		r[0][0] = cos(x);
+		r[2][0] = sin(x);
+		r[0][2] = -sin(x);
+		r[2][2] = cos(x);
 		return r;
 	}
 
-	template <typename MatT>
-	inline auto rotate3z(typename MatT::value_t angle) {
-		static_assert(MatT::cols >= 3, "Matrix type must have 3 or more columns");
-		static_assert(MatT::rows >= 3, "Matrix type must have 3 or more rows");
-		MatT r{ 1 };
-		r[0][0] = cos(angle);
-		r[1][0] = -sin(angle);
-		r[0][1] = sin(angle);
-		r[1][1] = cos(angle);
+	template <typename T>
+	inline auto rotate3z(const T &x) {
+		using value_t = detail::fpromote_t<T>;
+		basic_mat<value_t, 4, 4> r{1};
+		r[0][0] = cos(x);
+		r[1][0] = -sin(x);
+		r[0][1] = sin(x);
+		r[1][1] = cos(x);
 		return r;
 	}
 
-	template <typename MatT>
-	inline auto rotate3(const basic_quat<typename MatT::value_t> &q) {
-		static_assert(MatT::cols >= 3, "Matrix type must have 3 or more columns");
-		static_assert(MatT::rows >= 3, "Matrix type must have 3 or more rows");
-		basic_mat<typename MatT::value_t, 4, 4> m{q};
-		return MatT{m};
+	template <typename T>
+	inline auto rotate3(const basic_quat<T> &q) {
+		using value_t = detail::fpromote_t<T>;
+		return basic_mat<value_t, 4, 4>{basic_quat<value_t>{q}};
 	}
 
-
-	template <typename MatT>
-	inline auto scale3(typename MatT::value_t v) {
-		static_assert(MatT::cols >= 3, "Matrix type must have 3 or more columns");
-		static_assert(MatT::rows >= 3, "Matrix type must have 3 or more rows");
-		MatT r{ 1 };
-		r[0][0] = v;
-		r[1][1] = v;
-		r[2][2] = v;
+	template <typename T>
+	inline auto scale3(const T &x, const T &y, const T &z) {
+		using value_t = detail::fpromote_t<T>;
+		basic_mat<value_t, 4, 4> r{1};
+		r[0][0] = x;
+		r[1][1] = y;
+		r[2][2] = z;
 		return r;
 	}
 
-	template <typename MatT>
-	inline auto scale3(typename MatT::value_t vx, typename MatT::value_t vy, typename MatT::value_t vz) {
-		static_assert(MatT::cols >= 3, "Matrix type must have 3 or more columns");
-		static_assert(MatT::rows >= 3, "Matrix type must have 3 or more rows");
-		MatT r{ 1 };
-		r[0][0] = vx;
-		r[1][1] = vy;
-		r[2][2] = vz;
+	template <typename T>
+	inline auto scale3(const T &x) {
+		return scale3(x, x, x);
+	}
+
+	template <typename T>
+	inline auto scale3(const basic_vec<T, 3> &v) {
+		return scale3(v.x, v.y, v.z);
+	}
+
+	template <typename T>
+	inline auto translate3(const T &x, const T &y, const T &z) {
+		using value_t = detail::fpromote_t<T>;
+		basic_mat<value_t, 4, 4> r{1};
+		r[3][0] = x;
+		r[3][1] = y;
+		r[3][2] = z;
 		return r;
 	}
 
-
-	template <typename MatT>
-	inline auto scale3(const basic_vec<typename MatT::value_t, 3> &v) {
-		static_assert(MatT::cols >= 3, "Matrix type must have 3 or more columns");
-		static_assert(MatT::rows >= 3, "Matrix type must have 3 or more rows");
-		MatT r{ 1 };
-		r[0][0] = v[0];
-		r[1][1] = v[1];
-		r[2][2] = v[2];
-		return r;
+	template <typename T>
+	inline auto translate3(const T &x) {
+		// TODO is this overload useful?
+		return translate3(x, x, x);
 	}
 
-	template <typename MatT>
-	inline auto translate3(typename MatT::value_t v) {
-		static_assert(MatT::cols >= 4, "Matrix type must have 4 or more columns");
-		static_assert(MatT::rows >= 3, "Matrix type must have 3 or more rows");
-		MatT r{ 1 };
-		r[3][0] = v;
-		r[3][1] = v;
-		r[3][2] = v;
-		return r;
+	template <typename T>
+	inline auto translate3(const basic_vec<T, 3> &v) {
+		return translate3(v.x, v.y, v.z);
 	}
-
-	template <typename MatT>
-	inline auto translate3(typename MatT::value_t vx, typename MatT::value_t vy, typename MatT::value_t vz) {
-		static_assert(MatT::cols >= 4, "Matrix type must have 4 or more columns");
-		static_assert(MatT::rows >= 3, "Matrix type must have 3 or more rows");
-		MatT r{ 1 };
-		r[3][0] = vx;
-		r[3][1] = vy;
-		r[3][2] = vz;
-		return r;
-	}
-
-
-	template <typename MatT>
-	inline auto translate3(const basic_vec<typename MatT::value_t, 3> &v) {
-		static_assert(MatT::cols >= 4, "Matrix type must have 4 or more columns");
-		static_assert(MatT::rows >= 3, "Matrix type must have 3 or more rows");
-		MatT r{ 1 };
-		r[3][0] = v[0];
-		r[3][1] = v[1];
-		r[3][2] = v[2];
-		return r;
-	}
-
 
 
 
