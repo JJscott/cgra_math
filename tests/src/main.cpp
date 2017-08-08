@@ -22,7 +22,7 @@ public:
 
 int main() {
 	//test::run_basic_vec_tests();
-
+	
 	using vec2x3 = basic_vec<basic_vec<float, 3>, 2>;
 
 	vec0 v0;
@@ -86,7 +86,7 @@ int main() {
 
 	cout << q1 << endl;
 	cout << q1.w << endl;
-	cout << (axisangle<quat>(vec3(0, 0, 1), pi / 2) * vec3(1, 0, 0)) << endl;
+	cout << (axisangle(vec3(0, 0, 1), pi / 2) * vec3(1, 0, 0)) << endl;
 
 	basic_vec<foobar, 2> fb;
 

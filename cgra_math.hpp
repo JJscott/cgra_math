@@ -12,23 +12,23 @@
 //      TODO
 //-----------------
 
-- FIXME revisit transform matrix factory functions (re: homogeneous coords, explicit types)
-- FIXME revisit quat factory functions (re: explicit types)
-- ndc z-bounds for projection matrices (gl vs d3d)
-- infinite perspective projection
+- FIXME factory function constraints?
+- FIXME make mat inverse error by exception
+- quat axis/angle functions (axisof? angleof?)
 - FIXME examine all advanced quat functions for correctness
 - FIXME min/max for vectors vs std (overloading only for basic_vec is dangerous)
 - FIXME unbreak constexpr for msvc and intellisense
-- 'conjugate' -> 'conj' (others?)
+- rename 'conjugate' -> 'conj' etc, deprecate old names
 - vector etc comparison result magic
+- ndc z-bounds for projection matrices (gl vs d3d)
+- infinite perspective projection
 - defend more things against vectors of vectors (scalar compatibility?)
 - defend more things against integer arguments by promoting to floating point
 - test is_vector_compatible etc with static asserts
 - move random section to bottom of file
-- FIXME make mat inverse error by exception
 - constexpr everything
 - clean up common function definitions and remove duplicates
-- implement generic cat functions
+- implement generic cat functions (with vec_cast?)
 - comments and documentation
 - create inputstream operators for data types to recreate from output
 - implement alternatives to body-3-2-1 euler rotation
@@ -1130,6 +1130,14 @@ namespace cgra {
 
 		template <typename MatT>
 		struct mat_rows : array_size<array_value_or_void_t<MatT>> {};
+
+		template <typename T1, typename T2>
+		struct arith_result2 {
+			using type = decltype(std::declval<T1>() + std::declval<T2>());
+		};
+
+		template <typename ...Ts>
+		using fpromote_arith_t = meta_fold_t<meta_quote<arith_result2>, float, std::tuple<fpromote_t<Ts>...>>;
 
 		template <typename T1, typename T2>
 		struct is_mutually_convertible :
@@ -5278,6 +5286,144 @@ namespace cgra {
 
 
 
+	//    ______      __    __       ___   .___________. _______ .______      .__   __.  __    ______   .__   __.     _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
+	//   /  __  \    |  |  |  |     /   \  |           ||   ____||   _  \     |  \ |  | |  |  /  __  \  |  \ |  |    |   ____||  |  |  | |  \ |  |  /      ||           ||  |  /  __  \  |  \ |  |     /       |  //
+	//  |  |  |  |   |  |  |  |    /  ^  \ `---|  |----`|  |__   |  |_)  |    |   \|  | |  | |  |  |  | |   \|  |    |  |__   |  |  |  | |   \|  | |  ,----'`---|  |----`|  | |  |  |  | |   \|  |    |   (----`  //
+	//  |  |  |  |   |  |  |  |   /  /_\  \    |  |     |   __|  |      /     |  . `  | |  | |  |  |  | |  . `  |    |   __|  |  |  |  | |  . `  | |  |         |  |     |  | |  |  |  | |  . `  |     \   \      //
+	//  |  `--'  '--.|  `--'  |  /  _____  \   |  |     |  |____ |  |\  \----.|  |\   | |  | |  `--'  | |  |\   |    |  |     |  `--'  | |  |\   | |  `----.    |  |     |  | |  `--'  | |  |\   | .----)   |     //
+	//   \_____\_____\\______/  /__/     \__\  |__|     |_______|| _| `._____||__| \__| |__|  \______/  |__| \__|    |__|      \______/  |__| \__|  \______|    |__|     |__|  \______/  |__| \__| |_______/      //
+	//                                                                                                                                                                                                            //
+	//============================================================================================================================================================================================================//
+
+	namespace detail {
+		namespace scalars {
+			namespace functions {
+
+				// quat dot product
+				template <typename T1, typename T2>
+				inline auto dot(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
+					return lhs.w * rhs.w + lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
+				}
+
+				// quat conjugate (== inverse for unit quat)
+				template <typename T>
+				inline auto conjugate(const basic_quat<T> &q) {
+					// TODO rename to 'conj'
+					return basic_quat<T>{q.w, -q.x, -q.y, -q.z};
+				}
+
+				// quat inverse
+				template <typename T>
+				inline auto inverse(const basic_quat<T> &q) {
+					// yes, this should indeed be the square of the norm
+					return conjugate(q) * (T{1} / dot(q, q));
+				}
+
+				template <typename T>
+				inline auto pow(const basic_quat<T> &q, T power) {
+					T qm = length(q);
+					T theta = acos(q.w / qm);
+					T ivm = 1 / sqrt(q.x * q.x + q.y * q.y + q.z * q.z);
+
+					if (isinf(ivm)) return basic_quat<T>{1} *pow(qm, power);
+
+					T ivm_power_theta = ivm * power * theta;
+					basic_quat<T> p{0, q.x * ivm_power_theta, q.y * ivm_power_theta, q.z * ivm_power_theta};
+					return exp(p) * pow(qm, power);
+				}
+
+
+				template <typename T>
+				inline auto exp(const basic_quat<T> &q) {
+					T expw = exp(q.w);
+					T vm = sqrt(q.x * q.x + q.y * q.y + q.z * q.z);
+					T ivm = 1 / vm;
+
+					if (isinf(ivm)) return basic_quat<T>{expw * cos(vm)};
+
+					T vf = expw * sin(vm) * ivm;
+					return basic_quat<T>{expw * cos(vm), q.x * vf, q.y * vf, q.z * vf};
+				}
+
+				template <typename T>
+				inline auto log(const basic_quat<T> &q) {
+					T qm = length(q);
+					T ivm = 1 / sqrt(q.x * q.x + q.y * q.y + q.z * q.z);
+
+					if (isinf(ivm)) return basic_quat<T>(log(qm), 0, 0, 0);
+
+					T vf = acos(q.w / qm) * ivm;
+					return basic_quat<T>{log(qm), q.x * vf, q.y * vf, q.z * vf};
+				}
+
+				// length/magnitude of vector from quaternion
+				template <typename T>
+				inline T length(const basic_quat<T> &q) {
+					return sqrt(dot(q, q));
+				}
+
+				// returns unit quaternion
+				template <typename T>
+				inline auto normalize(const basic_quat<T> &q) {
+					return q / length(q);
+				}
+
+				// quat linear interpolation (lerp) : x*(1-t) + y*t
+				// TODO quat nlerp?
+				template <typename T1, typename T2, typename T3>
+				inline auto mix(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs, const T3 &t) {
+					using common_t = decltype(T1() * T2() * T3());
+					return lhs * (common_t(1) - t) + rhs * t;
+				}
+
+				// quat spherical linear interpolation (slerp)
+				template <typename T1, typename T2, typename T3>
+				inline auto slerp(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs, const T3 &t) {
+					using common_t = std::common_type_t<T1, T2, T3>;
+					basic_quat<common_t> q = normalize(lhs);
+					basic_quat<common_t> p = normalize(rhs);
+					common_t epsilon = 0.0001;
+					if (dot(p, q) < common_t(0)) {
+						q = q * common_t(-1);
+					}
+					common_t dpq = dot(p, q);
+
+					if ((common_t(1) - dpq) > epsilon) {
+						common_t w = acos(dpq);
+						return ((sin((common_t(1) - t) * w) * p) + (sin(t * w) * q)) / sin(w);
+					}
+
+					return (common_t(1) - t) * p + t * q;
+				}
+
+
+				// returns the rotation (in radians) of the quaternion around a given axis
+				template <typename T1, typename T2>
+				inline auto project(const basic_quat<T1> &q, const basic_vec<T2, 3> &axis) {
+					using common_t = std::common_type_t<T1, T2>;
+
+					basic_vec<common_t, 3> nv = normalize(axis);
+
+					// find the the tangent to nv
+					basic_vec<common_t, 3> tangent{1, 0, 0};
+					if (abs(dot(tangent, nv)) > 0.7331) // anti-leet
+						tangent = basic_vec<common_t, 3>{0, 1, 0};
+					tangent = normalize(cross(nv, tangent));
+
+					// transform, reject and dot values to get angle
+					basic_vec<common_t, 3> transformed = q * tangent;
+					basic_vec<common_t, 3> projection = normalize(reject(transformed, nv));
+
+					return angle(tangent, projection);
+				}
+
+			}
+		}
+	}
+
+
+
+
 	//  .___________..______          ___      .__   __.      _______. _______   ______   .______      .___  ___.     _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
 	//  |           ||   _  \        /   \     |  \ |  |     /       ||   ____| /  __  \  |   _  \     |   \/   |    |   ____||  |  |  | |  \ |  |  /      ||           ||  |  /  __  \  |  \ |  |     /       |  //
 	//  `---|  |----`|  |_)  |      /  ^  \    |   \|  |    |   (----`|  |__   |  |  |  | |  |_)  |    |  \  /  |    |  |__   |  |  |  | |   \|  | |  ,----'`---|  |----`|  | |  |  |  | |   \|  |    |   (----`  //
@@ -5306,18 +5452,16 @@ namespace cgra {
 	template <typename T>
 	inline auto rotate2(const T &x) {
 		basic_mat<detail::fpromote_t<T>, 3, 3> r{1};
-		auto cos_x = cos(x);
-		auto sin_x = sin(x);
-		r[0][0] = cos_x;
-		r[1][0] = -sin_x;
-		r[1][1] = cos_x;
-		r[0][1] = sin_x;
+		r[0][0] = cos(x);
+		r[1][0] = -sin(x);
+		r[1][1] = cos(x);
+		r[0][1] = sin(x);
 		return r;
 	}
 
-	template <typename T>
-	inline auto scale2(const T &x, const T &y) {
-		basic_mat<detail::fpromote_t<T>, 3, 3> r{1};
+	template <typename Tx, typename Ty>
+	inline auto scale2(const Tx &x, const Ty &y) {
+		basic_mat<detail::fpromote_arith_t<Tx, Ty>, 3, 3> r{1};
 		r[0][0] = x;
 		r[1][1] = y;
 		return r;
@@ -5333,9 +5477,9 @@ namespace cgra {
 		return scale2(v.x, v.y);
 	}
 
-	template <typename T>
-	inline auto translate2(const T &x, const T &y) {
-		basic_mat<detail::fpromote_t<T>, 3, 3> r{1};
+	template <typename Tx, typename Ty>
+	inline auto translate2(const Tx &x, const Ty &y) {
+		basic_mat<detail::fpromote_arith_t<Tx, Ty>, 3, 3> r{1};
 		r[3][0] = x;
 		r[3][1] = y;
 		return r;
@@ -5356,48 +5500,49 @@ namespace cgra {
 	// Functions for constructing 3d transformations
 	//
 
-	template <typename T>
-	inline auto look_at(const basic_vec<T, 3> &eye, const basic_vec<T, 3> &lookAt, const basic_vec<T, 3> &up) {
+	template <typename Te, typename Tf, typename Tu>
+	inline auto look_at(const basic_vec<Te, 3> &eye, const basic_vec<Tf, 3> &focus, const basic_vec<Tu, 3> &up) {
+		// TODO rename: lookat?
 		// TODO Nan check
-		using value_t = detail::fpromote_t<T>;
-		auto vz = normalize(eye - lookAt);
-		auto vx = normalize(cross(up, vz));
-		auto vy = normalize(cross(vz, vx));
+		using value_t = detail::fpromote_arith_t<Te, Tf, Tu>;
+		const auto vz = normalize(eye - focus);
+		const auto vx = normalize(cross(up, vz));
+		const auto vy = normalize(cross(vz, vx));
 		basic_mat<value_t, 4, 4> r{vx, vy, vz, eye};
 		r[3][3] = value_t{1};
 		return inverse(r);
 	}
 
 	// fovy: vertical field of view in radians; aspect is w/h
-	template <typename T>
-	inline auto perspective(const T &fovy, const T &aspect, const T &znear, const T &zfar) {
+	template <typename Ty, typename Ta, typename Tn, typename Tf>
+	inline auto perspective(const Ty &fovy, const Ta &aspect, const Tn &znear, const Tf &zfar) {
 		// TODO Nan check
 		// lol wtf, fast approximation
 		// (seriously, where did this come from?)
 		// typename MatT::value_t f = typename MatT::value_t(1) / (fovy / typename MatT::value_t(2));
-		using value_t = detail::fpromote_t<T>;
+		using value_t = detail::fpromote_arith_t<Ty, Ta, Tn, Tf>;
 		// real equation
-		auto f = cot(fovy / value_t{2});
+		const auto f = cot(fovy / value_t{2});
 		basic_mat<value_t, 4, 4> r{0};
 		r[0][0] = f / aspect;
 		r[1][1] = f;
-		r[2][2] = (zfar + znear) / (znear - zfar);
-		r[3][2] = (2 * zfar * znear) / (znear - zfar);
+		r[2][2] = (zfar + value_t{znear}) / (znear - value_t{zfar});
+		r[3][2] = (2 * zfar * value_t{znear}) / (znear - value_t{zfar});
 		r[2][3] = -1;
 		return r;
 	}
 
-	template <typename T>
-	inline auto orthographic(const T &left, const T &right, const T &bottom, const T &top, const T &znear, const T &zfar) {
+	template <typename Tl, typename Tr, typename Tb, typename Tt, typename Tn, typename Tf>
+	inline auto orthographic(const Tl &left, const Tr &right, const Tb &bottom, const Tt &top, const Tn &znear, const Tf &zfar) {
 		// TODO Nan check
-		using value_t = detail::fpromote_t<T>;
+		using value_t = detail::fpromote_arith_t<Tl, Tr, Tb, Tt, Tn, Tf>;
 		basic_mat<value_t, 4, 4> r{0};
-		r[0][0] = value_t{2} / (right - left);
-		r[3][0] = (right + left) / (right - left);
-		r[1][1] = value_t{2} / (top - bottom);
-		r[3][1] = (top + bottom) / (top - bottom);
-		r[2][2] = -value_t{2} / (zfar - znear);
-		r[3][2] = (zfar + znear) / (zfar - znear);
+		r[0][0] = value_t{2} / (right - value_t{left});
+		r[3][0] = (right + value_t{left}) / (right - value_t{left});
+		r[1][1] = value_t{2} / (top - value_t{bottom});
+		r[3][1] = (top + value_t{bottom}) / (top - value_t{bottom});
+		r[2][2] = -value_t{2} / (zfar - value_t{znear});
+		r[3][2] = (zfar + value_t{znear}) / (zfar - value_t{znear});
 		r[3][3] = value_t{1};
 		return r;
 	}
@@ -5441,9 +5586,9 @@ namespace cgra {
 		return basic_mat<value_t, 4, 4>{basic_quat<value_t>{q}};
 	}
 
-	template <typename T>
-	inline auto scale3(const T &x, const T &y, const T &z) {
-		using value_t = detail::fpromote_t<T>;
+	template <typename Tx, typename Ty, typename Tz>
+	inline auto scale3(const Tx &x, const Ty &y, const Tz &z) {
+		using value_t = detail::fpromote_arith_t<Tx, Ty, Tz>;
 		basic_mat<value_t, 4, 4> r{1};
 		r[0][0] = x;
 		r[1][1] = y;
@@ -5461,9 +5606,9 @@ namespace cgra {
 		return scale3(v.x, v.y, v.z);
 	}
 
-	template <typename T>
-	inline auto translate3(const T &x, const T &y, const T &z) {
-		using value_t = detail::fpromote_t<T>;
+	template <typename Tx, typename Ty, typename Tz>
+	inline auto translate3(const Tx &x, const Ty &y, const Tz &z) {
+		using value_t = detail::fpromote_arith_t<Tx, Ty, Tz>;
 		basic_mat<value_t, 4, 4> r{1};
 		r[3][0] = x;
 		r[3][1] = y;
@@ -5482,182 +5627,44 @@ namespace cgra {
 		return translate3(v.x, v.y, v.z);
 	}
 
-
-
-
-	//    ______      __    __       ___   .___________. _______ .______      .__   __.  __    ______   .__   __.     _______  __    __  .__   __.   ______ .___________. __    ______   .__   __.      _______.  //
-	//   /  __  \    |  |  |  |     /   \  |           ||   ____||   _  \     |  \ |  | |  |  /  __  \  |  \ |  |    |   ____||  |  |  | |  \ |  |  /      ||           ||  |  /  __  \  |  \ |  |     /       |  //
-	//  |  |  |  |   |  |  |  |    /  ^  \ `---|  |----`|  |__   |  |_)  |    |   \|  | |  | |  |  |  | |   \|  |    |  |__   |  |  |  | |   \|  | |  ,----'`---|  |----`|  | |  |  |  | |   \|  |    |   (----`  //
-	//  |  |  |  |   |  |  |  |   /  /_\  \    |  |     |   __|  |      /     |  . `  | |  | |  |  |  | |  . `  |    |   __|  |  |  |  | |  . `  | |  |         |  |     |  | |  |  |  | |  . `  |     \   \      //
-	//  |  `--'  '--.|  `--'  |  /  _____  \   |  |     |  |____ |  |\  \----.|  |\   | |  | |  `--'  | |  |\   |    |  |     |  `--'  | |  |\   | |  `----.    |  |     |  | |  `--'  | |  |\   | .----)   |     //
-	//   \_____\_____\\______/  /__/     \__\  |__|     |_______|| _| `._____||__| \__| |__|  \______/  |__| \__|    |__|      \______/  |__| \__|  \______|    |__|     |__|  \______/  |__| \__| |_______/      //
-	//                                                                                                                                                                                                            //
-	//============================================================================================================================================================================================================//
-
 	// Euler angle constuctor
 	// body-3-2-1 euler rotation
 	// TODO nan checking
-	template <typename QuatT>
-	inline auto euler(typename QuatT::value_t rx, typename QuatT::value_t ry, typename QuatT::value_t rz) {
-
-		basic_vec<typename QuatT::value_t, 4> rotx(sin(rx / 2), 0, 0, cos(rx / 2));
-		basic_vec<typename QuatT::value_t, 4> roty(0, sin(ry / 2), 0, cos(ry / 2));
-		basic_vec<typename QuatT::value_t, 4> rotz(0, 0, sin(rz / 2), cos(rz / 2));
-
-		QuatT q(rotx * outerProduct(roty, rotz));
-
+	template <typename Tx, typename Ty, typename Tz>
+	inline auto euler(const Tx &rx, const Ty &ry, const Tz &rz) {
+		using value_t = detail::fpromote_arith_t<Tx, Ty, Tz>;
+		basic_vec<value_t, 4> rotx{sin(rx / value_t{2}), 0, 0, cos(rx / value_t{2})};
+		basic_vec<value_t, 4> roty{0, sin(ry / value_t{2}), 0, cos(ry / value_t{2})};
+		basic_vec<value_t, 4> rotz{0, 0, sin(rz / value_t{2}), cos(rz / value_t{2})};
+		basic_quat<value_t> q{rotx * outer_product(roty, rotz)};
 		return q;
 	}
 
 	// rotation around a given axis
 	// normalizes the axis for you
 	// TODO nan checking
-	template <typename QuatT, typename U>
-	inline auto axisangle(const basic_vec<U, 3> &axis, typename QuatT::value_t angle) {
-		basic_vec<typename QuatT::value_t, 3> a = normalize(axis);
-		typename QuatT::value_t s = sin(angle / 2);
-
-		return QuatT(cos(angle / 2), s * a);
+	template <typename Ta, typename Tx>
+	inline auto axisangle(const basic_vec<Ta, 3> &axis, const Tx &x) {
+		using value_t = detail::fpromote_arith_t<Ta, Tx>;
+		return basic_quat<value_t>{cos(x / value_t{2}), sin(x / value_t{2}) * normalize(axis)};
 	}
 
 	// rotation around a given axis using axis's magnitude as angle
 	// TODO nan checking
-	template <typename QuatT, typename U>
-	inline auto axisangle(const basic_vec<U, 3> &axis) {
-		typename QuatT::value_t angle = length(axis);
-		typename QuatT::value_t s = sin(angle / 2);
-		basic_vec<typename QuatT::value_t, 3> a = axis / angle; // normalize
-
-		return QuatT(cos(angle / 2), s * a);
+	template <typename T>
+	inline auto axisangle(const basic_vec<T, 3> &axis) {
+		using value_t = detail::fpromote_t<T>;
+		const auto x = length(axis);
+		return basic_quat<value_t>{cos(x / value_t{2}), sin(x / value_t{2}) * axis / x};
 	}
 
 	// rotation between 2 vectors
 	// TODO nan checking
-	template <typename QuatT, typename U1, typename U2>
-	inline auto fromto(const basic_vec<U1, 3> &from, const basic_vec<U2, 3> &to) {
-		typename QuatT::value_t angle = acos(dot(normalize(from), normalize(to)));
-		typename QuatT::value_t s = sin(angle / 2);
-		basic_vec<typename QuatT::value_t, 3> a = normalize(cross(from, to));
-
-		return QuatT(cos(angle / 2), s * a);
-	}
-
-	// quat dot product
-	template <typename T1, typename T2>
-	inline auto dot(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
-		return lhs.w * rhs.w + lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z;
-	}
-
-	// quat conjugate (== inverse for unit quat)
-	template <typename T>
-	inline auto conjugate(const basic_quat<T> &q) {
-		// TODO rename to 'conj'
-		return basic_quat<T>{q.w, -q.x, -q.y, -q.z};
-	}
-
-	// quat inverse
-	template <typename T>
-	inline auto inverse(const basic_quat<T> &q) {
-		// yes, this should indeed be the square of the norm
-		return conjugate(q) * (T{1} / dot(q, q));
-	}
-
-	template <typename T>
-	inline auto pow(const basic_quat<T> &q, T power) {
-		T qm = length(q);
-		T theta = acos(q.w / qm);
-		T ivm = 1 / sqrt(q.x * q.x + q.y * q.y + q.z * q.z);
-
-		if (isinf(ivm)) return basic_quat<T>{1} * pow(qm, power);
-
-		T ivm_power_theta = ivm * power * theta;
-		basic_quat<T> p{0, q.x * ivm_power_theta, q.y * ivm_power_theta, q.z * ivm_power_theta};
-		return exp(p) * pow(qm, power);
-	}
-
-
-	template <typename T>
-	inline auto exp(const basic_quat<T> &q) {
-		T expw = exp(q.w);
-		T vm = sqrt(q.x * q.x + q.y * q.y + q.z * q.z);
-		T ivm = 1 / vm;
-
-		if (isinf(ivm)) return basic_quat<T>{expw * cos(vm)};
-
-		T vf = expw * sin(vm) * ivm;
-		return basic_quat<T>{expw * cos(vm), q.x * vf, q.y * vf, q.z * vf};
-	}
-
-	template <typename T>
-	inline auto log(const basic_quat<T> &q) {
-		T qm = length(q);
-		T ivm = 1 / sqrt(q.x * q.x + q.y * q.y + q.z * q.z);
-
-		if (isinf(ivm)) return basic_quat<T>(log(qm), 0, 0, 0);
-
-		T vf = acos(q.w / qm) * ivm;
-		return basic_quat<T>{log(qm), q.x * vf, q.y * vf, q.z * vf};
-	}
-
-	// length/magnitude of vector from quaternion
-	template <typename T>
-	inline T length(const basic_quat<T> &q) {
-		return sqrt(dot(q, q));
-	}
-
-	// returns unit quaternion
-	template <typename T>
-	inline auto normalize(const basic_quat<T> &q) {
-		return q / length(q);
-	}
-
-	// quat linear interpolation (lerp) : x*(1-t) + y*t
-	// TODO quat nlerp?
-	template <typename T1, typename T2, typename T3>
-	inline auto mix(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs, const T3 &t) {
-		using common_t = decltype(T1() * T2() * T3());
-		return lhs * (common_t(1) - t) + rhs * t;
-	}
-
-	// quat spherical linear interpolation (slerp)
-	template <typename T1, typename T2, typename T3>
-	inline auto slerp(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs, const T3 &t) {
-		using common_t = std::common_type_t<T1, T2, T3>;
-		basic_quat<common_t> q = normalize(lhs);
-		basic_quat<common_t> p = normalize(rhs);
-		common_t epsilon = 0.0001;
-		if (dot(p, q) < common_t(0)) {
-			q = q * common_t(-1);
-		}
-		common_t dpq = dot(p, q);
-
-		if ((common_t(1) - dpq) > epsilon) {
-			common_t w = acos(dpq);
-			return ((sin((common_t(1) - t) * w) * p) + (sin(t * w) * q)) / sin(w);
-		}
-
-		return (common_t(1) - t) * p + t * q;
-	}
-
-
-	// returns the rotation (in radians) of the quaternion around a given axis
-	template <typename T1, typename T2>
-	inline auto project(const basic_quat<T1> &q, const basic_vec<T2, 3> &axis) {
-		using common_t = std::common_type_t<T1, T2>;
-
-		basic_vec<common_t, 3> nv = normalize(axis);
-
-		// find the the tangent to nv
-		basic_vec<common_t, 3> tangent{ 1, 0, 0 };
-		if (abs(dot(tangent, nv)) > 0.7331) // anti-leet
-			tangent = basic_vec<common_t, 3> { 0, 1, 0 };
-		tangent = normalize(cross(nv, tangent));
-
-		// transform, reject and dot values to get angle
-		basic_vec<common_t, 3> transformed = q * tangent;
-		basic_vec<common_t, 3> projection = normalize(reject(transformed, nv));
-
-		return angle(tangent, projection);
+	template <typename Tf, typename Tt>
+	inline auto fromto(const basic_vec<Tf, 3> &from, const basic_vec<Tt, 3> &to) {
+		using value_t = detail::fpromote_arith_t<Tf, Tt>;
+		const auto x = angle(from, to);
+		return basic_quat<value_t>{cos(x / value_t{2}), sin(x / value_t{2}) * normalize(cross(from, to))};
 	}
 
 }
