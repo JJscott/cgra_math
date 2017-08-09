@@ -813,6 +813,7 @@ namespace cgra {
 			static constexpr bool want_trig_fns = false;
 			static constexpr bool want_exp_fns = false;
 			static constexpr bool want_linear_fns = false;
+			static constexpr bool want_bool_fns = false;
 		};
 
 		template <typename T>
@@ -823,6 +824,7 @@ namespace cgra {
 			static constexpr bool want_trig_fns = true;
 			static constexpr bool want_exp_fns = true;
 			static constexpr bool want_linear_fns = true;
+			static constexpr bool want_bool_fns = true;
 		};
 
 		template <typename T>
@@ -833,6 +835,7 @@ namespace cgra {
 			static constexpr bool want_trig_fns = true;
 			static constexpr bool want_exp_fns = true;
 			static constexpr bool want_linear_fns = true;
+			static constexpr bool want_bool_fns = false;
 		};
 
 		template <typename T>
@@ -843,6 +846,7 @@ namespace cgra {
 			static constexpr bool want_trig_fns = false;
 			static constexpr bool want_exp_fns = true;
 			static constexpr bool want_linear_fns = true;
+			static constexpr bool want_bool_fns = false;
 		};
 
 		template <typename T>
@@ -864,6 +868,9 @@ namespace cgra {
 
 		template <typename T>
 		struct want_linear_fns : bool_constant<scalar_traits<std::decay_t<T>>::want_linear_fns> {};
+
+		template <typename T>
+		struct want_bool_fns : bool_constant<scalar_traits<std::decay_t<T>>::want_bool_fns> {};
 
 		template <typename T, typename = void>
 		struct array_traits {
@@ -1290,6 +1297,9 @@ namespace cgra {
 
 		template <typename ...Ts>
 		using enable_if_want_linear_fns_t = enable_if_all_t<meta_fquote<want_linear_fns>, Ts...>;
+
+		template <typename ...Ts>
+		using enable_if_want_bool_fns_t = enable_if_all_t<meta_fquote<want_bool_fns>, Ts...>;
 
 		template <typename ...VecTs>
 		using enable_if_array_t = enable_if_all_t<meta_fquote<is_array>, VecTs...>;
@@ -3036,12 +3046,12 @@ namespace cgra {
 		struct fill_impl {
 			CGRA_CONSTEXPR_FUNCTION static auto go(const T &t) {
 				auto val = fill_repeat<array_value_t<VecT>>(t);
-				return repeat_vec<decltype(val), detail::array_size<VecT>::value>(std::move(val));
+				return repeat_vec<decltype(val), array_size<VecT>::value>(std::move(val));
 			}
 		};
 
 		template <typename VecT, typename T>
-		struct fill_impl<VecT, T, std::enable_if_t<detail::is_array_compatible<VecT, T>::value>> {
+		struct fill_impl<VecT, T, std::enable_if_t<is_array_compatible<VecT, T>::value>> {
 			CGRA_CONSTEXPR_FUNCTION static auto go(const T &t) {
 				return VecT(t);
 			}
@@ -3076,52 +3086,84 @@ namespace cgra {
 	};
 
 	namespace detail {
+		namespace scalars {
+			namespace functions {
+
+				// scalar any; returns conversion to bool
+				template <typename T, enable_if_want_bool_fns_t<T> = 0>
+				inline auto any(const T &x) {
+					return bool(x);
+				}
+
+				// scalar all; returns conversion to bool
+				template <typename T, enable_if_want_bool_fns_t<T> = 0>
+				inline auto all(const T &x) {
+					return bool(x);
+				}
+
+			}
+		}
+
 		namespace vectors {
 			namespace functions {
 
 				// TODO description
-				template <typename TypeMap = type_to_vec, typename F, typename ...ArgTs, typename = detail::enable_if_array_t<ArgTs...>>
+				template <typename TypeMap = type_to_vec, typename F, typename ...ArgTs, typename = enable_if_array_t<ArgTs...>>
 				CGRA_CONSTEXPR_FUNCTION auto zip_with(F f, ArgTs &&...args) {
-					using value_t = std::decay_t<decltype(f(detail::array_traits<std::decay_t<ArgTs>>::template get<0>(std::forward<ArgTs>(args))...))>;
-					using size = detail::array_min_size<ArgTs...>;
+					using value_t = std::decay_t<decltype(f(array_traits<std::decay_t<ArgTs>>::template get<0>(std::forward<ArgTs>(args))...))>;
+					using size = array_min_size<ArgTs...>;
 					using vec_t = typename TypeMap::template apply<basic_vec<value_t, size::value>>::type;
 					using iseq = std::make_index_sequence<size::value>;
-					return detail::zip_with_impl<vec_t>(f, iseq(), detail::intellisense_constify(std::forward<ArgTs>(args))...);
+					return zip_with_impl<vec_t>(f, iseq(), intellisense_constify(std::forward<ArgTs>(args))...);
 				}
 
 				// TODO fix description
 				// Produce a scalar by applying f(T1,T2) -> T3 to adjacent pairs of elements
 				// from vector a in left-to-right order starting with f(z, v[0])
 				// Typically T1 = T3 and T2 is a vector of some T
-				template <typename F, typename T1, typename VecT, typename = detail::enable_if_array_t<VecT>>
+				template <typename F, typename T1, typename VecT, typename = enable_if_array_t<VecT>>
 				CGRA_CONSTEXPR_FUNCTION auto fold(F f, T1 &&t1, VecT &&v) {
-					return detail::fold_impl<0, detail::array_size<VecT>::value>::apply(f, std::forward<T1>(t1), std::forward<VecT>(v));
+					return fold_impl<0, array_size<VecT>::value>::apply(f, std::forward<T1>(t1), std::forward<VecT>(v));
 				}
 
 				// fill an array-like type VecT with copies of a (relatively) scalar-like value of type T
 				template <typename VecT, typename T>
 				CGRA_CONSTEXPR_FUNCTION inline VecT fill(const T &t) {
 					// VecT should not be constrained to just arrays: fill<float>() etc should work
-					return VecT{detail::fill_repeat<VecT>(t)};
+					return VecT{fill_repeat<VecT>(t)};
 				}
 
 				// sum of all x in v, i.e., v[0] + v[1] + ...
-				template <typename VecT, typename = detail::enable_if_array_t<VecT>>
+				template <typename VecT, typename = enable_if_array_t<VecT>>
 				inline auto sum(const VecT &v) {
-					return fold(detail::op::add(), detail::array_value_t<VecT>{}, v);
+					return fold(detail::op::add(), array_value_t<VecT>{}, v);
 				}
 
 				// product of all x in v, i.e., v[0] * v[1] * ...
-				template <typename VecT, typename = detail::enable_if_array_t<VecT>>
+				template <typename VecT, typename = enable_if_array_t<VecT>>
 				inline auto product(const VecT &v) {
-					return fold(detail::op::mul(), fill<detail::array_value_t<VecT>>(1), v);
+					return fold(detail::op::mul(), array_value_t<VecT>{1}, v);
 				}
 
 				// dot product of v1 and v2, i.e., (v1[0] * v2[0]) + (v1[1] * v2[1]) + ...
-				template <typename VecT1, typename VecT2, typename = detail::enable_if_array_t<VecT1, VecT2>>
+				template <typename VecT1, typename VecT2, typename = enable_if_array_t<VecT1, VecT2>>
 				inline auto dot(const VecT1 &v1, const VecT2 &v2) {
 					auto vprod = zip_with(detail::op::mul(), v1, v2);
-					return fold(detail::op::add(), detail::array_value_t<decltype(vprod)>{}, std::move(vprod));
+					return fold(detail::op::add(), array_value_t<decltype(vprod)>{}, std::move(vprod));
+				}
+
+				// true iff any component of v is true; empty => false
+				template <typename VecT, enable_if_array_t<VecT> = 0>
+				inline auto any(const VecT &v) {
+					using cgra::detail::scalars::any;
+					return fold([](const auto &x1, const auto &x2) { return any(x1) || any(x2); }, false, v);
+				}
+
+				// true iff all components of v are true; empty => true
+				template <typename VecT, enable_if_array_t<VecT> = 0>
+				inline auto all(const VecT &v) {
+					using cgra::detail::scalars::all;
+					return fold([](const auto &x1, const auto &x2) { return all(x1) && all(x2); }, true, v);
 				}
 
 				// cast array-like to basic_vec<T, N> where T and N are deduced
@@ -4371,6 +4413,12 @@ namespace cgra {
 					return std::numeric_limits<T>::quiet_NaN();
 				}
 
+				// eg: epsilon<float>()
+				template <typename T, enable_if_want_real_fns_t<T> = 0>
+				inline T epsilon() {
+					return std::numeric_limits<T>::epsilon();
+				}
+
 				// Returns 1 if x > 0, 0 if x = 0, or –1 if x < 0
 				template <typename T, enable_if_want_real_fns_t<T> = 0>
 				inline int sign(const T &x) {
@@ -4452,6 +4500,27 @@ namespace cgra {
 
 		namespace vectors {
 			namespace functions {
+
+				// vec inf
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
+				inline auto inf() {
+					using cgra::detail::scalars::inf;
+					return copy_type_t<VecT>{inf<array_value_t<VecT>>()};
+				}
+
+				// vec nan
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
+				inline auto nan() {
+					using cgra::detail::scalars::nan;
+					return copy_type_t<VecT>{nan<array_value_t<VecT>>()};
+				}
+
+				// vec epsilon
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
+				inline auto epsilon() {
+					using cgra::detail::scalars::epsilon;
+					return copy_type_t<VecT>{epsilon<array_value_t<VecT>>()};
+				}
 
 				// vec abs
 				template <typename VecT, enable_if_vector_t<VecT> = 0>
@@ -4933,8 +5002,25 @@ namespace cgra {
 	//=========================================================================================================================================================================================================//
 
 	namespace detail {
+		namespace scalars {
+			namespace functions {
+
+				template <typename T, enable_if_want_real_fns_t<T> = 0>
+				inline auto nearzero(const T &x, const T &tol) {
+					return abs(x) < tol;
+				}
+
+			}
+		}
+
 		namespace vectors {
 			namespace functions {
+
+				template <typename VecT, enable_if_vector_t<VecT> = 0>
+				inline auto nearzero(const VecT &v, const VecT &vtol) {
+					using cgra::detail::scalars::nearzero;
+					return zip_with([](const auto &x, const auto &tol) { return nearzero(x, tol); }, v, vtol);
+				}
 
 				// Element-wise function for x in v1 and y in v2
 				// Returns the comparison of x < y
@@ -4976,18 +5062,6 @@ namespace cgra {
 				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline auto not_equal(const VecT1 &v1, const VecT2 &v2) {
 					return zip_with([](const auto &x1, const auto &x2) { return x1 < x2; }, v1, v2);
-				}
-
-				// Returns true if any component of v is true
-				template <typename VecT, enable_if_vector_t<VecT> = 0>
-				inline auto any(const VecT &v) {
-					return fold([](const auto &x1, const auto &x2) { return x1 || x2; }, false, v);
-				}
-
-				// Returns true only if all components of x are true
-				template <typename VecT, enable_if_vector_t<VecT> = 0>
-				inline auto all(const VecT &v) {
-					return fold([](const auto &x1, const auto &x2) { return x1 && x2; }, true, v);
 				}
 
 				// Note : C++ does not support "not" as a function name so it has been omitted;

@@ -108,5 +108,7 @@ int main() {
 	cout << h2 << endl;
 	cout << h3 << endl;
 
+	bool b1 = any(nearzero(vec3(1, 2, 3), epsilon<vec3>()));
+
 	cin.get();
 }
