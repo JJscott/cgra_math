@@ -110,5 +110,32 @@ int main() {
 
 	bool b1 = any(nearzero(vec3(1, 2, 3), epsilon<vec3>()));
 
+	using vec5 = basic_vec<float, 5>;
+
+	basic_mat<float, 5, 5> m9{
+		{1, 2, 3, 4, 5},
+		{1, 2, 3, 4, 6},
+		{1, 3, 2, 9, 7},
+		{2, 4, 0, 2, 8},
+		{1, 3, 9, 7, 3}
+	};
+
+	cout << m9 << endl;
+	cout << (m9 * inverse(m9)) << endl;
+
+	basic_mat<float, 5, 5> m10{
+		basic_mat<float, 2, 5>{random<vec5>()},
+		random<vec5>(),
+		random<vec5>(),
+		random<vec5>()
+	};
+	m10[0][4] *= 1.000001f;
+	//m10[2] *= 0.01f;
+	m10[3] *= 1000;
+	m10 *= 0.0001f;
+
+	cout << m10 << endl;
+	cout << (m10 * inverse(m10)) << endl;
+
 	cin.get();
 }

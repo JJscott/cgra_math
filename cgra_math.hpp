@@ -39,6 +39,14 @@
 
 #pragma once
 
+// we undefine min and max macros if they exist
+// so they don't interfere with our function overloads
+// @$#! macros...
+#undef MIN
+#undef min
+#undef MAX
+#undef max
+
 #include <cassert>
 #include <cmath>
 #include <climits>
@@ -82,14 +90,6 @@
 #ifndef CGRA_CONSTEXPR_FUNCTION
 #define CGRA_CONSTEXPR_FUNCTION constexpr
 #endif
-
-// we undefine min and max macros if they exist
-// so they don't interfere with our function overloads
-// @$#! macros...
-#undef MIN
-#undef min
-#undef MAX
-#undef max
 
 // we may need these macros to define ctors that intellisense can constexpr-eval
 
@@ -146,6 +146,11 @@ namespace cgra {
 
 	using nnfloat = not_nan<float>;
 	using nndouble = not_nan<double>;
+
+	class singular_matrix_error : std::runtime_error {
+	public:
+		singular_matrix_error() : std::runtime_error("singular matrix") {}
+	};
 
 #ifdef CGRA_INITIAL3D_NAMES
 	// aliases: Intial3D naming convention
@@ -2825,7 +2830,7 @@ namespace cgra {
 			namespace functions {
 
 				template <typename T, size_t N>
-				constexpr void swap(basic_vec<T, N> &lhs, basic_vec<T, N> &rhs) {
+				CGRA_CONSTEXPR_FUNCTION void swap(basic_vec<T, N> &lhs, basic_vec<T, N> &rhs) {
 					// TODO c++17: noexcept(std::is_nothrow_swappable<T>::value)
 					for (size_t i = 0; i < N; i++) {
 						using std::swap;
@@ -3757,28 +3762,28 @@ namespace cgra {
 				// mat add_assign
 				template <typename MatT1, typename MatT2, enable_if_matrix_compatible_t<MatT1, MatT2> = 0>
 				inline MatT1 & operator+=(MatT1 &lhs, const MatT2 &rhs) {
-					zip_with<type_to_mat>(detail::op::add_assign(), lhs, rhs);
+					zip_with(detail::op::add_assign(), lhs, rhs);
 					return lhs;
 				}
 
 				// mat add_assign scalar
 				template <typename MatT, typename T, enable_if_matrix_scalar_compatible_t<MatT, T> = 0>
 				inline MatT & operator+=(MatT &lhs, const T &rhs) {
-					zip_with<type_to_mat>(detail::op::add_assign(), lhs, repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(rhs));
+					zip_with(detail::op::add_assign(), lhs, repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(rhs));
 					return lhs;
 				}
 
 				// mat sub_assign
 				template <typename MatT1, typename MatT2, enable_if_matrix_compatible_t<MatT1, MatT2> = 0>
 				inline MatT1 & operator-=(MatT1 &lhs, const MatT2 &rhs) {
-					zip_with<type_to_mat>(detail::op::sub_assign(), lhs, rhs);
+					zip_with(detail::op::sub_assign(), lhs, rhs);
 					return lhs;
 				}
 
 				// mat sub_assign scalar
 				template <typename MatT, typename T, enable_if_matrix_scalar_compatible_t<MatT, T> = 0>
 				inline MatT & operator-=(MatT &lhs, const T &rhs) {
-					zip_with<type_to_mat>(detail::op::sub_assign(), lhs, repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(rhs));
+					zip_with(detail::op::sub_assign(), lhs, repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(rhs));
 					return lhs;
 				}
 
@@ -3791,14 +3796,14 @@ namespace cgra {
 				// mat mul_assign scalar
 				template <typename MatT, typename T, enable_if_matrix_scalar_compatible_t<MatT, T> = 0>
 				inline MatT & operator*=(MatT &lhs, const T &rhs) {
-					zip_with<type_to_mat>(detail::op::mul_assign(), lhs, repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(rhs));
+					zip_with(detail::op::mul_assign(), lhs, repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(rhs));
 					return lhs;
 				}
 
 				// mat div_assign scalar
 				template <typename MatT, typename T, enable_if_matrix_scalar_compatible_t<MatT, T> = 0>
 				inline MatT & operator/=(MatT &lhs, const T &rhs) {
-					zip_with<type_to_mat>(detail::op::div_assign(), lhs, repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(rhs));
+					zip_with(detail::op::div_assign(), lhs, repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(rhs));
 					return lhs;
 				}
 
@@ -5138,19 +5143,20 @@ namespace cgra {
 				template <typename MatT>
 				static auto go(const MatT &m) {
 					using std::swap;
-					// TODO use of abs and >0 currently means the value type has to be scalar
+					// TODO needs abs, div (quat?)
 					using cgra::detail::scalars::abs;
 					using value_t = fpromote_t<matrix_value_t<MatT>>;
 					auto mtemp = mat_cast<value_t>(m);
 					auto mr = decltype(mtemp){1};
 					// run column-wise gauss-jordan elimination on mtemp, apply same ops to mr
 					size_t col = 0;
+					auto prev_swmax = abs(value_t{1});
 					for (size_t r = 0; r < mat_rows<MatT>::value; r++) {
 						// swap cols so [col][r] is as large in magnitude as possible
 						size_t swcol = col;
 						auto swmax = abs(mtemp[col][r]);
 						for (size_t j = col + 1; j < Cols; j++) {
-							auto t = abs(mtemp[j][r]);
+							const auto t = abs(mtemp[j][r]);
 							if (t > swmax) {
 								swmax = t;
 								swcol = j;
@@ -5161,12 +5167,15 @@ namespace cgra {
 							swap(mr[col], mr[swcol]);
 							swap(mtemp[col], mtemp[swcol]);
 						}
-						if (swmax > 0) {
+						// TODO better heuristic for epsilon scaling?
+						// plain epsilon is good when matrix values are around 1
+						if (all(!nearzero(swmax, prev_swmax * epsilon<decltype(swmax)>()))) {
 							// largest usable abs value was > 0, continue => zero rest of row
-							auto q = value_t{1} / mtemp[col][r];
+							const auto q = value_t{1} / mtemp[col][r];
 							for (size_t j = 0; j < Cols; j++) {
-								if (j != col && abs(mtemp[j][r]) > 0) {
-									auto f = mtemp[j][r] * q;
+								if (j != col) {
+									// && abs(mtemp[j][r]) > 0
+									const auto f = mtemp[j][r] * q;
 									mr[j] -= mr[col] * f;
 									mtemp[j] -= mtemp[col] * f;
 								}
@@ -5176,10 +5185,11 @@ namespace cgra {
 							mtemp[col] *= q;
 							// pivot isolated, move to next col
 							col++;
+							prev_swmax = swmax;
 						}
 					}
 					// after above routine, col == rank
-					assert(Cols == col && "singular matrix");
+					if (Cols != col) throw singular_matrix_error();
 					// mr is now the inverse
 					return mr;
 				}

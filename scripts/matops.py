@@ -25,14 +25,14 @@ binary_ops = [
 assign_op_str = '''// mat {comment}
 template <typename MatT1, typename MatT2, enable_if_matrix_compatible_t<MatT1, MatT2> = 0>
 inline MatT1 & operator{op}(MatT1 &lhs, const MatT2 &rhs) {{
-	zip_with<type_to_mat>(detail::op::{func}(), lhs, rhs);
+	zip_with(detail::op::{func}(), lhs, rhs);
 	return lhs;
 }}
 
 // mat {comment} scalar
 template <typename MatT, typename T, enable_if_matrix_scalar_compatible_t<MatT, T> = 0>
 inline MatT & operator{op}(MatT &lhs, const T &rhs) {{
-	zip_with<type_to_mat>(detail::op::{func}(), lhs, repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(rhs));
+	zip_with(detail::op::{func}(), lhs, repeat_vec_vec<T, mat_cols<MatT>::value, mat_rows<MatT>::value>(rhs));
 	return lhs;
 }}
 '''
