@@ -12,7 +12,7 @@
 //      TODO
 //-----------------
 
-- FIXME factory function constraints?
+- factory function constraints?
 - FIXME make mat inverse error by exception
 - quat axis/angle functions (axisof? angleof?)
 - FIXME examine all advanced quat functions for correctness
@@ -812,6 +812,7 @@ namespace cgra {
 			static constexpr bool want_real_fns = false;
 			static constexpr bool want_trig_fns = false;
 			static constexpr bool want_exp_fns = false;
+			static constexpr bool want_linear_fns = false;
 		};
 
 		template <typename T>
@@ -821,6 +822,7 @@ namespace cgra {
 			static constexpr bool want_real_fns = true;
 			static constexpr bool want_trig_fns = true;
 			static constexpr bool want_exp_fns = true;
+			static constexpr bool want_linear_fns = true;
 		};
 
 		template <typename T>
@@ -830,6 +832,7 @@ namespace cgra {
 			static constexpr bool want_real_fns = false;
 			static constexpr bool want_trig_fns = true;
 			static constexpr bool want_exp_fns = true;
+			static constexpr bool want_linear_fns = true;
 		};
 
 		template <typename T>
@@ -839,6 +842,7 @@ namespace cgra {
 			static constexpr bool want_real_fns = false;
 			static constexpr bool want_trig_fns = false;
 			static constexpr bool want_exp_fns = true;
+			static constexpr bool want_linear_fns = true;
 		};
 
 		template <typename T>
@@ -857,6 +861,9 @@ namespace cgra {
 
 		template <typename T>
 		struct want_exp_fns : bool_constant<scalar_traits<std::decay_t<T>>::want_exp_fns> {};
+
+		template <typename T>
+		struct want_linear_fns : bool_constant<scalar_traits<std::decay_t<T>>::want_linear_fns> {};
 
 		template <typename T, typename = void>
 		struct array_traits {
@@ -1280,6 +1287,9 @@ namespace cgra {
 
 		template <typename ...Ts>
 		using enable_if_want_exp_fns_t = enable_if_all_t<meta_fquote<want_exp_fns>, Ts...>;
+
+		template <typename ...Ts>
+		using enable_if_want_linear_fns_t = enable_if_all_t<meta_fquote<want_linear_fns>, Ts...>;
 
 		template <typename ...VecTs>
 		using enable_if_array_t = enable_if_all_t<meta_fquote<is_array>, VecTs...>;
@@ -4381,38 +4391,49 @@ namespace cgra {
 					return x - m * floor(x / fpromote_t<Tm>(m));
 				}
 
-				// Returns the linear blend of x1 and x2, i.e., x1*(1−t) + x2*t
-				template <typename Tx1, typename Tx2, typename Tt, typename = void> // FIXME constrain mix
+				// Linear blend of x1 and x2, i.e., x1*(1−t) + x2*t
+				template <typename Tx1, typename Tx2, typename Tt, enable_if_want_linear_fns_t<Tx1, Tx2, Tt> = 0>
 				inline auto mix(const Tx1 &x1, const Tx2 &x2, const Tt &t) {
-					return x1 * (Tt(1) - t) + x2 * t;
+					return x1 * (fpromote_t<Tt>{1} - t) + x2 * t;
+				}
+
+				// Boolean 'blend' of x1 and x2, i.e., t ? x2 : x1
+				// behaves nicely even if x1 or x2 is nan/inf
+				template <typename Tx1, typename Tx2, enable_if_want_linear_fns_t<Tx1, Tx2> = 0>
+				inline auto mix(const Tx1 &x1, const Tx2 &x2, bool t) {
+					return t ? x2 : x1;
 				}
 
 				// heterogeneous version of std::min
-				template <typename Tx1, typename Tx2, enable_if_want_real_fns_t<Tx1, Tx2> = 0>
-				inline auto min(const Tx1 &x1, const Tx2 &x2) {
-					using common_t = decltype(x1 + x2);
-					return min(common_t(x1), common_t(x2));
+				template <typename T1, typename T2, enable_if_want_real_fns_t<T1, T2> = 0>
+				inline auto min(const T1 &x1, const T2 &x2) {
+					// should not fpromote here
+					using value_t = decltype(x1 + x2);
+					return min(value_t{x1}, value_t{x2});
 				}
 
 				// heterogeneous version of std::max
-				template <typename Tx1, typename Tx2, enable_if_want_real_fns_t<Tx1, Tx2> = 0>
-				inline auto max(const Tx1 &x1, const Tx2 &x2) {
-					using common_t = decltype(x1 + x2);
-					return max(common_t(x1), common_t(x2));
+				template <typename T1, typename T2, enable_if_want_real_fns_t<T1, T2> = 0>
+				inline auto max(const T1 &x1, const T2 &x2) {
+					// should not fpromote here
+					using value_t = decltype(x1 + x2);
+					return max(value_t{x1}, value_t{x2});
 				}
 
 				// Returns min(max(x, lower), upper)
 				template <typename Tx, typename Tl, typename Tu, enable_if_want_real_fns_t<Tx, Tl, Tu> = 0>
 				inline auto clamp(const Tx &x, const Tl &lower, const Tu &upper) {
-					using common_t = decltype(x + lower + upper);
-					return min(max(common_t(x), common_t(lower)), common_t(upper));
+					// should not fpromote here
+					using value_t = decltype(x + lower + upper);
+					return min(max(value_t{x}, value_t{lower}), value_t{upper});
 				}
 
 				// Returns 0 if x < edge, 1 otherwise
 				template <typename Te, typename Tx, enable_if_want_real_fns_t<Te, Tx> = 0>
 				inline auto step(const Te &edge, const Tx &x) {
 					// why does glsl have the args in this order?
-					return (x < edge) ? Tx(0) : Tx(1);
+					using value_t = fpromote_arith_t<Te, Tx>;
+					return (x < edge) ? value_t{0} : value_t{1};
 				}
 
 				// Returns 0 if x <= edge0 and 1 if x >= edge1 and performs smooth
@@ -4421,8 +4442,9 @@ namespace cgra {
 				// function with a smooth transition. Results are undefined if edge0 >= edge1.
 				template <typename Te0, typename Te1, typename Tx, enable_if_want_real_fns_t<Te0, Te1, Tx> = 0>
 				inline auto smoothstep(const Te0 &edge0, const Te1 &edge1, const Tx &x) {
-					auto t = clamp((x - edge0) / (edge1 - edge0), Tx(0), Tx(1));
-					return t * t * (Tx(3) - Tx(2) * t);
+					using value_t = fpromote_arith_t<Te0, Te1, Tx>;
+					auto t = clamp((x - value_t{edge0}) / (edge1 - value_t{edge0}), value_t{0}, value_t{1});
+					return t * t * (value_t{3} - value_t{2} * t);
 				}
 
 			}
@@ -4502,24 +4524,52 @@ namespace cgra {
 				}
 
 				// vec mix
-				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
-				inline auto mix(const VecT1 &vx, const VecT2 &vt) {
+				template <typename VecT1, typename VecT2, typename VecTt, enable_if_vector_compatible_t<VecT1, VecT2, VecTt> = 0>
+				inline auto mix(const VecT1 &v1, const VecT2 &v2, const VecTt &vt) {
 					using cgra::detail::scalars::mix;
-					return zip_with([](const auto &xx, const auto &xt) { return mix(xx, xt); }, vx, vt);
+					return zip_with([](const auto &x1, const auto &x2, const auto &xt) { return mix(x1, x2, xt); }, v1, v2, vt);
 				}
 
-				// vec mix right scalar
-				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
-				inline auto mix(const VecT &vx, const T &t) {
+				// vec mix (t)-scalar
+				template <typename VecT1, typename VecT2, typename Tt, enable_if_vector_compatible_t<VecT1, VecT2> = 0, enable_if_vector_scalar_compatible_t<VecT1, Tt> = 0>
+				inline auto mix(const VecT1 &v1, const VecT2 &v2, const Tt &t) {
 					using cgra::detail::scalars::mix;
-					return zip_with([&](const auto &xx) { return mix(xx, t); }, vx);
+					return zip_with([&](const auto &x1, const auto &x2) { return mix(x1, x2, t); }, v1, v2);
 				}
 
-				// vec mix left scalar
-				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
-				inline auto mix(const T &x, const VecT &vt) {
+				// vec mix (right)-scalar
+				template <typename VecT1, typename T2, typename VecTt, enable_if_vector_compatible_t<VecT1, VecTt> = 0, enable_if_vector_scalar_compatible_t<VecT1, T2> = 0>
+				inline auto mix(const VecT1 &v1, const T2 &x2, const VecTt &vt) {
 					using cgra::detail::scalars::mix;
-					return zip_with([&](const auto &xt) { return mix(x, xt); }, vt);
+					return zip_with([&](const auto &x1, const auto &xt) { return mix(x1, x2, xt); }, v1, vt);
+				}
+
+				// vec mix (right,t)-scalar
+				template <typename VecT1, typename T2, typename Tt, enable_if_vector_scalar_compatible_t<VecT1, T2> = 0, enable_if_vector_scalar_compatible_t<VecT1, Tt> = 0>
+				inline auto mix(const VecT1 &v1, const T2 &x2, const Tt &t) {
+					using cgra::detail::scalars::mix;
+					return zip_with([&](const auto &x1) { return mix(x1, x2, t); }, v1);
+				}
+
+				// vec mix (left)-scalar
+				template <typename T1, typename VecT2, typename VecTt, enable_if_vector_compatible_t<VecT2, VecTt> = 0, enable_if_vector_scalar_compatible_t<VecT2, T1> = 0>
+				inline auto mix(const T1 &x1, const VecT2 &v2, const VecTt &vt) {
+					using cgra::detail::scalars::mix;
+					return zip_with([&](const auto &x2, const auto &xt) { return mix(x1, x2, xt); }, v2, vt);
+				}
+
+				// vec mix (left,t)-scalar
+				template <typename T1, typename VecT2, typename Tt, enable_if_vector_scalar_compatible_t<VecT2, T1> = 0, enable_if_vector_scalar_compatible_t<VecT2, Tt> = 0>
+				inline auto mix(const T1 &x1, const VecT2 &v2, const Tt &t) {
+					using cgra::detail::scalars::mix;
+					return zip_with([&](const auto &x2) { return mix(x1, x2, t); }, v2);
+				}
+
+				// vec mix (left,right)-scalar
+				template <typename T1, typename T2, typename VecTt, enable_if_vector_scalar_compatible_t<VecTt, T1> = 0, enable_if_vector_scalar_compatible_t<VecTt, T2> = 0>
+				inline auto mix(const T1 &x1, const T2 &x2, const VecTt &vt) {
+					using cgra::detail::scalars::mix;
+					return zip_with([&](const auto &xt) { return mix(x1, x2, xt); }, vt);
 				}
 
 				// vec clamp
@@ -4661,7 +4711,6 @@ namespace cgra {
 	// 	return ;
 	// }
 
-	// FIXME mix(..., bool)
 	// Element-wise function for x in v1, y in v2 and a in va
 	// Selects which vector each returned component comes from
 	// For a component of a that is false, the corresponding component of x is returned
@@ -5366,13 +5415,7 @@ namespace cgra {
 					return q / length(q);
 				}
 
-				// quat linear interpolation (lerp) : q1*(1-t) + q2*t
-				// does not normalize, use nlerp for that
-				template <typename T1, typename T2, typename Tt>
-				inline auto mix(const basic_quat<T1> &q1, const basic_quat<T2> &q2, const Tt &t) {
-					using value_t = detail::fpromote_arith_t<T1, T2, Tt>;
-					return q1 * (value_t{1} - t) + q2 * t;
-				}
+				// quat mix is implemented by normal scalar mix
 
 				// quat normalized lerp
 				template <typename T1, typename T2, typename Tt>

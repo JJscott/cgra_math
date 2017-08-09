@@ -39,6 +39,13 @@ int main() {
 	auto v3 = vec3(vec4(7));
 	v3.y = 4;
 	v3 = {8, 5, 8};
+	v3 = mix(v3, v3, 0);
+	v3 = mix(v3, v3, v3);
+	v3 = mix(v3, 0, v3);
+	v3 = mix(0, v3, v3);
+	v3 = mix(v3, 0, 0);
+	v3 = mix(0, v3, 0);
+	v3 = mix(0, 0, v3);
 	auto v3a = refract(v3, v3, 7);
 	auto v3b = vec_cast<4>(vec3());
 	auto v3c = vec_cast<bool>(vec3());
@@ -47,11 +54,14 @@ int main() {
 
 	basic_vec<float, 5> v5{1, 2, 3};
 
+	auto v8 = mix(vec3(1, 2, 3), vec3(nan<float>()), bvec3(0, 0, 1));
+
 	cout << v1 << endl;
 	cout << v2 << endl;
 	cout << v3 << endl;
 	cout << v4 << endl;
 	cout << v5 << endl;
+	cout << v8 << endl;
 	cout << outer_product(vec3(1, 2, 3), vec3(4, 5, 6)) << endl;
 
 	mat3 m1{mat4(pi)};
@@ -83,6 +93,7 @@ int main() {
 	cout << (m8 * vec4(1, 2, 3, 1)) << endl;
 
 	quat q1{vec4(v5)};
+	q1 = mix(q1, q1, 0.5f);
 
 	cout << q1 << endl;
 	cout << q1.w << endl;
