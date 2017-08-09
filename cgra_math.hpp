@@ -2549,7 +2549,7 @@ namespace cgra {
 					w(std::move(v[0])), x(std::move(v[1])), y(std::move(v[2])), z(std::move(v[3])) {}
 
 				CGRA_CONSTEXPR_FUNCTION explicit operator basic_vec<T, 4>() const {
-					return{w, x, y, z};
+					return basic_vec<T, 4>{w, x, y, z};
 				}
 
 				// TODO proper access to real/imag components
@@ -2558,19 +2558,18 @@ namespace cgra {
 				template <typename U>
 				CGRA_CONSTEXPR_FUNCTION explicit operator basic_mat<U, 3, 3>() const {
 					basic_mat<U, 3, 3> m;
-
+					// col 0
 					m[0][0] = w * w + x * x - y * y - z * z;
 					m[0][1] = 2 * x * y + 2 * w * z;
 					m[0][2] = 2 * x * z - 2 * w * y;
-
+					// col 1
 					m[1][0] = 2 * x * y - 2 * w * z;
 					m[1][1] = w * w - x * x + y * y - z * z;
 					m[1][2] = 2 * y * z + 2 * w * x;
-
+					// col 2
 					m[2][0] = 2 * x * z + 2 * w * y;
 					m[2][1] = 2 * y * z - 2 * w * x;
 					m[2][2] = w * w - x * x - y * y + z * z;
-
 					return m;
 				}
 
@@ -2578,33 +2577,33 @@ namespace cgra {
 				template <typename U>
 				CGRA_CONSTEXPR_FUNCTION explicit operator basic_mat<U, 4, 4>() const {
 					basic_mat<U, 4, 4> m;
-
+					// col 0
 					m[0][0] = w * w + x * x - y * y - z * z;
 					m[0][1] = 2 * x * y + 2 * w * z;
 					m[0][2] = 2 * x * z - 2 * w * y;
 					m[0][3] = 0;
-
+					// col 1
 					m[1][0] = 2 * x * y - 2 * w * z;
 					m[1][1] = w * w - x * x + y * y - z * z;
 					m[1][2] = 2 * y * z + 2 * w * x;
 					m[1][3] = 0;
-
+					// col 2
 					m[2][0] = 2 * x * z + 2 * w * y;
 					m[2][1] = 2 * y * z - 2 * w * x;
 					m[2][2] = w * w - x * x - y * y + z * z;
 					m[2][3] = 0;
-
+					// col 3
 					m[3][0] = 0;
 					m[3][1] = 0;
 					m[3][2] = 0;
 					m[3][3] = w * w + x * x + y * y + z * z;
-
 					return m;
 				}
 			};
 
 			template <typename T>
 			CGRA_CONSTEXPR_FUNCTION inline void swap(basic_quat<T> &lhs, basic_quat<T> &rhs) {
+				using std::swap;
 				// TODO noexcept
 				swap(lhs.w, rhs.w);
 				swap(lhs.x, rhs.x);
@@ -5319,46 +5318,45 @@ namespace cgra {
 					return conjugate(q) * (T{1} / dot(q, q));
 				}
 
-				template <typename T>
-				inline auto pow(const basic_quat<T> &q, T power) {
-					T qm = length(q);
-					T theta = acos(q.w / qm);
-					T ivm = 1 / sqrt(q.x * q.x + q.y * q.y + q.z * q.z);
-
-					if (isinf(ivm)) return basic_quat<T>{1} *pow(qm, power);
-
-					T ivm_power_theta = ivm * power * theta;
-					basic_quat<T> p{0, q.x * ivm_power_theta, q.y * ivm_power_theta, q.z * ivm_power_theta};
+				// quat power
+				template <typename Tq, typename Tp>
+				inline auto pow(const basic_quat<Tq> &q, const Tp &power) {
+					using value_t = detail::fpromote_arith_t<Tq, Tp>;
+					const auto qm = length(q);
+					const auto theta = acos(q.w / qm);
+					const auto ivm = 1 / sqrt(q.x * q.x + q.y * q.y + q.z * q.z);
+					if (isinf(ivm)) return basic_quat<value_t>{1} * pow(qm, power);
+					const auto ivm_power_theta = ivm * power * theta;
+					basic_quat<value_t> p{0, q.x * ivm_power_theta, q.y * ivm_power_theta, q.z * ivm_power_theta};
 					return exp(p) * pow(qm, power);
 				}
 
-
+				// quat exp
 				template <typename T>
 				inline auto exp(const basic_quat<T> &q) {
-					T expw = exp(q.w);
-					T vm = sqrt(q.x * q.x + q.y * q.y + q.z * q.z);
-					T ivm = 1 / vm;
-
-					if (isinf(ivm)) return basic_quat<T>{expw * cos(vm)};
-
-					T vf = expw * sin(vm) * ivm;
-					return basic_quat<T>{expw * cos(vm), q.x * vf, q.y * vf, q.z * vf};
+					using value_t = detail::fpromote_t<T>;
+					const auto expw = exp(q.w);
+					const auto vm = sqrt(q.x * q.x + q.y * q.y + q.z * q.z);
+					const auto ivm = 1 / vm;
+					if (isinf(ivm)) return basic_quat<value_t>{expw * cos(vm)};
+					const auto vf = expw * sin(vm) * ivm;
+					return basic_quat<value_t>{expw * cos(vm), q.x * vf, q.y * vf, q.z * vf};
 				}
 
+				// quat log
 				template <typename T>
 				inline auto log(const basic_quat<T> &q) {
-					T qm = length(q);
-					T ivm = 1 / sqrt(q.x * q.x + q.y * q.y + q.z * q.z);
-
-					if (isinf(ivm)) return basic_quat<T>(log(qm), 0, 0, 0);
-
-					T vf = acos(q.w / qm) * ivm;
-					return basic_quat<T>{log(qm), q.x * vf, q.y * vf, q.z * vf};
+					using value_t = detail::fpromote_t<T>;
+					const auto qm = length(q);
+					const auto ivm = 1 / sqrt(q.x * q.x + q.y * q.y + q.z * q.z);
+					if (isinf(ivm)) return basic_quat<value_t>(log(qm), 0, 0, 0);
+					const auto vf = acos(q.w / qm) * ivm;
+					return basic_quat<value_t>{log(qm), q.x * vf, q.y * vf, q.z * vf};
 				}
 
-				// length/magnitude of vector from quaternion
+				// length/magnitude of quaternion
 				template <typename T>
-				inline T length(const basic_quat<T> &q) {
+				inline auto length(const basic_quat<T> &q) {
 					return sqrt(dot(q, q));
 				}
 
@@ -5368,52 +5366,53 @@ namespace cgra {
 					return q / length(q);
 				}
 
-				// quat linear interpolation (lerp) : x*(1-t) + y*t
-				// TODO quat nlerp?
-				template <typename T1, typename T2, typename T3>
-				inline auto mix(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs, const T3 &t) {
-					using common_t = decltype(T1() * T2() * T3());
-					return lhs * (common_t(1) - t) + rhs * t;
+				// quat linear interpolation (lerp) : q1*(1-t) + q2*t
+				// does not normalize, use nlerp for that
+				template <typename T1, typename T2, typename Tt>
+				inline auto mix(const basic_quat<T1> &q1, const basic_quat<T2> &q2, const Tt &t) {
+					using value_t = detail::fpromote_arith_t<T1, T2, Tt>;
+					return q1 * (value_t{1} - t) + q2 * t;
+				}
+
+				// quat normalized lerp
+				template <typename T1, typename T2, typename Tt>
+				inline auto nlerp(const basic_quat<T1> &q1, const basic_quat<T2> &q2, const Tt &t) {
+					return normalize(mix(q1, q2, t));
 				}
 
 				// quat spherical linear interpolation (slerp)
-				template <typename T1, typename T2, typename T3>
-				inline auto slerp(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs, const T3 &t) {
-					using common_t = std::common_type_t<T1, T2, T3>;
-					basic_quat<common_t> q = normalize(lhs);
-					basic_quat<common_t> p = normalize(rhs);
-					common_t epsilon = 0.0001;
-					if (dot(p, q) < common_t(0)) {
-						q = q * common_t(-1);
+				template <typename T1, typename T2, typename Tt>
+				inline auto slerp(const basic_quat<T1> &q1, const basic_quat<T2> &q2, const Tt &t) {
+					using value_t = detail::fpromote_arith_t<T1, T2, Tt>;
+					auto q = normalize(q1);
+					auto p = normalize(q2);
+					value_t epsilon{0.0001};
+					if (dot(p, q) < value_t{0}) {
+						q = q * value_t{-1};
 					}
-					common_t dpq = dot(p, q);
-
-					if ((common_t(1) - dpq) > epsilon) {
-						common_t w = acos(dpq);
-						return ((sin((common_t(1) - t) * w) * p) + (sin(t * w) * q)) / sin(w);
+					const auto dpq = dot(p, q);
+					if ((value_t{1} - dpq) > epsilon) {
+						const auto w = acos(dpq);
+						return ((sin((value_t{1} - t) * w) * p) + (sin(t * w) * q)) / sin(w);
 					}
-
-					return (common_t(1) - t) * p + t * q;
+					return (value_t{1} - t) * p + t * q;
 				}
 
-
 				// returns the rotation (in radians) of the quaternion around a given axis
-				template <typename T1, typename T2>
-				inline auto project(const basic_quat<T1> &q, const basic_vec<T2, 3> &axis) {
-					using common_t = std::common_type_t<T1, T2>;
-
-					basic_vec<common_t, 3> nv = normalize(axis);
-
-					// find the the tangent to nv
-					basic_vec<common_t, 3> tangent{1, 0, 0};
-					if (abs(dot(tangent, nv)) > 0.7331) // anti-leet
-						tangent = basic_vec<common_t, 3>{0, 1, 0};
+				template <typename Tq, typename Ta>
+				inline auto project(const basic_quat<Tq> &q, const basic_vec<Ta, 3> &axis) {
+					using value_t = detail::fpromote_arith_t<Tq, Ta>;
+					const auto nv = normalize(axis);
+					// find a tangent to nv
+					basic_vec<value_t, 3> tangent{1, 0, 0};
+					if (abs(dot(tangent, nv)) > value_t{0.7331}) {
+						// anti-leet
+						tangent = basic_vec<value_t, 3>{0, 1, 0};
+					}
 					tangent = normalize(cross(nv, tangent));
-
 					// transform, reject and dot values to get angle
-					basic_vec<common_t, 3> transformed = q * tangent;
-					basic_vec<common_t, 3> projection = normalize(reject(transformed, nv));
-
+					const auto transformed = q * tangent;
+					const auto projection = normalize(reject(transformed, nv));
 					return angle(tangent, projection);
 				}
 
@@ -5682,40 +5681,38 @@ namespace cgra {
 //==============================================================================//
 
 namespace cgra {
-	//TODO
-	// decsription
-	template <class T>
-	inline size_t hash_combine(std::size_t seed, T v) {
+	template <typename T>
+	inline size_t hash_combine(std::size_t seed, const T &x) {
 		std::hash<T> h;
-		return seed ^ (h(v) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
+		return seed ^ (h(x) + 0x9e3779b9 + (seed << 6) + (seed >> 2));
 	}
 }
 
 namespace std {
-	//TODO
-	// decsription
+	
+	// vec hash
 	template <typename T, size_t N>
 	struct hash<cgra::basic_vec<T, N>> {
 		inline size_t operator()(const cgra::basic_vec<T, N> &v) const {
-			return cgra::fold(cgra::hash_combine, 73, v); // 73 Sheldon Cooper's favorite number
+			// 73: Sheldon Cooper's favorite number
+			// TODO where did ^ come from?
+			return cgra::fold(cgra::hash_combine<T>, 73, v);
 		}
 	};
 
-	//TODO
-	// decsription
+	// mat hash
 	template <typename T, size_t Cols, size_t Rows>
 	struct hash<cgra::basic_mat<T, Cols, Rows>> {
 		inline size_t operator()(const cgra::basic_mat<T, Cols, Rows> &m) const {
-			return cgra::fold(cgra::hash_combine, 73, m.as_vec());
+			return cgra::fold(cgra::hash_combine<basic_vec<T, Rows>>, 73, m);
 		}
 	};
 
-	//TODO
-	// decsription
+	// quat hash
 	template <typename T>
 	struct hash<cgra::basic_quat<T>> {
 		inline size_t operator()(const cgra::basic_quat<T> &q) const {
-			return cgra::fold(cgra::hash_combine, 73, q.as_vec());
+			return cgra::fold(cgra::hash_combine<T>, 73, cgra::basic_vec<T, 4>{q});
 		}
 	};
 }

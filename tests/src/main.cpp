@@ -22,14 +22,14 @@ public:
 
 int main() {
 	//test::run_basic_vec_tests();
-	
+
 	using vec2x3 = basic_vec<basic_vec<float, 3>, 2>;
 
 	vec0 v0;
 	auto v1a = ivec2{3, 4};
 	auto v1b = ivec4(2);
 	auto v1 = vec3(v1a, v1b);
-	
+
 	auto v2a = vec3{1, 2, 3};
 	auto v2b = vec3{4, 5, 6};
 	vec2x3 v2c;
@@ -89,6 +89,13 @@ int main() {
 	cout << (axisangle(vec3(0, 0, 1), pi / 2) * vec3(1, 0, 0)) << endl;
 
 	basic_vec<foobar, 2> fb;
+
+	size_t h1 = hash<vec3>()(vec3(1, 2, 3));
+	size_t h2 = hash<mat3>()(mat3{{1, 2, 3}, {4, 5, 6}, {7, 8, 9}});
+	size_t h3 = hash<quat>()(q1);
+	cout << h1 << endl;
+	cout << h2 << endl;
+	cout << h3 << endl;
 
 	cin.get();
 }
