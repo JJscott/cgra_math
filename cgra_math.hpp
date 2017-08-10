@@ -15,6 +15,7 @@
 - factory function constraints?
 - quat axis/angle functions (axisof? angleof?)
 - FIXME examine all advanced quat functions for correctness
+- FIXME quat random
 - FIXME min/max for vectors vs std (overloading only for basic_vec is dangerous)
 - FIXME unbreak constexpr for msvc and intellisense
 - rename 'conjugate' -> 'conj' etc, deprecate old names
@@ -24,7 +25,6 @@
 - defend more things against vectors of vectors (scalar compatibility?)
 - defend more things against integer arguments by promoting to floating point
 - test is_vector_compatible etc with static asserts
-- move random section to bottom of file
 - constexpr everything
 - clean up common function definitions and remove duplicates
 - implement generic cat functions (with vec_cast?)
@@ -433,324 +433,6 @@ namespace cgra {
 			}
 
 		}
-	}
-	
-	
-
-
-	
-
-
-
-
-
-
-
-	//TODO insert lol RANDOM xD header here
-
-	//  .______          ___      .__   __.  _______   ______   .___  ___.  //
-	//  |   _  \        /   \     |  \ |  | |       \ /  __  \  |   \/   |  //
-	//  |  |_)  |      /  ^  \    |   \|  | |  .--.  |  |  |  | |  \  /  |  //
-	//  |      /      /  /_\  \   |  . `  | |  |  |  |  |  |  | |  |\/|  |  //
-	//  |  |\  \----./  _____  \  |  |\   | |  '--'  |  `--'  | |  |  |  |  //
-	//  | _| `._____/__/     \__\ |__| \__| |_______/ \______/  |__|  |__|  //
-	//                                                                      //
-	//======================================================================//
-
-	namespace detail {
-
-		template <typename T, typename = void>
-		struct distribution {};
-
-		template <typename T>
-		using distribution_t = typename distribution<T>::type;
-
-	}
-
-
-	template <typename T, size_t N>
-	class uniform_vec_distribution {
-	public:
-		using result_type = basic_vec<T, N>;
-		using elem_dist_type = detail::distribution_t<T>;
-
-		class param_type {
-		private:
-			result_type m_a;
-			result_type m_b;
-
-		public:
-			using distribution_type = uniform_vec_distribution;
-
-			param_type(const T &a = T(0), const T &b = T(1)) : m_a(a), m_b(b) { }
-			param_type(const result_type &a = result_type(0), const result_type &b = result_type(1)) : m_a(a), m_b(b) { }
-
-			result_type const a() { return m_a; }
-			result_type const b() { return m_b; }
-
-			friend bool operator==(const param_type &p1, const param_type &p2) {
-				return p1.m_a == p2.m_a && p1.m_b == p2.m_b;
-			}
-		};
-
-	private:
-		param_type m_param;
-		elem_dist_type m_elem_dist;
-
-	public: 
-		uniform_vec_distribution() : m_param(result_type(0), result_type(1)) { }
-		uniform_vec_distribution(const param_type& param) : m_param(param) { }
-
-		result_type const a() { return m_param.a(); }
-		result_type const b() { return m_param.b(); }
-
-		void reset() { }
-
-		param_type const param() { return m_param; }
-		
-		void param(const param_type &param) { m_param = param; }
-
-		result_type const min() { return this->a(); }
-		result_type const max() { return this->b(); }
-
-		template <typename Generator>
-		result_type operator()(Generator& g) {
-			return (*this)(g, this->param());
-		}
-
-		template <typename Generator>
-		result_type operator()(Generator& g, param_type param) {
-			result_type r;
-			for (int i = 0; i < r.size; ++i)
-				r[i] = m_elem_dist(g, typename elem_dist_type::param_type(param.a()[i], param.b()[i]));
-			return r;
-		}
-
-		friend bool operator==(const uniform_vec_distribution &d1, const uniform_vec_distribution &d2) {
-			return d1.param() == d1.param();
-		}
-
-		friend bool operator!=(const uniform_vec_distribution &d1, const uniform_vec_distribution &d2) {
-			return !(d1 == d2);
-		}
-
-		//TODO 
-		// << >>
-	};
-
-
-	template <typename T, size_t Cols, size_t Rows>
-	class uniform_mat_distribution {
-	public:
-		using result_type = basic_mat<T, Cols, Rows>;
-		using elem_dist_type = detail::distribution_t<T>;
-
-		class param_type {
-		private:
-			result_type m_a;
-			result_type m_b;
-
-		public:
-			using distribution_type = uniform_mat_distribution;
-
-			param_type(const T &a = T(0), const T &b = T(1)) : m_a(a), m_b(b) { }
-			param_type(const result_type &a = result_type(0), const result_type &b = result_type(1)) : m_a(a), m_b(b) { }
-
-			result_type const a() { return m_a; }
-			result_type const b() { return m_b; }
-
-			friend bool operator==(const param_type &p1, const param_type &p2) {
-				return p1.m_a == p2.m_a && p1.m_b == p2.m_b;
-			}
-		};
-
-	private:
-		param_type m_param;
-		elem_dist_type m_elem_dist;
-
-	public: 
-		uniform_mat_distribution() : m_param(result_type(0), result_type(1)) { }
-		uniform_mat_distribution(const param_type& param) : m_param(param) { }
-
-		result_type const a() { return m_param.a(); }
-		result_type const b() { return m_param.b(); }
-
-		void reset() { }
-
-		param_type const param() { return m_param; }
-		
-		void param(const param_type &param) { m_param = param; }
-
-		result_type const min() { return this->a(); }
-		result_type const max() { return this->b(); }
-
-		template <typename Generator>
-		result_type operator()(Generator& g) {
-			return (*this)(g, this->param());
-		}
-
-		template <typename Generator>
-		result_type operator()(Generator& g, param_type param) {
-			result_type r;
-			for (int j = 0; j < r.cols; ++j)
-				for (int i = 0; i < r.rows; ++i)
-					r[j][i] = m_elem_dist(g, typename elem_dist_type::param_type(param.a()[j][i], param.b()[j][i]));
-			return r;
-		}
-
-		friend bool operator==(const uniform_mat_distribution &d1, const uniform_mat_distribution &d2) {
-			return d1.param() == d1.param();
-		}
-
-		friend bool operator!=(const uniform_mat_distribution &d1, const uniform_mat_distribution &d2) {
-			return !(d1 == d2);
-		}
-
-		//TODO 
-		// << >>
-	};
-
-
-	template <typename T>
-	class uniform_quat_distribution {
-		public:
-		using result_type = basic_quat<T>;
-		using elem_dist_type = detail::distribution_t<T>;
-		using vec_dist_type = detail::distribution_t<basic_vec<T, 3>>;
-
-		class param_type {
-		private:
-			T m_a;
-			T m_b;
-
-		public:
-			using distribution_type = uniform_quat_distribution;
-
-			param_type(const T &a = T(0), const T &b = T(pi)) : m_a(a), m_b(b) { }
-
-			T const a() { return m_a; }
-			T const b() { return m_b; }
-
-			friend bool operator==(const param_type &p1, const param_type &p2) {
-				return p1.m_a == p2.m_a && p1.m_b == p2.m_b;
-			}
-		};
-
-	private:
-		param_type m_param;
-		elem_dist_type m_elem_dist;
-		vec_dist_type m_vec_dist;
-
-	public: 
-		uniform_quat_distribution() : m_param(T(0), T(pi)) { }
-		uniform_quat_distribution(const param_type& param) : m_param(param) { }
-
-		T const a() { return m_param.a(); }
-		T const b() { return m_param.b(); }
-
-		void reset() { }
-
-		param_type const param() { return m_param; }
-		
-		void param(const param_type &param) { m_param = param; }
-
-		// These methods can not be implemented sensibly due to the nature of quaternions
-		result_type const min() { assert(false); return basic_quat<T>(); }
-		result_type const max() { assert(false); return basic_quat<T>(); }
-
-		template <typename Generator>
-		result_type operator()(Generator& g) {
-			return (*this)(g, this->param());
-		}
-
-		template <typename Generator>
-		result_type operator()(Generator& g, param_type param) {
-			result_type r;
-			// TODO make this true uniformally random
-			//T angle = m_elem_dist(g, elem_dist_type::param_type(param.a(), param.b()));
-			//basic_vec<T, 3> axis = normalize(m_vec_dist(g, vec_dist_type::param_type(basic_vec<T, 3>(-1), basic_vec<T, 3>(1))));
-			//r = axisangle<basic_quat<T>>(normalize(axis), angle);
-			return r;
-		}
-
-		friend bool operator==(const uniform_quat_distribution &d1, const uniform_quat_distribution &d2) {
-			return d1.param() == d1.param();
-		}
-
-		friend bool operator!=(const uniform_quat_distribution &d1, const uniform_quat_distribution &d2) {
-			return !(d1 == d2);
-		}
-
-		//TODO 
-		// << >>
-	};
-
-
-	// distribution specializations
-	namespace detail {
-
-		template <typename T>
-		struct distribution<T, std::enable_if_t<std::is_integral<T>::value>> {
-			using type = std::uniform_int_distribution<
-				std::conditional_t<
-					sizeof(T) < sizeof(short),
-					std::conditional_t<
-						std::is_signed<T>::value,
-						short,
-						unsigned short
-					>,
-					T
-				>
-			>;
-		};
-
-		template <typename T>
-		struct distribution<T, std::enable_if_t<std::is_floating_point<T>::value>> {
-			using type = std::uniform_real_distribution<T>;
-		};
-
-		template <typename T, size_t N>
-		struct distribution<basic_vec<T, N>> {
-			using type = uniform_vec_distribution<T, N>;
-		};
-
-		template <typename T, size_t Cols, size_t Rows>
-		struct distribution<basic_mat<T, Cols, Rows>> {
-			using type = uniform_mat_distribution<T, Cols, Rows>;
-		};
-
-		template <typename T>
-		struct distribution<basic_quat<T>> {
-			using type = uniform_quat_distribution<T>;
-		};
-
-		// singleton for random engine
-		inline auto & random_engine() {
-			static thread_local std::default_random_engine re { std::random_device()() };
-			return re;
-		}
-	}
-
-	// return a random value of T in range [lower, upper)
-	template <typename T, typename P>
-	inline T random(P lower, P upper) {
-		using dist_t = detail::distribution_t<T>;
-		dist_t dist(typename dist_t::param_type(lower, upper));
-		return dist(detail::random_engine());
-	}
-
-	// return a random value of T in range [0, upper)
-	template <typename T, typename P>
-	inline T random(P upper) {
-		return random<T, P>(std::decay_t<P>(0), upper);
-	}
-
-	// return a random value of T in the range defined by associated uniform distribution
-	template <typename T>
-	inline T random() {
-		using dist_t = detail::distribution_t<T>;
-		dist_t dist;
-		return dist(detail::random_engine());
 	}
 
 
@@ -5789,6 +5471,314 @@ namespace cgra {
 		using value_t = detail::fpromote_arith_t<Tf, Tt>;
 		const auto x = angle(from, to);
 		return basic_quat<value_t>{cos(x / value_t{2}), sin(x / value_t{2}) * normalize(cross(from, to))};
+	}
+
+
+
+
+	//  .______          ___      .__   __.  _______   ______   .___  ___.  //
+	//  |   _  \        /   \     |  \ |  | |       \ /  __  \  |   \/   |  //
+	//  |  |_)  |      /  ^  \    |   \|  | |  .--.  |  |  |  | |  \  /  |  //
+	//  |      /      /  /_\  \   |  . `  | |  |  |  |  |  |  | |  |\/|  |  //
+	//  |  |\  \----./  _____  \  |  |\   | |  '--'  |  `--'  | |  |  |  |  //
+	//  | _| `._____/__/     \__\ |__| \__| |_______/ \______/  |__|  |__|  //
+	//                                                                      //
+	//======================================================================//
+
+	namespace detail {
+
+		template <typename T, typename = void>
+		struct distribution {};
+
+		template <typename T>
+		using distribution_t = typename distribution<T>::type;
+
+	}
+
+
+	template <typename T, size_t N>
+	class uniform_vec_distribution {
+	public:
+		using result_type = basic_vec<T, N>;
+		using elem_dist_type = detail::distribution_t<T>;
+
+		class param_type {
+		private:
+			result_type m_a;
+			result_type m_b;
+
+		public:
+			using distribution_type = uniform_vec_distribution;
+
+			param_type(const T &a = T(0), const T &b = T(1)) : m_a(a), m_b(b) { }
+			param_type(const result_type &a = result_type(0), const result_type &b = result_type(1)) : m_a(a), m_b(b) { }
+
+			result_type const a() { return m_a; }
+			result_type const b() { return m_b; }
+
+			friend bool operator==(const param_type &p1, const param_type &p2) {
+				return p1.m_a == p2.m_a && p1.m_b == p2.m_b;
+			}
+		};
+
+	private:
+		param_type m_param;
+		elem_dist_type m_elem_dist;
+
+	public: 
+		uniform_vec_distribution() : m_param(result_type(0), result_type(1)) { }
+		uniform_vec_distribution(const param_type& param) : m_param(param) { }
+
+		result_type const a() { return m_param.a(); }
+		result_type const b() { return m_param.b(); }
+
+		void reset() { }
+
+		param_type const param() { return m_param; }
+		
+		void param(const param_type &param) { m_param = param; }
+
+		result_type const min() { return this->a(); }
+		result_type const max() { return this->b(); }
+
+		template <typename Generator>
+		result_type operator()(Generator& g) {
+			return (*this)(g, this->param());
+		}
+
+		template <typename Generator>
+		result_type operator()(Generator& g, param_type param) {
+			result_type r;
+			for (int i = 0; i < r.size; ++i)
+				r[i] = m_elem_dist(g, typename elem_dist_type::param_type(param.a()[i], param.b()[i]));
+			return r;
+		}
+
+		friend bool operator==(const uniform_vec_distribution &d1, const uniform_vec_distribution &d2) {
+			return d1.param() == d1.param();
+		}
+
+		friend bool operator!=(const uniform_vec_distribution &d1, const uniform_vec_distribution &d2) {
+			return !(d1 == d2);
+		}
+
+		//TODO 
+		// << >>
+	};
+
+
+	template <typename T, size_t Cols, size_t Rows>
+	class uniform_mat_distribution {
+	public:
+		using result_type = basic_mat<T, Cols, Rows>;
+		using elem_dist_type = detail::distribution_t<T>;
+
+		class param_type {
+		private:
+			result_type m_a;
+			result_type m_b;
+
+		public:
+			using distribution_type = uniform_mat_distribution;
+
+			param_type(const T &a = T(0), const T &b = T(1)) : m_a(a), m_b(b) { }
+			param_type(const result_type &a = result_type(0), const result_type &b = result_type(1)) : m_a(a), m_b(b) { }
+
+			result_type const a() { return m_a; }
+			result_type const b() { return m_b; }
+
+			friend bool operator==(const param_type &p1, const param_type &p2) {
+				return p1.m_a == p2.m_a && p1.m_b == p2.m_b;
+			}
+		};
+
+	private:
+		param_type m_param;
+		elem_dist_type m_elem_dist;
+
+	public: 
+		uniform_mat_distribution() : m_param(result_type(0), result_type(1)) { }
+		uniform_mat_distribution(const param_type& param) : m_param(param) { }
+
+		result_type const a() { return m_param.a(); }
+		result_type const b() { return m_param.b(); }
+
+		void reset() { }
+
+		param_type const param() { return m_param; }
+		
+		void param(const param_type &param) { m_param = param; }
+
+		result_type const min() { return this->a(); }
+		result_type const max() { return this->b(); }
+
+		template <typename Generator>
+		result_type operator()(Generator& g) {
+			return (*this)(g, this->param());
+		}
+
+		template <typename Generator>
+		result_type operator()(Generator& g, param_type param) {
+			result_type r;
+			for (int j = 0; j < r.cols; ++j)
+				for (int i = 0; i < r.rows; ++i)
+					r[j][i] = m_elem_dist(g, typename elem_dist_type::param_type(param.a()[j][i], param.b()[j][i]));
+			return r;
+		}
+
+		friend bool operator==(const uniform_mat_distribution &d1, const uniform_mat_distribution &d2) {
+			return d1.param() == d1.param();
+		}
+
+		friend bool operator!=(const uniform_mat_distribution &d1, const uniform_mat_distribution &d2) {
+			return !(d1 == d2);
+		}
+
+		//TODO 
+		// << >>
+	};
+
+
+	template <typename T>
+	class uniform_quat_distribution {
+		public:
+		using result_type = basic_quat<T>;
+		using elem_dist_type = detail::distribution_t<T>;
+		using vec_dist_type = detail::distribution_t<basic_vec<T, 3>>;
+
+		class param_type {
+		private:
+			T m_a;
+			T m_b;
+
+		public:
+			using distribution_type = uniform_quat_distribution;
+
+			param_type(const T &a = T(0), const T &b = T(pi)) : m_a(a), m_b(b) { }
+
+			T const a() { return m_a; }
+			T const b() { return m_b; }
+
+			friend bool operator==(const param_type &p1, const param_type &p2) {
+				return p1.m_a == p2.m_a && p1.m_b == p2.m_b;
+			}
+		};
+
+	private:
+		param_type m_param;
+		elem_dist_type m_elem_dist;
+		vec_dist_type m_vec_dist;
+
+	public: 
+		uniform_quat_distribution() : m_param(T(0), T(pi)) { }
+		uniform_quat_distribution(const param_type& param) : m_param(param) { }
+
+		T const a() { return m_param.a(); }
+		T const b() { return m_param.b(); }
+
+		void reset() { }
+
+		param_type const param() { return m_param; }
+		
+		void param(const param_type &param) { m_param = param; }
+
+		// These methods can not be implemented sensibly due to the nature of quaternions
+		result_type const min() { assert(false); return basic_quat<T>(); }
+		result_type const max() { assert(false); return basic_quat<T>(); }
+
+		template <typename Generator>
+		result_type operator()(Generator& g) {
+			return (*this)(g, this->param());
+		}
+
+		template <typename Generator>
+		result_type operator()(Generator& g, param_type param) {
+			result_type r;
+			// TODO make this true uniformally random
+			T angle = m_elem_dist(g, elem_dist_type::param_type(param.a(), param.b()));
+			basic_vec<T, 3> axis = normalize(m_vec_dist(g, vec_dist_type::param_type(basic_vec<T, 3>(-1), basic_vec<T, 3>(1))));
+			r = axisangle(normalize(axis), angle);
+			return r;
+		}
+
+		friend bool operator==(const uniform_quat_distribution &d1, const uniform_quat_distribution &d2) {
+			return d1.param() == d1.param();
+		}
+
+		friend bool operator!=(const uniform_quat_distribution &d1, const uniform_quat_distribution &d2) {
+			return !(d1 == d2);
+		}
+
+		//TODO 
+		// << >>
+	};
+
+
+	// distribution specializations
+	namespace detail {
+
+		template <typename T>
+		struct distribution<T, std::enable_if_t<std::is_integral<T>::value>> {
+			using type = std::uniform_int_distribution<
+				std::conditional_t<
+					sizeof(T) < sizeof(short),
+					std::conditional_t<
+						std::is_signed<T>::value,
+						short,
+						unsigned short
+					>,
+					T
+				>
+			>;
+		};
+
+		template <typename T>
+		struct distribution<T, std::enable_if_t<std::is_floating_point<T>::value>> {
+			using type = std::uniform_real_distribution<T>;
+		};
+
+		template <typename T, size_t N>
+		struct distribution<basic_vec<T, N>> {
+			using type = uniform_vec_distribution<T, N>;
+		};
+
+		template <typename T, size_t Cols, size_t Rows>
+		struct distribution<basic_mat<T, Cols, Rows>> {
+			using type = uniform_mat_distribution<T, Cols, Rows>;
+		};
+
+		template <typename T>
+		struct distribution<basic_quat<T>> {
+			using type = uniform_quat_distribution<T>;
+		};
+
+		// singleton for random engine
+		inline auto & random_engine() {
+			static thread_local std::default_random_engine re { std::random_device()() };
+			return re;
+		}
+	}
+
+	// return a random value of T in range [lower, upper)
+	template <typename T, typename P>
+	inline T random(P lower, P upper) {
+		using dist_t = detail::distribution_t<T>;
+		dist_t dist(typename dist_t::param_type(lower, upper));
+		return dist(detail::random_engine());
+	}
+
+	// return a random value of T in range [0, upper)
+	template <typename T, typename P>
+	inline T random(P upper) {
+		return random<T, P>(std::decay_t<P>(0), upper);
+	}
+
+	// return a random value of T in the range defined by associated uniform distribution
+	template <typename T>
+	inline T random() {
+		using dist_t = detail::distribution_t<T>;
+		dist_t dist;
+		return dist(detail::random_engine());
 	}
 
 }
