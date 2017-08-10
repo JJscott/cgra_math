@@ -4184,7 +4184,7 @@ namespace cgra {
 				// Linear blend of x1 and x2, i.e., x1*(1−t) + x2*t
 				template <typename Tx1, typename Tx2, typename Tt, enable_if_want_linear_fns_t<Tx1, Tx2, Tt> = 0>
 				inline auto mix(const Tx1 &x1, const Tx2 &x2, const Tt &t) {
-					return x1 * (fpromote_t<Tt>{1} - t) + x2 * t;
+					return x1 * (fpromote_t<Tt>(1) - t) + x2 * t;
 				}
 
 				// Boolean 'blend' of x1 and x2, i.e., t ? x2 : x1
@@ -4199,7 +4199,7 @@ namespace cgra {
 				inline auto min(const T1 &x1, const T2 &x2) {
 					// should not fpromote here
 					using value_t = decltype(x1 + x2);
-					return min(value_t{x1}, value_t{x2});
+					return min(value_t(x1), value_t(x2));
 				}
 
 				// heterogeneous version of std::max
@@ -4207,7 +4207,7 @@ namespace cgra {
 				inline auto max(const T1 &x1, const T2 &x2) {
 					// should not fpromote here
 					using value_t = decltype(x1 + x2);
-					return max(value_t{x1}, value_t{x2});
+					return max(value_t(x1), value_t(x2));
 				}
 
 				// Returns min(max(x, lower), upper)
@@ -4215,7 +4215,7 @@ namespace cgra {
 				inline auto clamp(const Tx &x, const Tl &lower, const Tu &upper) {
 					// should not fpromote here
 					using value_t = decltype(x + lower + upper);
-					return min(max(value_t{x}, value_t{lower}), value_t{upper});
+					return min(max(value_t(x), value_t(lower)), value_t(upper));
 				}
 
 				// Returns 0 if x < edge, 1 otherwise
@@ -4223,7 +4223,7 @@ namespace cgra {
 				inline auto step(const Te &edge, const Tx &x) {
 					// why does glsl have the args in this order?
 					using value_t = fpromote_arith_t<Te, Tx>;
-					return (x < edge) ? value_t{0} : value_t{1};
+					return (x < edge) ? value_t(0) : value_t(1);
 				}
 
 				// Returns 0 if x <= edge0 and 1 if x >= edge1 and performs smooth
@@ -4233,8 +4233,8 @@ namespace cgra {
 				template <typename Te0, typename Te1, typename Tx, enable_if_want_real_fns_t<Te0, Te1, Tx> = 0>
 				inline auto smoothstep(const Te0 &edge0, const Te1 &edge1, const Tx &x) {
 					using value_t = fpromote_arith_t<Te0, Te1, Tx>;
-					auto t = clamp((x - value_t{edge0}) / (edge1 - value_t{edge0}), value_t{0}, value_t{1});
-					return t * t * (value_t{3} - value_t{2} * t);
+					auto t = clamp((x - value_t(edge0)) / (edge1 - value_t(edge0)), value_t(0), value_t(1));
+					return t * t * (value_t(3) - value_t(2) * t);
 				}
 
 			}
@@ -4887,7 +4887,7 @@ namespace cgra {
 					auto mr = decltype(mtemp){1};
 					// run column-wise gauss-jordan elimination on mtemp, apply same ops to mr
 					size_t col = 0;
-					auto prev_swmax = abs(value_t{1});
+					auto prev_swmax = abs(value_t(1));
 					for (size_t r = 0; r < mat_rows<MatT>::value; r++) {
 						// swap cols so [col][r] is as large in magnitude as possible
 						size_t swcol = col;
@@ -4905,7 +4905,7 @@ namespace cgra {
 							swap(mtemp[col], mtemp[swcol]);
 						}
 						// TODO better singularity detection
-						const auto q = value_t{1} / mtemp[col][r];
+						const auto q = value_t(1) / mtemp[col][r];
 						if (all(!isinf(q))) {
 							// largest usable abs value was > 0, continue => zero rest of row
 							for (size_t j = 0; j < Cols; j++) {
@@ -4956,7 +4956,7 @@ namespace cgra {
 					using value_t = fpromote_t<matrix_value_t<MatT>>;
 					auto r = decltype(mat_cast<value_t>(m)){};
 					const auto det = determinant(m);
-					const auto invdet = value_t{1} / det;
+					const auto invdet = value_t(1) / det;
 					if (any(isinf(invdet) || isnan(invdet) || isinf(det))) throw singular_matrix_error();
 					r[0][0] = m[1][1] * invdet;
 					r[0][1] = -m[0][1] * invdet;
@@ -4978,7 +4978,7 @@ namespace cgra {
 					const auto c02 = det2x2<value_t>(m[1][0], m[1][1], m[2][0], m[2][1]);
 					// get determinant by expanding about first column
 					const auto det = m[0][0] * c00 + m[0][1] * c01 + m[0][2] * c02;
-					const auto invdet = value_t{1} / det;
+					const auto invdet = value_t(1) / det;
 					if (any(isinf(invdet) || isnan(invdet) || isinf(det))) throw singular_matrix_error();
 					// transpose of cofactor matrix * (1 / det)
 					r[0][0] = c00 * invdet;
@@ -5007,7 +5007,7 @@ namespace cgra {
 					const auto c3 = -det3x3<value_t>(m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2], m[3][0], m[3][1], m[3][2]);
 					// get determinant by expanding about first column
 					const auto det = m[0][0] * c0 + m[0][1] * c1 + m[0][2] * c2 + m[0][3] * c3;
-					const auto invdet = value_t{1} / det;
+					const auto invdet = value_t(1) / det;
 					if (any(isinf(invdet) || isnan(invdet) || isinf(det))) throw singular_matrix_error();
 					// transpose of cofactor matrix * (1 / det)
 					r[0][0] = c0 * invdet;
@@ -5044,7 +5044,7 @@ namespace cgra {
 				static auto go(const MatT &) {
 					using value_t = fpromote_t<matrix_value_t<MatT>>;
 					// determinant of non-square matrix is always 0
-					return value_t{0};
+					return value_t(0);
 				}
 			};
 
@@ -5054,7 +5054,7 @@ namespace cgra {
 				static auto go(const MatT &) {
 					using value_t = fpromote_t<matrix_value_t<MatT>>;
 					// i'm just gonna say this is 1
-					return value_t{1};
+					return value_t(1);
 				}
 			};
 
@@ -5063,7 +5063,7 @@ namespace cgra {
 				template <typename MatT>
 				static auto go(const MatT &m) {
 					using value_t = fpromote_t<matrix_value_t<MatT>>;
-					return value_t{m[0][0]};
+					return value_t(m[0][0]);
 				}
 			};
 
@@ -5090,7 +5090,7 @@ namespace cgra {
 				template <typename MatT>
 				static auto go(const MatT &m) {
 					using value_t = fpromote_t<matrix_value_t<MatT>>;
-					auto d = value_t{0};
+					auto d = value_t(0);
 					// expand about first column
 					d += m[0][0] * det3x3<value_t>(m[1][1], m[1][2], m[1][3], m[2][1], m[2][2], m[2][3], m[3][1], m[3][2], m[3][3]);
 					d -= m[0][1] * det3x3<value_t>(m[1][0], m[1][2], m[1][3], m[2][0], m[2][2], m[2][3], m[3][0], m[3][2], m[3][3]);
@@ -5184,13 +5184,13 @@ namespace cgra {
 				template <typename T>
 				inline auto inverse(const basic_quat<T> &q) {
 					// yes, this should indeed be the square of the norm
-					return conjugate(q) * (T{1} / dot(q, q));
+					return conjugate(q) * (fpromote_t<T>(1) / dot(q, q));
 				}
 
 				// quat power
 				template <typename Tq, typename Tp>
 				inline auto pow(const basic_quat<Tq> &q, const Tp &power) {
-					using value_t = detail::fpromote_arith_t<Tq, Tp>;
+					using value_t = fpromote_arith_t<Tq, Tp>;
 					const auto qm = length(q);
 					const auto theta = acos(q.w / qm);
 					const auto ivm = 1 / sqrt(q.x * q.x + q.y * q.y + q.z * q.z);
@@ -5203,7 +5203,7 @@ namespace cgra {
 				// quat exp
 				template <typename T>
 				inline auto exp(const basic_quat<T> &q) {
-					using value_t = detail::fpromote_t<T>;
+					using value_t = fpromote_t<T>;
 					const auto expw = exp(q.w);
 					const auto vm = sqrt(q.x * q.x + q.y * q.y + q.z * q.z);
 					const auto ivm = 1 / vm;
@@ -5215,7 +5215,7 @@ namespace cgra {
 				// quat log
 				template <typename T>
 				inline auto log(const basic_quat<T> &q) {
-					using value_t = detail::fpromote_t<T>;
+					using value_t = fpromote_t<T>;
 					const auto qm = length(q);
 					const auto ivm = 1 / sqrt(q.x * q.x + q.y * q.y + q.z * q.z);
 					if (isinf(ivm)) return basic_quat<value_t>(log(qm), 0, 0, 0);
@@ -5246,29 +5246,29 @@ namespace cgra {
 				// quat spherical linear interpolation (slerp)
 				template <typename T1, typename T2, typename Tt>
 				inline auto slerp(const basic_quat<T1> &q1, const basic_quat<T2> &q2, const Tt &t) {
-					using value_t = detail::fpromote_arith_t<T1, T2, Tt>;
+					using value_t = fpromote_arith_t<T1, T2, Tt>;
 					auto q = normalize(q1);
 					auto p = normalize(q2);
 					value_t epsilon{0.0001};
-					if (dot(p, q) < value_t{0}) {
+					if (dot(p, q) < value_t(0)) {
 						q = q * value_t{-1};
 					}
 					const auto dpq = dot(p, q);
-					if ((value_t{1} - dpq) > epsilon) {
+					if ((value_t(1) - dpq) > epsilon) {
 						const auto w = acos(dpq);
-						return ((sin((value_t{1} - t) * w) * p) + (sin(t * w) * q)) / sin(w);
+						return ((sin((value_t(1) - t) * w) * p) + (sin(t * w) * q)) / sin(w);
 					}
-					return (value_t{1} - t) * p + t * q;
+					return (value_t(1) - t) * p + t * q;
 				}
 
 				// returns the rotation (in radians) of the quaternion around a given axis
 				template <typename Tq, typename Ta>
 				inline auto project(const basic_quat<Tq> &q, const basic_vec<Ta, 3> &axis) {
-					using value_t = detail::fpromote_arith_t<Tq, Ta>;
+					using value_t = fpromote_arith_t<Tq, Ta>;
 					const auto nv = normalize(axis);
 					// find a tangent to nv
 					basic_vec<value_t, 3> tangent{1, 0, 0};
-					if (abs(dot(tangent, nv)) > value_t{0.7331}) {
+					if (abs(dot(tangent, nv)) > value_t(0.7331)) {
 						// anti-leet
 						tangent = basic_vec<value_t, 3>{0, 1, 0};
 					}
@@ -5371,7 +5371,7 @@ namespace cgra {
 		const auto vx = normalize(cross(up, vz));
 		const auto vy = normalize(cross(vz, vx));
 		basic_mat<value_t, 4, 4> r{vx, vy, vz, eye};
-		r[3][3] = value_t{1};
+		r[3][3] = value_t(1);
 		return inverse(r);
 	}
 
@@ -5384,12 +5384,12 @@ namespace cgra {
 		// typename MatT::value_t f = typename MatT::value_t(1) / (fovy / typename MatT::value_t(2));
 		using value_t = detail::fpromote_arith_t<Ty, Ta, Tn, Tf>;
 		// real equation
-		const auto f = cot(fovy / value_t{2});
+		const auto f = cot(fovy / value_t(2));
 		basic_mat<value_t, 4, 4> r{0};
 		r[0][0] = f / aspect;
 		r[1][1] = f;
-		r[2][2] = (zfar + value_t{znear}) / (znear - value_t{zfar});
-		r[3][2] = (2 * zfar * value_t{znear}) / (znear - value_t{zfar});
+		r[2][2] = (zfar + value_t(znear)) / (znear - value_t(zfar));
+		r[3][2] = (2 * zfar * value_t(znear)) / (znear - value_t(zfar));
 		r[2][3] = -1;
 		return r;
 	}
@@ -5399,13 +5399,13 @@ namespace cgra {
 		// TODO Nan check
 		using value_t = detail::fpromote_arith_t<Tl, Tr, Tb, Tt, Tn, Tf>;
 		basic_mat<value_t, 4, 4> r{0};
-		r[0][0] = value_t{2} / (right - value_t{left});
-		r[3][0] = (right + value_t{left}) / (right - value_t{left});
-		r[1][1] = value_t{2} / (top - value_t{bottom});
-		r[3][1] = (top + value_t{bottom}) / (top - value_t{bottom});
-		r[2][2] = -value_t{2} / (zfar - value_t{znear});
-		r[3][2] = (zfar + value_t{znear}) / (zfar - value_t{znear});
-		r[3][3] = value_t{1};
+		r[0][0] = value_t(2) / (right - value_t(left));
+		r[3][0] = (right + value_t(left)) / (right - value_t(left));
+		r[1][1] = value_t(2) / (top - value_t(bottom));
+		r[3][1] = (top + value_t(bottom)) / (top - value_t(bottom));
+		r[2][2] = -value_t(2) / (zfar - value_t(znear));
+		r[3][2] = (zfar + value_t(znear)) / (zfar - value_t(znear));
+		r[3][3] = value_t(1);
 		return r;
 	}
 
@@ -5495,9 +5495,9 @@ namespace cgra {
 	template <typename Tx, typename Ty, typename Tz>
 	inline auto euler(const Tx &rx, const Ty &ry, const Tz &rz) {
 		using value_t = detail::fpromote_arith_t<Tx, Ty, Tz>;
-		basic_vec<value_t, 4> rotx{sin(rx / value_t{2}), 0, 0, cos(rx / value_t{2})};
-		basic_vec<value_t, 4> roty{0, sin(ry / value_t{2}), 0, cos(ry / value_t{2})};
-		basic_vec<value_t, 4> rotz{0, 0, sin(rz / value_t{2}), cos(rz / value_t{2})};
+		basic_vec<value_t, 4> rotx{sin(rx / value_t(2)), 0, 0, cos(rx / value_t(2))};
+		basic_vec<value_t, 4> roty{0, sin(ry / value_t(2)), 0, cos(ry / value_t(2))};
+		basic_vec<value_t, 4> rotz{0, 0, sin(rz / value_t(2)), cos(rz / value_t(2))};
 		basic_quat<value_t> q{rotx * outer_product(roty, rotz)};
 		return q;
 	}
@@ -5508,7 +5508,7 @@ namespace cgra {
 	template <typename Ta, typename Tx>
 	inline auto axisangle(const basic_vec<Ta, 3> &axis, const Tx &x) {
 		using value_t = detail::fpromote_arith_t<Ta, Tx>;
-		return basic_quat<value_t>{cos(x / value_t{2}), sin(x / value_t{2}) * normalize(axis)};
+		return basic_quat<value_t>{cos(x / value_t(2)), sin(x / value_t(2)) * normalize(axis)};
 	}
 
 	// rotation around a given axis using axis's magnitude as angle
@@ -5517,7 +5517,7 @@ namespace cgra {
 	inline auto axisangle(const basic_vec<T, 3> &axis) {
 		using value_t = detail::fpromote_t<T>;
 		const auto x = length(axis);
-		return basic_quat<value_t>{cos(x / value_t{2}), sin(x / value_t{2}) * axis / x};
+		return basic_quat<value_t>{cos(x / value_t(2)), sin(x / value_t(2)) * axis / x};
 	}
 
 	// rotation between 2 vectors
@@ -5526,7 +5526,7 @@ namespace cgra {
 	inline auto fromto(const basic_vec<Tf, 3> &from, const basic_vec<Tt, 3> &to) {
 		using value_t = detail::fpromote_arith_t<Tf, Tt>;
 		const auto x = angle(from, to);
-		return basic_quat<value_t>{cos(x / value_t{2}), sin(x / value_t{2}) * normalize(cross(from, to))};
+		return basic_quat<value_t>{cos(x / value_t(2)), sin(x / value_t(2)) * normalize(cross(from, to))};
 	}
 
 
