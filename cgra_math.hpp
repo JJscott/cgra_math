@@ -13,7 +13,6 @@
 //-----------------
 
 - factory function constraints?
-- FIXME make mat inverse error by exception
 - quat axis/angle functions (axisof? angleof?)
 - FIXME examine all advanced quat functions for correctness
 - FIXME min/max for vectors vs std (overloading only for basic_vec is dangerous)
@@ -5167,11 +5166,10 @@ namespace cgra {
 							swap(mr[col], mr[swcol]);
 							swap(mtemp[col], mtemp[swcol]);
 						}
-						// TODO better heuristic for epsilon scaling?
-						// plain epsilon is good when matrix values are around 1
-						if (all(!nearzero(swmax, prev_swmax * epsilon<decltype(swmax)>()))) {
+						// TODO better singularity detection
+						const auto q = value_t{1} / mtemp[col][r];
+						if (all(!isinf(q))) {
 							// largest usable abs value was > 0, continue => zero rest of row
-							const auto q = value_t{1} / mtemp[col][r];
 							for (size_t j = 0; j < Cols; j++) {
 								if (j != col) {
 									// && abs(mtemp[j][r]) > 0
@@ -5219,9 +5217,9 @@ namespace cgra {
 				static auto go(const MatT &m) {
 					using value_t = fpromote_t<matrix_value_t<MatT>>;
 					auto r = decltype(mat_cast<value_t>(m)){};
-					const auto invdet = value_t{1} / determinant(m);
-					// FIXME proper detect infinite determinant
-					assert(!isinf(invdet) && invdet == invdet && invdet != 0);
+					const auto det = determinant(m);
+					const auto invdet = value_t{1} / det;
+					if (any(isinf(invdet) || isnan(invdet) || isinf(det))) throw singular_matrix_error();
 					r[0][0] = m[1][1] * invdet;
 					r[0][1] = -m[0][1] * invdet;
 					r[1][0] = -m[1][0] * invdet;
@@ -5241,9 +5239,9 @@ namespace cgra {
 					const auto c01 = -det2x2<value_t>(m[1][0], m[1][2], m[2][0], m[2][2]);
 					const auto c02 = det2x2<value_t>(m[1][0], m[1][1], m[2][0], m[2][1]);
 					// get determinant by expanding about first column
-					const auto invdet = value_t{1} / (m[0][0] * c00 + m[0][1] * c01 + m[0][2] * c02);
-					// FIXME proper detect infinite determinant
-					assert(!isinf(invdet) && invdet == invdet && invdet != 0);
+					const auto det = m[0][0] * c00 + m[0][1] * c01 + m[0][2] * c02;
+					const auto invdet = value_t{1} / det;
+					if (any(isinf(invdet) || isnan(invdet) || isinf(det))) throw singular_matrix_error();
 					// transpose of cofactor matrix * (1 / det)
 					r[0][0] = c00 * invdet;
 					r[1][0] = c01 * invdet;
@@ -5270,9 +5268,9 @@ namespace cgra {
 					const auto c2 = det3x3<value_t>(m[1][0], m[1][1], m[1][3], m[2][0], m[2][1], m[2][3], m[3][0], m[3][1], m[3][3]);
 					const auto c3 = -det3x3<value_t>(m[1][0], m[1][1], m[1][2], m[2][0], m[2][1], m[2][2], m[3][0], m[3][1], m[3][2]);
 					// get determinant by expanding about first column
-					const auto invdet = value_t{1} / (m[0][0] * c0 + m[0][1] * c1 + m[0][2] * c2 + m[0][3] * c3);
-					// FIXME proper detect infinite determinant
-					assert(!isinf(invdet) && invdet == invdet && invdet != 0);
+					const auto det = m[0][0] * c0 + m[0][1] * c1 + m[0][2] * c2 + m[0][3] * c3;
+					const auto invdet = value_t{1} / det;
+					if (any(isinf(invdet) || isnan(invdet) || isinf(det))) throw singular_matrix_error();
 					// transpose of cofactor matrix * (1 / det)
 					r[0][0] = c0 * invdet;
 					r[1][0] = c1 * invdet;
