@@ -97,13 +97,14 @@ int main() {
 	cout << (m5 * m6) << endl;
 
 	auto m7 = scale2(ivec2{1, 2});
-	auto m8 = look_at(vec3(1, 2, 3), vec3(4, 5, 6), vec3(7, 8, 9));
+	auto m8 = lookat(vec3(1, 2, 3), vec3(4, 5, 6), vec3(7, 8, 9));
 	cout << (m8 * vec4(1, 2, 3, 1)) << endl;
 
 	quat q1{vec4(v5)};
 	q1 = mix(q1, q1, 0.5f);
 	q1 = dquat(q1);
 	q1 = 1 / (1 / q1);
+	q1 = nlerp(q1, q1, 0.5f);
 
 	cout << q1 << endl;
 	cout << q1.w << endl;
@@ -147,6 +148,8 @@ int main() {
 
 	cout << m10 << endl;
 	cout << (m10 * inverse(m10)) << endl;
+
+	cout << angle(vec2(1, 0), vec2(1, 0.0002)) << endl;
 
 	cin.get();
 }

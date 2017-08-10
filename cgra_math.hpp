@@ -12,13 +12,12 @@
 //      TODO
 //-----------------
 
-- factory function constraints?
-- quat axis/angle functions (axisof? angleof?)
 - FIXME examine all advanced quat functions for correctness
 - FIXME quat random
 - FIXME min/max for vectors vs std (overloading only for basic_vec is dangerous)
 - FIXME unbreak constexpr for msvc and intellisense
-- rename 'conjugate' -> 'conj' etc, deprecate old names
+- axis/angle function names
+- factory function constraints?
 - vector etc comparison result magic
 - ndc z-bounds for projection matrices (gl vs d3d)
 - infinite perspective projection
@@ -3776,14 +3775,42 @@ namespace cgra {
 		}
 
 		namespace vectors {
+
+			// TODO angle() specializations for N={0,1}
+			template <size_t N>
+			struct angle_impl {
+				template <typename VecT1, typename VecT2>
+				static auto go(const VecT1 &v1, const VecT2 &v2) {
+					using cgra::detail::scalars::acos;
+					return acos(dot(v1, v2) / (length(v1) * length(v2)));
+				}
+			};
+
+			template <>
+			struct angle_impl<2> {
+				template <typename VecT1, typename VecT2>
+				static auto go(const VecT1 &v1, const VecT2 &v2) {
+					// promote to vec3
+					return angle_impl<3>::go(vec_cast<3>(v1), vec_cast<3>(v2));
+				}
+			};
+
+			template <>
+			struct angle_impl<3> {
+				template <typename VecT1, typename VecT2>
+				static auto go(const VecT1 &v1, const VecT2 &v2) {
+					// use asin and |v1 x v2| for vec3 (its a lot more precise for small angles)
+					using cgra::detail::scalars::asin;
+					return asin(length(cross(v1, v2)) / (length(v1) * length(v2)));
+				}
+			};
+
 			namespace functions {
 
-				// Returns the angle between 2 vectors in radians
+				// angle between 2 vectors (radians)
 				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline auto angle(const VecT1 &v1, const VecT2 &v2) {
-					using cgra::detail::scalars::acos;
-					// TODO use asin and |v1 x v2| for vec3, vec2 (its a lot more precise for small angles)
-					return acos(dot(v1, v2) / (length(v1) * length(v2)));
+					return angle_impl<array_size<VecT1>::value>::go(v1, v2);
 				}
 
 				// vec sin
@@ -5173,8 +5200,7 @@ namespace cgra {
 
 				// quat conjugate (== inverse for unit quat)
 				template <typename T>
-				inline auto conjugate(const basic_quat<T> &q) {
-					// TODO rename to 'conj'
+				inline auto conj(const basic_quat<T> &q) {
 					return basic_quat<T>{q.w, -q.x, -q.y, -q.z};
 				}
 
@@ -5182,14 +5208,26 @@ namespace cgra {
 				template <typename T>
 				inline auto inverse(const basic_quat<T> &q) {
 					// yes, this should indeed be the square of the norm
-					return conjugate(q) * (fpromote_t<T>(1) / dot(q, q));
+					return conj(q) * (fpromote_t<T>(1) / dot(q, q));
+				}
+
+				// quat rotation angle
+				template <typename T>
+				inline auto angle(const basic_quat<T> &q) {
+					return 2 * acos(q.w);
+				}
+
+				// quat rotation axis
+				template <typename T>
+				inline auto axis(const basic_quat<T> &q) {
+					return normalize(basic_vec<T, 3>{q.x, q.y, q.z});
 				}
 
 				// quat power
 				template <typename Tq, typename Tp>
 				inline auto pow(const basic_quat<Tq> &q, const Tp &power) {
 					using value_t = fpromote_arith_t<Tq, Tp>;
-					const auto qm = length(q);
+					const auto qm = abs(q);
 					const auto theta = acos(q.w / qm);
 					const auto ivm = 1 / sqrt(q.x * q.x + q.y * q.y + q.z * q.z);
 					if (isinf(ivm)) return basic_quat<value_t>{1} * pow(qm, power);
@@ -5214,23 +5252,23 @@ namespace cgra {
 				template <typename T>
 				inline auto log(const basic_quat<T> &q) {
 					using value_t = fpromote_t<T>;
-					const auto qm = length(q);
+					const auto qm = abs(q);
 					const auto ivm = 1 / sqrt(q.x * q.x + q.y * q.y + q.z * q.z);
 					if (isinf(ivm)) return basic_quat<value_t>(log(qm), 0, 0, 0);
 					const auto vf = acos(q.w / qm) * ivm;
 					return basic_quat<value_t>{log(qm), q.x * vf, q.y * vf, q.z * vf};
 				}
 
-				// length/magnitude of quaternion
+				// magnitude of quaternion
 				template <typename T>
-				inline auto length(const basic_quat<T> &q) {
+				inline auto abs(const basic_quat<T> &q) {
 					return sqrt(dot(q, q));
 				}
 
 				// returns unit quaternion
 				template <typename T>
 				inline auto normalize(const basic_quat<T> &q) {
-					return q / length(q);
+					return q / abs(q);
 				}
 
 				// quat mix is implemented by normal scalar mix
@@ -5261,9 +5299,9 @@ namespace cgra {
 
 				// returns the rotation (in radians) of the quaternion around a given axis
 				template <typename Tq, typename Ta>
-				inline auto project(const basic_quat<Tq> &q, const basic_vec<Ta, 3> &axis) {
+				inline auto project(const basic_quat<Tq> &q, const basic_vec<Ta, 3> &ax) {
 					using value_t = fpromote_arith_t<Tq, Ta>;
-					const auto nv = normalize(axis);
+					const auto nv = normalize(ax);
 					// find a tangent to nv
 					basic_vec<value_t, 3> tangent{1, 0, 0};
 					if (abs(dot(tangent, nv)) > value_t(0.7331)) {
@@ -5361,8 +5399,7 @@ namespace cgra {
 	//
 
 	template <typename Te, typename Tf, typename Tu>
-	inline auto look_at(const basic_vec<Te, 3> &eye, const basic_vec<Tf, 3> &focus, const basic_vec<Tu, 3> &up) {
-		// TODO rename: lookat?
+	inline auto lookat(const basic_vec<Te, 3> &eye, const basic_vec<Tf, 3> &focus, const basic_vec<Tu, 3> &up) {
 		// TODO Nan check
 		using value_t = detail::fpromote_arith_t<Te, Tf, Tu>;
 		const auto vz = normalize(eye - focus);
@@ -5504,18 +5541,18 @@ namespace cgra {
 	// normalizes the axis for you
 	// TODO nan checking
 	template <typename Ta, typename Tx>
-	inline auto axisangle(const basic_vec<Ta, 3> &axis, const Tx &x) {
+	inline auto axisangle(const basic_vec<Ta, 3> &ax, const Tx &x) {
 		using value_t = detail::fpromote_arith_t<Ta, Tx>;
-		return basic_quat<value_t>{cos(x / value_t(2)), sin(x / value_t(2)) * normalize(axis)};
+		return basic_quat<value_t>{cos(x / value_t(2)), sin(x / value_t(2)) * normalize(ax)};
 	}
 
 	// rotation around a given axis using axis's magnitude as angle
 	// TODO nan checking
 	template <typename T>
-	inline auto axisangle(const basic_vec<T, 3> &axis) {
+	inline auto axisangle(const basic_vec<T, 3> &ax) {
 		using value_t = detail::fpromote_t<T>;
-		const auto x = length(axis);
-		return basic_quat<value_t>{cos(x / value_t(2)), sin(x / value_t(2)) * axis / x};
+		const auto x = length(ax);
+		return basic_quat<value_t>{cos(x / value_t(2)), sin(x / value_t(2)) * ax / x};
 	}
 
 	// rotation between 2 vectors
@@ -5749,9 +5786,9 @@ namespace cgra {
 		result_type operator()(Generator& g, param_type param) {
 			result_type r;
 			// TODO make this true uniformally random
-			T angle = m_elem_dist(g, elem_dist_type::param_type(param.a(), param.b()));
-			basic_vec<T, 3> axis = normalize(m_vec_dist(g, vec_dist_type::param_type(basic_vec<T, 3>(-1), basic_vec<T, 3>(1))));
-			r = axisangle(normalize(axis), angle);
+			const auto x = m_elem_dist(g, elem_dist_type::param_type(param.a(), param.b()));
+			const auto ax = normalize(m_vec_dist(g, vec_dist_type::param_type(basic_vec<T, 3>(-1), basic_vec<T, 3>(1))));
+			r = axisangle(normalize(ax), x);
 			return r;
 		}
 
