@@ -33,6 +33,12 @@ int main() {
 
 	using vec2x3 = basic_vec<basic_vec<float, 3>, 2>;
 
+	using vec2x3x1 = basic_vec<basic_vec<basic_vec<float, 1>, 3>, 2>;
+
+	vec2x3x1 voo{{{1}, {2}, {3}}, {4, 5, 6}};
+	cout << voo << endl;
+	vec1 voo1 = 1;
+
 	vec0 v0;
 	auto v1a = ivec2{3, 4};
 	auto v1b = ivec4(2);
@@ -42,7 +48,7 @@ int main() {
 	auto v2b = vec3{4, 5, 6};
 	vec2x3 v2c;
 
-	vec2x3 v2{v2a, v2b, v2c}; // {vec3{1, 2, 3}, vec3{4, 5, 6}};
+	vec2x3 v2{vec3{1, 2, 3}, vec3{4, 5, 6}};
 
 	auto v3 = vec3(vec4(7));
 	v3.y = 4;

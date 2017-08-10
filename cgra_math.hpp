@@ -1902,13 +1902,15 @@ namespace cgra {
 
 				// explict arg ctor for nested brace initializers
 				// vec_exarg_tup_t produces {vec_dead_ctor_tag} for vec0 to avoid conflict with the default ctor
-				// FIXME this needs to be implicit without breaking anything for >2 levels of braces
-				CGRA_CONSTEXPR_FUNCTION explicit basic_vec_ctor_proxy(ExArgTs ...ts) :
+				// this needs to be implicit for >2 levels of braces;
+				// as a result, vec1 is implicitly convertible from scalar (but not to scalar!)
+				CGRA_CONSTEXPR_FUNCTION basic_vec_ctor_proxy(ExArgTs ...ts) :
 					base_data_t{intellisense_constify(std::move(ts))...}
 				{}
 
 				// tagged ctor, used by cat
 				// this must use generic forwarding references to avoid being out-competed by the magic ctor
+				// TODO could this be done like the exargs ctor?
 				template <typename ...ArgTs>
 				CGRA_CONSTEXPR_FUNCTION explicit basic_vec_ctor_proxy(vec_element_ctor_tag, ArgTs &&...args) :
 					base_data_t{intellisense_constify(static_cast<T>(std::forward<ArgTs>(args)))...}
