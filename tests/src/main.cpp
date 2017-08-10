@@ -20,6 +20,14 @@ public:
 	}
 };
 
+void rotation_axis() {
+
+}
+
+void rotation_angle() {
+
+}
+
 int main() {
 	//test::run_basic_vec_tests();
 
@@ -94,6 +102,8 @@ int main() {
 
 	quat q1{vec4(v5)};
 	q1 = mix(q1, q1, 0.5f);
+	q1 = dquat(q1);
+	q1 = 1 / (1 / q1);
 
 	cout << q1 << endl;
 	cout << q1.w << endl;
@@ -130,7 +140,7 @@ int main() {
 		random<vec5>(),
 		random<vec5>()
 	};
-	m10[0][4] *= 1.0000001f;
+	m10[0][4] *= 1.000001f;
 	//m10[2] *= 0.01f;
 	m10[3] *= 1000.f;
 	m10 *= 0.000001f;

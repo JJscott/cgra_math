@@ -146,7 +146,7 @@ namespace cgra {
 	using nnfloat = not_nan<float>;
 	using nndouble = not_nan<double>;
 
-	class singular_matrix_error : std::runtime_error {
+	class singular_matrix_error : public std::runtime_error {
 	public:
 		singular_matrix_error() : std::runtime_error("singular matrix") {}
 	};
@@ -1009,6 +1009,29 @@ namespace cgra {
 			>::value,
 			int
 		>;
+
+		template <typename F, typename ...Ts>
+		using enable_if_cartesian_not_all_t = std::enable_if_t<
+			!meta_fold_t<
+				meta_quote<meta_and>,
+				std::true_type,
+				meta_cartesian_zip_with_t<
+					F,
+					std::tuple<Ts...>,
+					std::tuple<Ts...>
+				>
+			>::value,
+			int
+		>;
+
+		template <typename ...Ts>
+		using enable_if_mutually_convertible_t = enable_if_cartesian_all_t<meta_fquote<is_mutually_convertible>, Ts...>;
+
+		template <typename ...Ts>
+		using enable_if_not_mutually_convertible_t = enable_if_cartesian_not_all_t<meta_fquote<is_mutually_convertible>, Ts...>;
+
+		template <typename ...Ts>
+		using enable_if_mutually_constructible_t = enable_if_cartesian_all_t<meta_fquote<is_mutually_constructible>, Ts...>;
 
 		template <typename ...VecTs>
 		using enable_if_vector_compatible_t = enable_if_cartesian_all_t<meta_fquote<is_vector_compatible>, VecTs...>;
@@ -2235,11 +2258,21 @@ namespace cgra {
 
 				// default ctor
 				CGRA_CONSTEXPR_FUNCTION basic_quat() :
-					w(T()), x(T()), y(T()), z(T()) {}
+					w(), x(), y(), z() {}
+
+				// cross-type copy ctor (implicit)
+				template <typename U, enable_if_mutually_convertible_t<T, U> = 0>
+				CGRA_CONSTEXPR_FUNCTION basic_quat(const basic_quat<U> &q) :
+					w(q.w), x(q.x), y(q.y), z(q.z) {}
+
+				// cross-type copy ctor (explicit)
+				template <typename U, enable_if_mutually_constructible_t<T, U> = 0, enable_if_not_mutually_convertible_t<T, U> = 0>
+				CGRA_CONSTEXPR_FUNCTION explicit basic_quat(const basic_quat<U> &q) :
+					w(q.w), x(q.x), y(q.y), z(q.z) {}
 
 				// real ctor
 				CGRA_CONSTEXPR_FUNCTION basic_quat(T t) :
-					w(std::move(t)), x(T()), y(T()), z(T()) {}
+					w(std::move(t)), x(), y(), z() {}
 
 				// real + vector imag ctor
 				CGRA_CONSTEXPR_FUNCTION basic_quat(T w_, basic_vec<T, 3> xyz) :
@@ -2921,7 +2954,7 @@ namespace cgra {
 			namespace functions {
 
 				// quat add assign
-				template <typename T1, typename T2>
+				template <typename T1, typename T2, enable_if_mutually_convertible_t<T1, T2> = 0>
 				inline basic_quat<T1> & operator+=(basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
 					lhs.w += rhs.w;
 					lhs.x += rhs.x;
@@ -2931,7 +2964,7 @@ namespace cgra {
 				}
 
 				// quat sub assign
-				template <typename T1, typename T2>
+				template <typename T1, typename T2, enable_if_mutually_convertible_t<T1, T2> = 0>
 				inline basic_quat<T1> & operator-=(basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
 					lhs.w -= rhs.w;
 					lhs.x -= rhs.x;
@@ -2941,18 +2974,28 @@ namespace cgra {
 				}
 
 				// quat mul assign
-				template <typename T1, typename T2>
+				template <typename T1, typename T2, enable_if_mutually_convertible_t<T1, T2> = 0>
 				inline basic_quat<T1> & operator*=(basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
 					return lhs = basic_quat<T1>{lhs * rhs};
 				}
 
 				// quat mul assign scalar
-				template <typename T1, typename T2>
+				template <typename T1, typename T2, enable_if_mutually_convertible_t<T1, T2> = 0>
 				inline basic_quat<T1> & operator*=(basic_quat<T1> &lhs, const T2 &rhs) {
 					lhs.w *= rhs;
 					lhs.x *= rhs;
 					lhs.y *= rhs;
 					lhs.z *= rhs;
+					return lhs;
+				}
+
+				// quat div assign scalar
+				template <typename T1, typename T2, enable_if_mutually_convertible_t<T1, T2> = 0>
+				inline basic_quat<T1> & operator/=(basic_quat<T1> &lhs, const T2 &rhs) {
+					lhs.w /= rhs;
+					lhs.x /= rhs;
+					lhs.y /= rhs;
+					lhs.z /= rhs;
 					return lhs;
 				}
 
@@ -2968,21 +3011,21 @@ namespace cgra {
 				}
 
 				// quat add
-				template <typename T1, typename T2>
+				template <typename T1, typename T2, enable_if_mutually_convertible_t<T1, T2> = 0>
 				inline auto operator+(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
 					basic_quat<decltype(T1() + T2())> q{lhs};
 					return q += rhs;
 				}
 
 				// quat sub
-				template <typename T1, typename T2>
+				template <typename T1, typename T2, enable_if_mutually_convertible_t<T1, T2> = 0>
 				inline auto operator-(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
 					basic_quat<decltype(T1() - T2())> q{lhs};
 					return q -= rhs;
 				}
 
 				// quat mul
-				template <typename T1, typename T2>
+				template <typename T1, typename T2, enable_if_mutually_convertible_t<T1, T2> = 0>
 				inline auto operator*(const basic_quat<T1> &lhs, const basic_quat<T2> &rhs) {
 					basic_quat<decltype(T1() * T2())> q{lhs};
 					q.w = lhs.w * rhs.w - lhs.x * rhs.x - lhs.y * rhs.y - lhs.z * rhs.z;
@@ -2994,7 +3037,7 @@ namespace cgra {
 
 				// quat mul vec3 (rotate vec3 by quat)
 				// TODO allow other vector types
-				template <typename T1, typename T2>
+				template <typename T1, typename T2, enable_if_mutually_convertible_t<T1, T2> = 0>
 				inline auto operator*(const basic_quat<T1> &lhs, const basic_vec<T2, 3> &rhs) {
 					using common_t = decltype(T1() * T2());
 					basic_quat<common_t> p{common_t{}, rhs};
@@ -3002,18 +3045,31 @@ namespace cgra {
 					return basic_vec<common_t, 3>(p.x, p.y, p.z);
 				}
 
-				// quat mul scalar
-				template <typename T1, typename T2>
+				// quat mul right scalar
+				template <typename T1, typename T2, enable_if_mutually_convertible_t<T1, T2> = 0>
 				inline auto operator*(const basic_quat<T1> &lhs, const T2 &rhs) {
 					basic_quat<decltype(T1() * T2())> q{lhs};
 					return q *= rhs;
 				}
 
-				// quat mul scalar
-				template <typename T1, typename T2>
+				// quat mul left scalar
+				template <typename T1, typename T2, enable_if_mutually_convertible_t<T1, T2> = 0>
 				inline auto operator*(const T1 &lhs, const basic_quat<T2> &rhs) {
 					basic_quat<decltype(T1() * T2())> q{rhs};
 					return q *= lhs;
+				}
+
+				// quat div right scalar
+				template <typename T1, typename T2, enable_if_mutually_convertible_t<T1, T2> = 0>
+				inline auto operator/(const basic_quat<T1> &lhs, const T2 &rhs) {
+					basic_quat<decltype(T1() * T2())> q{lhs};
+					return q /= rhs;
+				}
+
+				// quat div left scalar
+				template <typename T1, typename T2, enable_if_mutually_convertible_t<T1, T2> = 0>
+				inline auto operator/(const T1 &lhs, const basic_quat<T2> &rhs) {
+					return lhs * inverse(rhs);
 				}
 
 				// quat equal
