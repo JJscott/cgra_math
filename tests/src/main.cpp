@@ -29,7 +29,7 @@ void rotation_angle() {
 }
 
 int main() {
-	//test::run_basic_vec_tests();
+	test::run_basic_vec_tests();
 
 	using vec2x3 = basic_vec<basic_vec<float, 3>, 2>;
 

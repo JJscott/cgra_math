@@ -4804,35 +4804,35 @@ namespace cgra {
 				// Returns the comparison of x <= y
 				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline auto less_than_equal(const VecT1 &v1, const VecT2 &v2) {
-					return zip_with([](const auto &x1, const auto &x2) { return x1 < x2; }, v1, v2);
+					return zip_with([](const auto &x1, const auto &x2) { return x1 <= x2; }, v1, v2);
 				}
 
 				// Element-wise function for x in v1 and y in v2
 				// Returns the comparison of x > y
 				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline auto greater_than(const VecT1 &v1, const VecT2 &v2) {
-					return zip_with([](const auto &x1, const auto &x2) { return x1 < x2; }, v1, v2);
+					return zip_with([](const auto &x1, const auto &x2) { return x1 > x2; }, v1, v2);
 				}
 
 				// Element-wise function for x in v1 and y in v2
 				// Returns the comparison of x >= y
 				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline auto greater_than_equal(const VecT1 &v1, const VecT2 &v2) {
-					return zip_with([](const auto &x1, const auto &x2) { return x1 < x2; }, v1, v2);
+					return zip_with([](const auto &x1, const auto &x2) { return x1 >= x2; }, v1, v2);
 				}
 
 				// Element-wise function for x in v1 and y in v2
 				// Returns the comparison of x == y
 				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline auto equal(const VecT1 &v1, const VecT2 &v2) {
-					return zip_with([](const auto &x1, const auto &x2) { return x1 < x2; }, v1, v2);
+					return zip_with([](const auto &x1, const auto &x2) { return x1 == x2; }, v1, v2);
 				}
 
 				// Element-wise function for x in v1 and y in v2
 				// Returns the comparison of x != y
 				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
 				inline auto not_equal(const VecT1 &v1, const VecT2 &v2) {
-					return zip_with([](const auto &x1, const auto &x2) { return x1 < x2; }, v1, v2);
+					return zip_with([](const auto &x1, const auto &x2) { return x1 != x2; }, v1, v2);
 				}
 
 				// Note : C++ does not support "not" as a function name so it has been omitted;
