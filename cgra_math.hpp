@@ -4887,7 +4887,6 @@ namespace cgra {
 					auto mr = decltype(mtemp){1};
 					// run column-wise gauss-jordan elimination on mtemp, apply same ops to mr
 					size_t col = 0;
-					auto prev_swmax = abs(value_t(1));
 					for (size_t r = 0; r < mat_rows<MatT>::value; r++) {
 						// swap cols so [col][r] is as large in magnitude as possible
 						size_t swcol = col;
@@ -4921,7 +4920,6 @@ namespace cgra {
 							mtemp[col] *= q;
 							// pivot isolated, move to next col
 							col++;
-							prev_swmax = swmax;
 						}
 					}
 					// after above routine, col == rank
