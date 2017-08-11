@@ -3789,21 +3789,22 @@ namespace cgra {
 			};
 
 			template <>
-			struct angle_impl<2> {
-				template <typename VecT1, typename VecT2>
-				static auto go(const VecT1 &v1, const VecT2 &v2) {
-					// promote to vec3
-					return angle_impl<3>::go(vec_cast<3>(v1), vec_cast<3>(v2));
-				}
-			};
-
-			template <>
 			struct angle_impl<3> {
 				template <typename VecT1, typename VecT2>
 				static auto go(const VecT1 &v1, const VecT2 &v2) {
 					// use asin and |v1 x v2| for vec3 (its a lot more precise for small angles)
 					using cgra::detail::scalars::asin;
 					return asin(length(cross(v1, v2)) / (length(v1) * length(v2)));
+				}
+			};
+
+			// specialize <2> after <3> because we instantiate <3>
+			template <>
+			struct angle_impl<2> {
+				template <typename VecT1, typename VecT2>
+				static auto go(const VecT1 &v1, const VecT2 &v2) {
+					// promote to vec3
+					return angle_impl<3>::go(vec_cast<3>(v1), vec_cast<3>(v2));
 				}
 			};
 
@@ -5788,8 +5789,8 @@ namespace cgra {
 		result_type operator()(Generator& g, param_type param) {
 			result_type r;
 			// TODO make this true uniformally random
-			const auto x = m_elem_dist(g, elem_dist_type::param_type(param.a(), param.b()));
-			const auto ax = normalize(m_vec_dist(g, vec_dist_type::param_type(basic_vec<T, 3>(-1), basic_vec<T, 3>(1))));
+			const auto x = m_elem_dist(g, typename elem_dist_type::param_type(param.a(), param.b()));
+			const auto ax = normalize(m_vec_dist(g, typename vec_dist_type::param_type(basic_vec<T, 3>(-1), basic_vec<T, 3>(1))));
 			r = axisangle(normalize(ax), x);
 			return r;
 		}
@@ -5912,7 +5913,7 @@ namespace std {
 	template <typename T, size_t Cols, size_t Rows>
 	struct hash<cgra::basic_mat<T, Cols, Rows>> {
 		inline size_t operator()(const cgra::basic_mat<T, Cols, Rows> &m) const {
-			return cgra::fold(cgra::hash_combine<basic_vec<T, Rows>>, 73, m);
+			return cgra::fold(cgra::hash_combine<cgra::basic_vec<T, Rows>>, 73, m);
 		}
 	};
 
