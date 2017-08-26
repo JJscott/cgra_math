@@ -4365,73 +4365,101 @@ namespace cgra {
 				}
 
 				// vec mix
-				template <typename VecT1, typename VecT2, typename VecTt, enable_if_vector_compatible_t<VecT1, VecT2, VecTt> = 0>
-				inline auto mix(const VecT1 &v1, const VecT2 &v2, const VecTt &vt) {
+				template <typename VecT1, typename VecT2, typename VecT3, enable_if_vector_compatible_t<VecT1, VecT2, VecT3> = 0>
+				inline auto mix(const VecT1 &vx1, const VecT2 &vx2, const VecT3 &vt) {
 					using cgra::detail::scalars::mix;
-					return zip_with([](const auto &x1, const auto &x2, const auto &xt) { return mix(x1, x2, xt); }, v1, v2, vt);
+					return zip_with([](const auto &xx1, const auto &xx2, const auto &xt) { return mix(xx1, xx2, xt); }, vx1, vx2, vt);
 				}
 
 				// vec mix (t)-scalar
-				template <typename VecT1, typename VecT2, typename Tt, enable_if_vector_compatible_t<VecT1, VecT2> = 0, enable_if_vector_scalar_compatible_t<VecT1, Tt> = 0>
-				inline auto mix(const VecT1 &v1, const VecT2 &v2, const Tt &t) {
+				template <typename VecT1, typename VecT2, typename T3, enable_if_vector_compatible_t<VecT1, VecT2> = 0, enable_if_vector_scalar_compatible_t<VecT1, T3> = 0>
+				inline auto mix(const VecT1 &vx1, const VecT2 &vx2, const T3 &t) {
 					using cgra::detail::scalars::mix;
-					return zip_with([&](const auto &x1, const auto &x2) { return mix(x1, x2, t); }, v1, v2);
+					return zip_with([&](const auto &xx1, const auto &xx2) { return mix(xx1, xx2, t); }, vx1, vx2);
 				}
 
-				// vec mix (right)-scalar
-				template <typename VecT1, typename T2, typename VecTt, enable_if_vector_compatible_t<VecT1, VecTt> = 0, enable_if_vector_scalar_compatible_t<VecT1, T2> = 0>
-				inline auto mix(const VecT1 &v1, const T2 &x2, const VecTt &vt) {
+				// vec mix (x2)-scalar
+				template <typename VecT1, typename T2, typename VecT3, enable_if_vector_compatible_t<VecT1, VecT3> = 0, enable_if_vector_scalar_compatible_t<VecT1, T2> = 0>
+				inline auto mix(const VecT1 &vx1, const T2 &x2, const VecT3 &vt) {
 					using cgra::detail::scalars::mix;
-					return zip_with([&](const auto &x1, const auto &xt) { return mix(x1, x2, xt); }, v1, vt);
+					return zip_with([&](const auto &xx1, const auto &xt) { return mix(xx1, x2, xt); }, vx1, vt);
 				}
 
-				// vec mix (right,t)-scalar
-				template <typename VecT1, typename T2, typename Tt, enable_if_vector_scalar_compatible_t<VecT1, T2> = 0, enable_if_vector_scalar_compatible_t<VecT1, Tt> = 0>
-				inline auto mix(const VecT1 &v1, const T2 &x2, const Tt &t) {
+				// vec mix (x2,t)-scalar
+				template <typename VecT1, typename T2, typename T3, enable_if_vector_scalar_compatible_t<VecT1, T2> = 0, enable_if_vector_scalar_compatible_t<VecT1, T3> = 0>
+				inline auto mix(const VecT1 &vx1, const T2 &x2, const T3 &t) {
 					using cgra::detail::scalars::mix;
-					return zip_with([&](const auto &x1) { return mix(x1, x2, t); }, v1);
+					return zip_with([&](const auto &xx1) { return mix(xx1, x2, t); }, vx1);
 				}
 
-				// vec mix (left)-scalar
-				template <typename T1, typename VecT2, typename VecTt, enable_if_vector_compatible_t<VecT2, VecTt> = 0, enable_if_vector_scalar_compatible_t<VecT2, T1> = 0>
-				inline auto mix(const T1 &x1, const VecT2 &v2, const VecTt &vt) {
+				// vec mix (x1)-scalar
+				template <typename T1, typename VecT2, typename VecT3, enable_if_vector_compatible_t<VecT2, VecT3> = 0, enable_if_vector_scalar_compatible_t<VecT2, T1> = 0>
+				inline auto mix(const T1 &x1, const VecT2 &vx2, const VecT3 &vt) {
 					using cgra::detail::scalars::mix;
-					return zip_with([&](const auto &x2, const auto &xt) { return mix(x1, x2, xt); }, v2, vt);
+					return zip_with([&](const auto &xx2, const auto &xt) { return mix(x1, xx2, xt); }, vx2, vt);
 				}
 
-				// vec mix (left,t)-scalar
-				template <typename T1, typename VecT2, typename Tt, enable_if_vector_scalar_compatible_t<VecT2, T1> = 0, enable_if_vector_scalar_compatible_t<VecT2, Tt> = 0>
-				inline auto mix(const T1 &x1, const VecT2 &v2, const Tt &t) {
+				// vec mix (x1,t)-scalar
+				template <typename T1, typename VecT2, typename T3, enable_if_vector_scalar_compatible_t<VecT2, T1> = 0, enable_if_vector_scalar_compatible_t<VecT2, T3> = 0>
+				inline auto mix(const T1 &x1, const VecT2 &vx2, const T3 &t) {
 					using cgra::detail::scalars::mix;
-					return zip_with([&](const auto &x2) { return mix(x1, x2, t); }, v2);
+					return zip_with([&](const auto &xx2) { return mix(x1, xx2, t); }, vx2);
 				}
 
-				// vec mix (left,right)-scalar
-				template <typename T1, typename T2, typename VecTt, enable_if_vector_scalar_compatible_t<VecTt, T1> = 0, enable_if_vector_scalar_compatible_t<VecTt, T2> = 0>
-				inline auto mix(const T1 &x1, const T2 &x2, const VecTt &vt) {
+				// vec mix (x1,x2)-scalar
+				template <typename T1, typename T2, typename VecT3, enable_if_vector_scalar_compatible_t<VecT3, T1> = 0, enable_if_vector_scalar_compatible_t<VecT3, T2> = 0>
+				inline auto mix(const T1 &x1, const T2 &x2, const VecT3 &vt) {
 					using cgra::detail::scalars::mix;
 					return zip_with([&](const auto &xt) { return mix(x1, x2, xt); }, vt);
 				}
 
 				// vec clamp
-				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
-				inline auto clamp(const VecT1 &vx, const VecT2 &vlower) {
+				template <typename VecT1, typename VecT2, typename VecT3, enable_if_vector_compatible_t<VecT1, VecT2, VecT3> = 0>
+				inline auto clamp(const VecT1 &vx, const VecT2 &vlower, const VecT3 &vupper) {
 					using cgra::detail::scalars::clamp;
-					return zip_with([](const auto &xx, const auto &xlower) { return clamp(xx, xlower); }, vx, vlower);
+					return zip_with([](const auto &xx, const auto &xlower, const auto &xupper) { return clamp(xx, xlower, xupper); }, vx, vlower, vupper);
 				}
 
-				// vec clamp right scalar
-				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
-				inline auto clamp(const VecT &vx, const T &lower) {
+				// vec clamp (upper)-scalar
+				template <typename VecT1, typename VecT2, typename T3, enable_if_vector_compatible_t<VecT1, VecT2> = 0, enable_if_vector_scalar_compatible_t<VecT1, T3> = 0>
+				inline auto clamp(const VecT1 &vx, const VecT2 &vlower, const T3 &upper) {
 					using cgra::detail::scalars::clamp;
-					return zip_with([&](const auto &xx) { return clamp(xx, lower); }, vx);
+					return zip_with([&](const auto &xx, const auto &xlower) { return clamp(xx, xlower, upper); }, vx, vlower);
 				}
 
-				// vec clamp left scalar
-				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
-				inline auto clamp(const T &x, const VecT &vlower) {
+				// vec clamp (lower)-scalar
+				template <typename VecT1, typename T2, typename VecT3, enable_if_vector_compatible_t<VecT1, VecT3> = 0, enable_if_vector_scalar_compatible_t<VecT1, T2> = 0>
+				inline auto clamp(const VecT1 &vx, const T2 &lower, const VecT3 &vupper) {
 					using cgra::detail::scalars::clamp;
-					return zip_with([&](const auto &xlower) { return clamp(x, xlower); }, vlower);
+					return zip_with([&](const auto &xx, const auto &xupper) { return clamp(xx, lower, xupper); }, vx, vupper);
+				}
+
+				// vec clamp (lower,upper)-scalar
+				template <typename VecT1, typename T2, typename T3, enable_if_vector_scalar_compatible_t<VecT1, T2> = 0, enable_if_vector_scalar_compatible_t<VecT1, T3> = 0>
+				inline auto clamp(const VecT1 &vx, const T2 &lower, const T3 &upper) {
+					using cgra::detail::scalars::clamp;
+					return zip_with([&](const auto &xx) { return clamp(xx, lower, upper); }, vx);
+				}
+
+				// vec clamp (x)-scalar
+				template <typename T1, typename VecT2, typename VecT3, enable_if_vector_compatible_t<VecT2, VecT3> = 0, enable_if_vector_scalar_compatible_t<VecT2, T1> = 0>
+				inline auto clamp(const T1 &x, const VecT2 &vlower, const VecT3 &vupper) {
+					using cgra::detail::scalars::clamp;
+					return zip_with([&](const auto &xlower, const auto &xupper) { return clamp(x, xlower, xupper); }, vlower, vupper);
+				}
+
+				// vec clamp (x,upper)-scalar
+				template <typename T1, typename VecT2, typename T3, enable_if_vector_scalar_compatible_t<VecT2, T1> = 0, enable_if_vector_scalar_compatible_t<VecT2, T3> = 0>
+				inline auto clamp(const T1 &x, const VecT2 &vlower, const T3 &upper) {
+					using cgra::detail::scalars::clamp;
+					return zip_with([&](const auto &xlower) { return clamp(x, xlower, upper); }, vlower);
+				}
+
+				// vec clamp (x,lower)-scalar
+				template <typename T1, typename T2, typename VecT3, enable_if_vector_scalar_compatible_t<VecT3, T1> = 0, enable_if_vector_scalar_compatible_t<VecT3, T2> = 0>
+				inline auto clamp(const T1 &x, const T2 &lower, const VecT3 &vupper) {
+					using cgra::detail::scalars::clamp;
+					return zip_with([&](const auto &xupper) { return clamp(x, lower, xupper); }, vupper);
 				}
 
 				// vec step
@@ -4456,24 +4484,52 @@ namespace cgra {
 				}
 
 				// vec smoothstep
-				template <typename VecT1, typename VecT2, enable_if_vector_compatible_t<VecT1, VecT2> = 0>
-				inline auto smoothstep(const VecT1 &vedge, const VecT2 &vx) {
+				template <typename VecT1, typename VecT2, typename VecT3, enable_if_vector_compatible_t<VecT1, VecT2, VecT3> = 0>
+				inline auto smoothstep(const VecT1 &vedge0, const VecT2 &vedge1, const VecT3 &vx) {
 					using cgra::detail::scalars::smoothstep;
-					return zip_with([](const auto &xedge, const auto &xx) { return smoothstep(xedge, xx); }, vedge, vx);
+					return zip_with([](const auto &xedge0, const auto &xedge1, const auto &xx) { return smoothstep(xedge0, xedge1, xx); }, vedge0, vedge1, vx);
 				}
 
-				// vec smoothstep right scalar
-				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
-				inline auto smoothstep(const VecT &vedge, const T &x) {
+				// vec smoothstep (x)-scalar
+				template <typename VecT1, typename VecT2, typename T3, enable_if_vector_compatible_t<VecT1, VecT2> = 0, enable_if_vector_scalar_compatible_t<VecT1, T3> = 0>
+				inline auto smoothstep(const VecT1 &vedge0, const VecT2 &vedge1, const T3 &x) {
 					using cgra::detail::scalars::smoothstep;
-					return zip_with([&](const auto &xedge) { return smoothstep(xedge, x); }, vedge);
+					return zip_with([&](const auto &xedge0, const auto &xedge1) { return smoothstep(xedge0, xedge1, x); }, vedge0, vedge1);
 				}
 
-				// vec smoothstep left scalar
-				template <typename VecT, typename T, enable_if_vector_scalar_compatible_t<VecT, T> = 0>
-				inline auto smoothstep(const T &edge, const VecT &vx) {
+				// vec smoothstep (edge1)-scalar
+				template <typename VecT1, typename T2, typename VecT3, enable_if_vector_compatible_t<VecT1, VecT3> = 0, enable_if_vector_scalar_compatible_t<VecT1, T2> = 0>
+				inline auto smoothstep(const VecT1 &vedge0, const T2 &edge1, const VecT3 &vx) {
 					using cgra::detail::scalars::smoothstep;
-					return zip_with([&](const auto &xx) { return smoothstep(edge, xx); }, vx);
+					return zip_with([&](const auto &xedge0, const auto &xx) { return smoothstep(xedge0, edge1, xx); }, vedge0, vx);
+				}
+
+				// vec smoothstep (edge1,x)-scalar
+				template <typename VecT1, typename T2, typename T3, enable_if_vector_scalar_compatible_t<VecT1, T2> = 0, enable_if_vector_scalar_compatible_t<VecT1, T3> = 0>
+				inline auto smoothstep(const VecT1 &vedge0, const T2 &edge1, const T3 &x) {
+					using cgra::detail::scalars::smoothstep;
+					return zip_with([&](const auto &xedge0) { return smoothstep(xedge0, edge1, x); }, vedge0);
+				}
+
+				// vec smoothstep (edge0)-scalar
+				template <typename T1, typename VecT2, typename VecT3, enable_if_vector_compatible_t<VecT2, VecT3> = 0, enable_if_vector_scalar_compatible_t<VecT2, T1> = 0>
+				inline auto smoothstep(const T1 &edge0, const VecT2 &vedge1, const VecT3 &vx) {
+					using cgra::detail::scalars::smoothstep;
+					return zip_with([&](const auto &xedge1, const auto &xx) { return smoothstep(edge0, xedge1, xx); }, vedge1, vx);
+				}
+
+				// vec smoothstep (edge0,x)-scalar
+				template <typename T1, typename VecT2, typename T3, enable_if_vector_scalar_compatible_t<VecT2, T1> = 0, enable_if_vector_scalar_compatible_t<VecT2, T3> = 0>
+				inline auto smoothstep(const T1 &edge0, const VecT2 &vedge1, const T3 &x) {
+					using cgra::detail::scalars::smoothstep;
+					return zip_with([&](const auto &xedge1) { return smoothstep(edge0, xedge1, x); }, vedge1);
+				}
+
+				// vec smoothstep (edge0,edge1)-scalar
+				template <typename T1, typename T2, typename VecT3, enable_if_vector_scalar_compatible_t<VecT3, T1> = 0, enable_if_vector_scalar_compatible_t<VecT3, T2> = 0>
+				inline auto smoothstep(const T1 &edge0, const T2 &edge1, const VecT3 &vx) {
+					using cgra::detail::scalars::smoothstep;
+					return zip_with([&](const auto &xx) { return smoothstep(edge0, edge1, xx); }, vx);
 				}
 
 				// vec element-wise min

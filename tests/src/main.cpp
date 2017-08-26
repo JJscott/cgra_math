@@ -69,6 +69,8 @@ int main() {
 	basic_vec<float, 5> v5{1, 2, 3};
 
 	auto v8 = mix(vec3(1, 2, 3), vec3(nan<float>()), bvec3(0, 0, 1));
+	v8 = clamp(v8, 0, 1);
+	v8 = smoothstep(-3, 3, v8);
 
 	cout << v1 << endl;
 	cout << v2 << endl;
