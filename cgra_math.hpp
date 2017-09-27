@@ -4207,14 +4207,15 @@ namespace cgra {
 				// note that this has different behaviour on negatives than std::fmod
 				template <typename Tx, typename Tm, enable_if_want_real_fns_t<Tx, Tm> = 0>
 				inline auto mod(const Tx &x, const Tm &m) {
-					// on integers, promote to fp; consistent with std::fmod etc
+					// TODO how should mod behave on integers?
+					// currently: on integers, promote to fp; consistent with std::fmod etc
 					return x - m * floor(x / fpromote_t<Tm>(m));
 				}
 
 				// Linear blend of x1 and x2, i.e., x1*(1−t) + x2*t
 				template <typename Tx1, typename Tx2, typename Tt, enable_if_want_linear_fns_t<Tx1, Tx2, Tt> = 0>
 				inline auto mix(const Tx1 &x1, const Tx2 &x2, const Tt &t) {
-					return x1 * (fpromote_t<Tt>(1) - t) + x2 * t;
+					return x1 * (1 - t) + x2 * t;
 				}
 
 				// Boolean 'blend' of x1 and x2, i.e., t ? x2 : x1
