@@ -1,23 +1,22 @@
 # cgra_math.hpp
 
-[cgra_math.hpp](/cgra_math.hpp) is a single header math library containing data structures and functions for applications in computer graphics, computational geometry and physical simulation. It serves as a light-weight alternative to [GLM](http://glm.g-truc.net/) or [Eigen](http://eigen.tuxfamily.org/) and is inspired by the functionality and style of [GLSL](https://www.opengl.org/registry/); designed to be fast, flexible and easy-to-use.
+[cgra_math.hpp](/cgra_math.hpp) is a single header math library containing data structures and functions for applications in computer graphics, computational geometry and physical simulation. It serves as an alternative to [GLM](http://glm.g-truc.net/) and is inspired by the functionality and style of [GLSL](https://www.opengl.org/registry/); designed to be fast, flexible and easy-to-use.
 
 
 # FAQ
+## Questions we frequently ask ourselves
 
 #### Why did you make another math library?
 
-There are a large number of existing libraries for linear algebra in C++ but the majority of them are slow to compile and  complicated to integrate. `cgra_math.hpp` is a single header file that provides a variety of data types and functions that most suitable for applications in Computer Graphics. It can be integrated straight into your source tree without any hassle.
+Because we wanted to. There are a large number of existing libraries for linear algebra in C++ but the majority of them are either large and unweildly or small and devoid of many features. `cgra_math.hpp` is a single header file that provides a variety of data types and functions that most suitable for applications in Computer Graphics. It can be integrated straight into your source tree without any hassle.
 
-#### Why C++11?
+#### Why C++14?
 
-TODO
+Why not? We use C++14 to take advantage of new language features in order to write code more simply and avoid having to increase the complexity of the code or remove library features for the sake of compatibilty.
 
-#### Why are Matrices Column-major?
+#### Why are matrices column-major?
 
-TODO
-Originally this library was developed for use in OpenGL which requires the data to be packed in column major order.
-Array subscript operator allows you to access the matrix by column then row (x then y) which is easier for beginners to understand. A single array subscript operator also allows us to return a reinterpret cast of the data as a vector with length equal to the number of rows making it easier to modify.
+Originally this library was developed for use in OpenGL which requires the data to be packed in column major order. Array subscript operator allows you to access the matrix by column then row (x then y) which is easier for beginners to understand. A single array subscript operator also allows us to return a reinterpret cast of the data as a vector with length equal to the number of rows making it easier to modify.
 
 
 # Documentation
@@ -213,4 +212,4 @@ TODO
 
 # Acknowledgments
 
-TODO
+Thanks to Ben (and Josh did stuff too I guess...).
