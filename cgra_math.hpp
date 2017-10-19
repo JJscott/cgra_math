@@ -5438,8 +5438,8 @@ namespace cgra {
 	template <typename Tx, typename Ty>
 	inline auto translate2(const Tx &x, const Ty &y) {
 		basic_mat<detail::fpromote_arith_t<Tx, Ty>, 3, 3> r{1};
-		r[3][0] = x;
-		r[3][1] = y;
+		r[2][0] = x;
+		r[2][1] = y;
 		return r;
 	}
 
