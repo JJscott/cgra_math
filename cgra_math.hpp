@@ -958,12 +958,22 @@ namespace cgra {
 			>
 		{};
 
+		struct extract_type {
+			template <typename T>
+			struct apply {
+				using type = typename T::type;
+			};
+		};
+
 		template <typename F, typename ...Ts>
 		using enable_if_all_t = std::enable_if_t<
 			meta_fold_t<
 				meta_quote<meta_and>,
 				std::true_type,
-				std::tuple<typename F::template apply<Ts>::type...>
+				// vs2017 (as at 15.9.4) fails to compile the simple version with /permissive-
+				// but, like many problems, this can be worked around with another layer of indirection...
+				// std::tuple<typename F::template apply<Ts>::type...>
+				meta_zip_with_t<extract_type, std::tuple<typename F::template apply<Ts>...>>
 			>::value,
 			int
 		>;
